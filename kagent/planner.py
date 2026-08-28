@@ -68,7 +68,12 @@ def _projected_melons(farm):
     return total
 
 
-def make_day_plan(view, memory):
+def make_day_plan(view, memory, speculative=False):
+    """Day plan. `speculative=True` selects the leaderboard-meta teacher used
+    only for BC data (episode 101761797: finals $105k/$96k): early ruminants
+    bought on EXPECTED shop demand before any shop exists, strawberries at
+    scale, investment over profit through ~day 10. The deployed fallback
+    stays reactive (default)."""
     plan = DayPlan()
     day = view.day
     me = view.me
@@ -116,7 +121,10 @@ def make_day_plan(view, memory):
                 quota["MELON"] = min(10, max(0, room // CROPS["MELON"]["max_yield"]))
 
         # Wheat: rolling engine sized to labor, feed needs, and land.
-        wheat_target = min(WHEAT_TILE_CAP, 8 + my_animals)
+        # The speculative teacher runs a bigger engine (leaders held 15-40
+        # wheat tiles as combined feed + $40+ sale inventory).
+        wheat_cap = 32 if speculative else WHEAT_TILE_CAP
+        wheat_target = min(wheat_cap, (10 if speculative else 8) + my_animals)
         if day <= WHEAT_LAST_PLANT_DAY:
             quota["WHEAT"] = max(0, wheat_target - crops.get("WHEAT", 0))
 
@@ -139,7 +147,12 @@ def make_day_plan(view, memory):
             view.unlocked_shops.count(s)
             for s in ("BRUNCH_SPOT", "ICE_CREAM_SHOP", "SMOOTHIE_SHOP", "FARMERS_MARKET")
         )
-        if straw_shops >= 2 and day <= 13:  # 4 productions need planting by ~13
+        if speculative and day <= 13:
+            # Strawberry appears in 4 of 8 shop draws: plant on expectation,
+            # then scale hard with each revealed consumer.
+            straw_target = min(32, 10 + 6 * straw_shops)
+            quota["STRAWBERRY"] = max(0, straw_target - crops.get("STRAWBERRY", 0))
+        elif straw_shops >= 2 and day <= 13:  # 4 productions need planting by ~13
             straw_target = min(10, 3 * straw_shops)
             quota["STRAWBERRY"] = max(0, straw_target - crops.get("STRAWBERRY", 0))
     plan.plant_quota = quota
@@ -160,13 +173,23 @@ def make_day_plan(view, memory):
         view.unlocked_shops.count(s) for s in ("PIZZA_SHOP", "ICE_CREAM_SHOP", "SMOOTHIE_SHOP")
     )
     yarn_shops = view.unlocked_shops.count("YARN_STORE")
-    targets = {
-        "GOOSE": GEESE_TARGET if day <= GEESE_LAST_BUY_DAY else 0,
-        "COW": min(8, 4 * milk_shops) if day <= 18 else 0,
-        "SHEEP": min(10, 4 * yarn_shops) if day <= 20 else 0,
-    }
+    if speculative:
+        # Buy ruminants on expected demand from day 0 (milk is in 3 of 8 shop
+        # draws, wool doubled in 1) and ramp cows with every revealed milk
+        # shop, the way the leaderboard leaders do; skip the goose engine.
+        targets = {
+            "GOOSE": 0,
+            "COW": min(15, 3 + day // 2 + 4 * milk_shops) if day <= 20 else 0,
+            "SHEEP": min(6, 2 + 3 * yarn_shops) if day <= 20 else 0,
+        }
+    else:
+        targets = {
+            "GOOSE": GEESE_TARGET if day <= GEESE_LAST_BUY_DAY else 0,
+            "COW": min(8, 4 * milk_shops) if day <= 18 else 0,
+            "SHEEP": min(10, 4 * yarn_shops) if day <= 20 else 0,
+        }
 
-    if not plan.liquidation and day >= GEESE_BUY_START_DAY:
+    if not plan.liquidation and day >= (0 if speculative else GEESE_BUY_START_DAY):
         # Feed security: never grow the herd past what the wheat pipeline
         # (stock + growing tiles + market top-ups) can keep alive.
         feed_capacity = view.shed.get("WHEAT", 0) + 3 * crops.get("WHEAT", 0) + 10

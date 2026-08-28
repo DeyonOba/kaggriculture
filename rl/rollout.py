@@ -121,10 +121,11 @@ def plan_to_choices(plan, view, head_masks):
     return choices
 
 
-def _make_learner_agent(layers, temperature, rng, records, mode):
+def _make_learner_agent(layers, temperature, rng, records, mode, style="react"):
     mem = Memory()
     if mode == "bc":
         pol = HeuristicPolicy()
+        speculative = style == "spec"
 
         def agent_fn(obs):
             view = View(obs)
@@ -132,7 +133,7 @@ def _make_learner_agent(layers, temperature, rng, records, mode):
             if mem.day_plan is None or mem.day_plan_day != view.day:
                 x = features.encode(view, mem)
                 m = features.masks(view)
-                plan = planner.make_day_plan(view, mem)
+                plan = planner.make_day_plan(view, mem, speculative=speculative)
                 records.append(
                     {
                         "x": x,
@@ -235,7 +236,9 @@ def run_episode(job):
     temperature = job.get("temperature", 1.0)
     sample_rng = rng if (mode == "rl" and temperature > 0) else None
 
-    learner = _make_learner_agent(layers, temperature, sample_rng, records, mode)
+    learner = _make_learner_agent(
+        layers, temperature, sample_rng, records, mode, style=job.get("style", "react")
+    )
     opponent = _make_opponent(job.get("opponent", "heuristic"))
 
     side = job.get("side", 0)

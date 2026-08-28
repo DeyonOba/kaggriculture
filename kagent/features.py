@@ -30,15 +30,17 @@ from kagent.planner import apply_land_pressure
 # in the herd), not per-day deltas: targets are stable across days, so the BC
 # distribution isn't drowned in zeros and argmax play is coherent. The daily
 # delta (plant quota / buys) is derived in apply_to_plan.
+# Value ranges sized to the observed leaderboard meta (episode 101761797,
+# finals $105k/$96k): 30-36 strawberry tiles, 14-15 cows, 40 wheat tiles.
 HEADS = [
     ("melon_tiles", [0, 6, 12, 18, 24]),
-    ("wheat_tiles", [0, 6, 12, 18, 24]),
-    ("carrot_tiles", [0, 4, 8, 12, 16]),
+    ("wheat_tiles", [0, 8, 16, 28, 40]),
+    ("carrot_tiles", [0, 6, 12, 18, 26]),
     ("tomato_tiles", [0, 4, 8, 12]),
-    ("straw_tiles", [0, 6, 12, 20]),      # shop-rich seeds support big berry farms
+    ("straw_tiles", [0, 8, 16, 24, 32]),
     ("goose_target", [0, 8, 16, 24, 32]),
-    ("cow_target", [0, 4, 8, 16]),        # 3 milk shops drain ~18/day: worth ~36 cow-halves
-    ("sheep_target", [0, 4, 8, 14]),
+    ("cow_target", [0, 4, 8, 12, 16]),
+    ("sheep_target", [0, 3, 6, 10, 14]),
     ("hires", [4, 8, 12, 14, 16]),
     ("land", [0, 1]),
     ("melon_floor", [1, 40, 80, 120, 180]),
@@ -59,7 +61,7 @@ QUOTA_CROP = {
 }
 BUY_KIND = {"goose_target": "GOOSE", "cow_target": "COW", "sheep_target": "SHEEP"}
 
-PLANTS_PER_DAY_CAP = 16   # labor limit on new plantings per day
+PLANTS_PER_DAY_CAP = 20   # labor limit on new plantings per day
 BUYS_PER_DAY_CAP = 12
 HERD_CAP = 60             # hard sanity ceiling on total animals
 

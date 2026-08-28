@@ -38,7 +38,7 @@ from rl.common import (  # noqa: E402
 GAMMA = 0.997
 LAM = 0.95
 CLIP = 0.2
-LR = 1.5e-4          # initial; scheduled down over the run (see _lr_for)
+LR = 2.5e-4          # hot early (breakout-capable), scheduled down to consolidate
 LR_FLOOR = 0.15      # linear decay floor as a fraction of LR
 PLATEAU_COOL = 0.6   # extra LR multiplier per eval without improvement
 ENT_COEF = 0.01      # initial; decays with the LR schedule
@@ -48,8 +48,8 @@ VF_COEF = 0.5
 # tiebreaker, not the target.
 MONEY_COEF = 1.0 / 1000.0
 WIN_COEF = 2.0
-CARRY_COEF = 0.02    # per-decision cost of holding unsold stock (capital at risk)
-UNSOLD_COEF = 0.5    # terminal penalty per $1k of product left unsold at step 718
+CARRY_COEF = 0.005   # per-decision cost of holding unsold stock (softened: gen-4
+UNSOLD_COEF = 0.2    # coefficients handicapped raw profit vs a penalty-free champion)
 KL_STOP = 0.03       # per-iteration early stop on policy drift
 WARMUP_ITERS = 3     # value-head-only updates while advantages are garbage
 
@@ -75,13 +75,14 @@ def _joint_logprob_entropy(net, x, masks, choices):
 
 
 def bc_phase(net, pool, n_games, epochs=40):
-    print(f"== BC: collecting {n_games} heuristic games ==")
+    print(f"== BC: collecting {n_games} heuristic games (50% speculative teacher) ==")
     jobs = []
     for i in range(n_games):
         opponent = ["heuristic", "starter", "heuristic"][i % 3]
         jobs.append(
             {"weights_path": None, "seed": 5000 + i, "side": i % 2,
-             "opponent": opponent, "mode": "bc"}
+             "opponent": opponent, "mode": "bc",
+             "style": "spec" if i % 2 == 0 else "react"}
         )
     records = []
     for ep in pool.imap_unordered(rollout.run_episode, jobs):
