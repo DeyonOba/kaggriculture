@@ -6,8 +6,10 @@ import math
 
 from kagent.constants import (
     MARKET_PARAMS,
+    MAX_SHOP_INSTANCES,
     PRICE_FLOOR,
     HINGE_GAIN,
+    PRODUCTS,
     SHOPS,
     TOWN_CENTER_PRODUCTS,
     TOWN_SHOP_SELL_INTERVAL,
@@ -118,6 +120,50 @@ def town_drain_per_day(unlocked_shops):
         for item in items:
             drain[item] = drain.get(item, 0.0) + mult * shop_ticks
     return drain
+
+
+# --- Demand forecasting -------------------------------------------------------
+# Shop unlocks are one uniform draw (with replacement) from the 8 shop types
+# every TOWN_SHOP_UNLOCK_INTERVAL days, capped at MAX_SHOP_INSTANCES. So the
+# demand a not-yet-opened store will bring is predictable in expectation.
+
+_UNLOCK_DAYS = (3, 6, 9, 12, 15, 18, 21, 24)
+
+
+def shop_weight_per_day():
+    """Expected market drain per day per product contributed by ONE random
+    future shop unlock (single-product shops consume 2x)."""
+    ticks = TURNS_PER_DAY / TOWN_SHOP_SELL_INTERVAL
+    out = {}
+    for items in SHOPS.values():
+        mult = 2 if len(items) == 1 else 1
+        for item in items:
+            out[item] = out.get(item, 0.0) + mult
+    n_shops = len(SHOPS)
+    return {item: w / n_shops * ticks for item, w in out.items()}
+
+
+def remaining_unlocks(day, current_count):
+    """How many more shop instances will unlock after `day`."""
+    scheduled = sum(1 for u in _UNLOCK_DAYS if u > day)
+    return max(0, min(MAX_SHOP_INSTANCES - current_count, scheduled))
+
+
+def forecast_drain(unlocked_shops, day, horizon_end=29):
+    """Expected total market drain per product from `day` to season end:
+    deterministic drain from open shops + expected drain from future unlocks
+    (each contributing from its unlock day onward)."""
+    current = town_drain_per_day(unlocked_shops)
+    days_left = max(0, horizon_end - day)
+    total = {item: current.get(item, 0.0) * days_left for item in PRODUCTS}
+    weights = shop_weight_per_day()
+    budget = remaining_unlocks(day, len(unlocked_shops))
+    future_days = [u for u in _UNLOCK_DAYS if u > day][:budget]
+    for u in future_days:
+        active = max(0, horizon_end - u)
+        for item, w in weights.items():
+            total[item] = total.get(item, 0.0) + w * active
+    return total
 
 
 def hire_marginal_cost(hires_today):

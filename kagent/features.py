@@ -35,10 +35,10 @@ HEADS = [
     ("wheat_tiles", [0, 6, 12, 18, 24]),
     ("carrot_tiles", [0, 4, 8, 12, 16]),
     ("tomato_tiles", [0, 4, 8, 12]),
-    ("straw_tiles", [0, 4, 8, 12]),
+    ("straw_tiles", [0, 6, 12, 20]),      # shop-rich seeds support big berry farms
     ("goose_target", [0, 8, 16, 24, 32]),
-    ("cow_target", [0, 2, 4, 8]),
-    ("sheep_target", [0, 3, 6, 10]),
+    ("cow_target", [0, 4, 8, 16]),        # 3 milk shops drain ~18/day: worth ~36 cow-halves
+    ("sheep_target", [0, 4, 8, 14]),
     ("hires", [4, 8, 12, 14, 16]),
     ("land", [0, 1]),
     ("melon_floor", [1, 40, 80, 120, 180]),
@@ -59,8 +59,15 @@ QUOTA_CROP = {
 }
 BUY_KIND = {"goose_target": "GOOSE", "cow_target": "COW", "sheep_target": "SHEEP"}
 
-PLANTS_PER_DAY_CAP = 12   # labor limit on new plantings per day
-BUYS_PER_DAY_CAP = 10
+PLANTS_PER_DAY_CAP = 16   # labor limit on new plantings per day
+BUYS_PER_DAY_CAP = 12
+HERD_CAP = 60             # hard sanity ceiling on total animals
+
+# Days from investment to first sellable unit, per product (lead times).
+FIRST_YIELD = {
+    "WHEAT": 2, "CARROT": 2, "TOMATO": 8, "STRAWBERRY": 10, "MELON": 10,
+    "EGG": 4, "MILK": 8, "WOOL": 6, "FERTILIZER": 1,
+}
 
 # Last day each crop is still worth planting (harvest must land by day 29).
 LAST_PLANT = {"MELON": 19, "WHEAT": 25, "CARROT": 26, "TOMATO": 18, "STRAWBERRY": 13}
@@ -199,6 +206,25 @@ def encode(view, memory):
         inv = view.market_inv.get(item, p["I0"])
         f.append(econ.price(item, inv + 12) / (2.0 * p["base"]))
 
+    # Demand FORECAST: expected drain per product from now to season end,
+    # counting shops that will open later (uniform draws every 3 days), the
+    # season-scale gap vs both farms' projected output, and the lead-time
+    # window left for a new investment in that product. This is the
+    # "a store opens in i days — what will it want, and can I still supply
+    # it profitably" signal.
+    fc = econ.forecast_drain(view.unlocked_shops, day)
+    my_season = supply_projection(me, day, horizon=29 - day)
+    opp_season = supply_projection(opp, day, horizon=29 - day)
+    for item in PRODUCTS:
+        f.append(min(3.0, fc.get(item, 0.0) / 150.0))
+        season_gap = fc.get(item, 0.0) - my_season[item] - opp_season[item]
+        f.append(max(-2.0, min(2.0, season_gap / 150.0)))
+        window = max(0, 29 - day - FIRST_YIELD[item])
+        f.append(window / 29.0)
+    f.append(econ.remaining_unlocks(day, len(view.unlocked_shops)) / 8.0)
+    next_unlock = next((u for u in (3, 6, 9, 12, 15, 18, 21, 24) if u > day), 30)
+    f.append(min(1.0, (next_unlock - day) / 6.0))
+
     # Land expansion economics.
     next_idx = sum(1 for q in LAND_ORDER if q in me.unlocked_quadrants)
     if next_idx < len(LAND_ORDER):
@@ -208,6 +234,11 @@ def encode(view, memory):
     else:
         f.append(0.0)
         f.append(0.0)
+
+    # Labor productivity: yesterday's idle fraction and hands paid for —
+    # the "unfruitful hires" signal, measured where it is economically real.
+    f.append(getattr(memory, "yesterday_idle", 0.0))
+    f.append(getattr(memory, "yesterday_hands", 0) / 16.0)
 
     # Episode memory
     f.append(getattr(memory, "melons_sold", 0) / 150.0)
@@ -269,19 +300,22 @@ def apply_to_plan(plan, choices, view):
         herd[t["animal"]] = herd.get(t["animal"], 0) + 1
 
     plan.animal_buys = {}
-    feed_capacity = view.shed.get("WHEAT", 0) + 3 * crop_counts.get("WHEAT", 0) + 10
+    # Feed pipeline: shed stock + growing wheat + what market top-ups sustain.
+    feed_capacity = view.shed.get("WHEAT", 0) + 3 * crop_counts.get("WHEAT", 0) + 20
     herd_total = sum(herd.values())
     feedable = max(0, feed_capacity - herd_total)
+    headroom = max(0, HERD_CAP - herd_total)
     budget = max(0.0, view.me.money - 300)
     buys_day = BUYS_PER_DAY_CAP
     for head, kind in BUY_KIND.items():
         target = values[head]
         deficit = max(0, target - herd.get(kind, 0) - view.shed.get(kind, 0))
-        n = max(0, min(deficit, feedable, buys_day, int(budget // ANIMALS[kind]["cost"])))
+        n = max(0, min(deficit, feedable, buys_day, headroom, int(budget // ANIMALS[kind]["cost"])))
         if n > 0 and not plan.liquidation and view.day <= 24:
             plan.animal_buys[kind] = n
             feedable -= n
             buys_day -= n
+            headroom -= n
             budget -= n * ANIMALS[kind]["cost"]
 
     # Structure pipeline per kind (same logic as heuristic planner).

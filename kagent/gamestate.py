@@ -101,6 +101,13 @@ class Memory:
         self.opp_sell_ema = {}
         self.melons_sold = 0
         self.timing_max_ms = 0.0
+        # Labor-utilization ledger: PASS-turns vs unit-turns, rolled daily.
+        self.idle_accum = 0
+        self.turns_accum = 0
+        self.hands_peak = 0
+        self.util_day = -1
+        self.yesterday_idle = 0.0
+        self.yesterday_hands = 0
 
     def observe(self, view):
         if view.step <= self.last_step:

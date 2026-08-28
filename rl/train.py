@@ -40,6 +40,8 @@ VF_COEF = 0.5
 # tiebreaker, not the target.
 MONEY_COEF = 1.0 / 1000.0
 WIN_COEF = 2.0
+CARRY_COEF = 0.02    # per-decision cost of holding unsold stock (capital at risk)
+UNSOLD_COEF = 0.5    # terminal penalty per $1k of product left unsold at step 718
 KL_STOP = 0.03       # per-iteration early stop on policy drift
 WARMUP_ITERS = 3     # value-head-only updates while advantages are garbage
 
@@ -113,8 +115,10 @@ def _episode_advantages(ep, shaping_w):
     rewards = []
     for i in range(n):
         r = shaping_w * (pvs[i + 1] - pvs[i]) / 1000.0
+        r -= CARRY_COEF * recs[i].get("stock", 0.0) / 1000.0
         if i == n - 1:
             r += MONEY_COEF * ep["final_money"] + WIN_COEF * (2 * ep["win"] - 1)
+            r -= UNSOLD_COEF * ep.get("unsold_value", 0.0) / 1000.0
         rewards.append(r)
     values = [r["value"] for r in recs]
     adv = [0.0] * n

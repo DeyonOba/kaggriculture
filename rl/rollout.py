@@ -35,6 +35,22 @@ def _load_layers(path):
 _ANIMAL_DAILY = {"GOOSE": 60, "COW": 100, "SHEEP": 70}
 
 
+def stock_value(view):
+    """Market value of everything harvested but not yet sold (shed + all unit
+    inventories). Used for the carrying-cost penalty: held product is capital
+    at risk of the end-of-season zero."""
+    total = 0.0
+    counts = dict(view.shed)
+    for idx, _, _ in view.me.units:
+        for item, n in view.unit_inv(idx).items():
+            counts[item] = counts.get(item, 0) + n
+    for item, n in counts.items():
+        if n <= 0 or item in ANIMALS:
+            continue
+        total += n * view.market_prices.get(item, 10)
+    return total
+
+
 def portfolio_value(view):
     """Money + liquidation-ish value of shed, herd, and standing crops."""
     v = view.me.money
@@ -134,8 +150,11 @@ def _make_learner_agent(layers, temperature, rng, records, mode):
     provider = NeuralPolicy(layers, temperature=temperature, rng=rng)
     pol = HeuristicPolicy(provider)
 
+    last_view = {}
+
     def agent_fn(obs):
         view = View(obs)
+        last_view["v"] = view
         mem.observe(view)
         provider.last_decision = None
         action = pol.act(view, mem)
@@ -149,10 +168,12 @@ def _make_learner_agent(layers, temperature, rng, records, mode):
                     "logprob": logprob,
                     "value": value,
                     "pv": portfolio_value(view),
+                    "stock": stock_value(view),
                 }
             )
         return action
 
+    agent_fn.last_view = last_view
     return agent_fn
 
 
@@ -239,7 +260,13 @@ def run_episode(job):
     my_r = final[side].reward or 0.0
     opp_r = final[1 - side].reward or 0.0
 
-    # Terminal portfolio == money (season over, everything unsold is worthless).
+    # Season over: everything unsold is worthless. Measure it so training can
+    # penalize dead capital explicitly (the "bad investment" signal).
+    unsold = 0.0
+    lv = getattr(learner, "last_view", {}).get("v")
+    if lv is not None:
+        unsold = stock_value(lv)
+
     return {
         "records": records,
         "final_money": my_r,
@@ -247,4 +274,5 @@ def run_episode(job):
         "win": 1.0 if my_r > opp_r else (0.5 if my_r == opp_r else 0.0),
         "statuses": [s.status for s in final],
         "duration": duration,
+        "unsold_value": unsold,
     }

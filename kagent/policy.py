@@ -28,6 +28,15 @@ class HeuristicPolicy:
 
     def act(self, view, memory):
         if memory.day_plan is None or memory.day_plan_day != view.day:
+            # Roll the labor-utilization ledger before the new day's plan so
+            # the hires head sees yesterday's idle payroll.
+            if memory.util_day >= 0 and memory.turns_accum > 0:
+                memory.yesterday_idle = memory.idle_accum / memory.turns_accum
+                memory.yesterday_hands = memory.hands_peak
+            memory.idle_accum = 0
+            memory.turns_accum = 0
+            memory.hands_peak = 0
+            memory.util_day = view.day
             memory.day_plan = self.make_plan(view, memory)
             memory.day_plan_day = view.day
         plan = memory.day_plan
@@ -47,6 +56,12 @@ class HeuristicPolicy:
                 plan.structure_builds["PASTURE"] = max(0, plan.structure_builds["PASTURE"] - 1)
 
         orders = market.build_orders(view, plan, memory)
+
+        for op in actions.values():
+            memory.turns_accum += 1
+            if not op or op[0] == "PASS":
+                memory.idle_accum += 1
+        memory.hands_peak = max(memory.hands_peak, len(view.me.units) - 1)
 
         n_hands = len(view.me.units) - 1
         return {
