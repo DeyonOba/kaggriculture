@@ -4,6 +4,32 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## rl-v5 — 2026-08-28 · SUBMITTED (id 55853641) · profit champion
+
+Generation-5 **speculative-invest planner**, built from the decoded leaderboard meta.
+
+- BC teacher mix: 50% a new *speculative* heuristic recreating the observed top-performer
+  strategy (episode 101761797, finals $105k/$96k: day-0 ruminants on expected demand,
+  30+ strawberry tiles, 14-16 cows, no geese, investment-first through day ~10) + 50% the
+  proven reactive teacher; PPO then learns when each playbook applies via the demand
+  forecast features.
+- Head ceilings raised to the meta (wheat 40 tiles, strawberry 32, cows 16, sheep 14,
+  carrots 26); softened carrying/unsold penalties; hot-then-scheduled LR (2.5e-4).
+- **Results**: solo **$85,238 mean / $98,378 max** (rl-v3: $68,671); contested best game
+  $97,841; 90-100% wins vs every league gate except rl-v3 head-to-head (3-17, whose
+  counter-style feeds on rl-v5's economy). Both champions stay on Kaggle — submissions
+  rate independently. 22 evals, zero training collapses.
+
+## gen-4 experiments — 2026-08-28 · not shipped (tag g4-experiments)
+
+Demand forecasting (`econ.forecast_drain`), carrying/unsold penalties, labor-utilization
+features, architecture v2 (192/128 GELU+LayerNorm policy + decoupled value net), and the
+LR scheduler all land here — but every gen-4 candidate lost its fresh-seed gate to rl-v3
+(best 2-18). The stability machinery was validated (10 straight improving evals, zero
+collapses) and became the foundation gen-5 shipped on. Also recorded: changing head VALUE
+semantics silently remaps older policies' choices — champions ship only from their frozen
+`arena/agents/<name>/main.py` bundles.
+
 ## rl-v3 — 2026-08-28 · SUBMITTED (id 55829852)
 
 Generation-3 **league-trained, profit-first neural day-planner**.

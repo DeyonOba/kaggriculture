@@ -104,7 +104,7 @@ workers; stabilizers: 3-iteration value-head warmup, LR 1.5e-4, KL early-stop 0.
   planner regressed it 10–17 (re-created day-0 cash starvation); it lives only in the neural
   plan applier.
 
-### rl-v3 — generation 3 (g3 best, iter 19) · Kaggle 55829852 — CURRENT
+### rl-v3 — generation 3 (g3 best, iter 19) · Kaggle 55829852
 - **Training**: 4-gate league {v3 heuristic, rl-v1, rl2-it59, rl-v2} — 30% of episodes vs a
   random incumbent bundle, 12% vs in-run league bests, rest heuristic/starter/snapshots;
   selection by mean profit across all gates on rotating eval seeds; converged (patience 5)
@@ -121,6 +121,39 @@ workers; stabilizers: 3-iteration value-head warmup, LR 1.5e-4, KL early-stop 0.
 - **Why it wins**: rl-v2's demand-adaptive earnings ceiling with better-than-rl-v1 consistency —
   the league punished both over-commitment (rl-v2 in pool) and conservatism (rl-v1 in pool),
   and profit-first selection stopped optimizing for exploiting any single opponent.
+
+### gen-4 (g4/g4b/g4c) — experiments, not shipped (tag `g4-experiments`)
+- **Adds** (all inherited by gen-5): `econ.forecast_drain` demand forecasting (expected drain
+  from future random shop unlocks), carrying-cost + terminal unsold-value penalties,
+  labor-utilization features, architecture v2 (192→128 GELU+LayerNorm policy trunk with a
+  **decoupled** torch-only value net), LR scheduling (linear decay + plateau cooling).
+- **Outcome**: every candidate lost its fresh-seed gate to rl-v3 (best 2–18). The stability
+  machinery was proven (10 consecutive improving evals, zero collapses — the old
+  breakout→collapse signature eliminated) but the stabilized run converged below the champion.
+- **Pitfall recorded**: head VALUE semantics are part of trained weights — a "rl-v3 rebuild"
+  on updated head values lost 0–10 to the true frozen bundle. Champions ship only from
+  `arena/agents/<name>/main.py`.
+
+### rl-v5 — generation 5 (g5 iter-99) · Kaggle 55853641 — CURRENT PROFIT CHAMPION
+- **The meta source**: decoded top-performer episode 101761797 (finals $105k/$96k, watched by
+  the team): day-0 speculative cows/sheep before any shop exists, strawberries scaled to 30-36
+  tiles, 14-15 cows, land by day 6, ~12 hands, investment-first through day ~10, zero geese,
+  late carrots into the pet-cafe drain, total liquidation.
+- **Training**: BC mixes 50% a `speculative=True` planner variant recreating that meta with
+  50% the reactive teacher (validated $40-70k solo standalone); PPO with the 4-gate league,
+  softened penalties (CARRY 0.005, UNSOLD 0.2), LR 2.5e-4 hot-then-scheduled; head ceilings
+  wheat 40 / strawberry 32 / cow 16 / sheep 14 / carrot 26. Converged at iter 109 (patience 6),
+  best at iter 99 — 22 evals, zero collapses.
+- **Benchmarks** (fresh seeds):
+  | Gate | rl-v5 | Opponent | H2H |
+  |---|---|---|---|
+  | Solo vs starter | **$85,238 ± 8,451 / max $98,378** | $3,541 | 20–0 |
+  | League gates (heuristic, rl-v1, exploiter, rl-v2) | $50-72k per gate | — | 90–100% |
+  | rl-v3 head-to-head | $59,258 (max **$97,841**) | $67,692 | 3–17 |
+  | Mirror | $55.6k / $53.7k | — | clean |
+- **Standing**: profit champion by the project's stated objective; rl-v3 remains the
+  head-to-head duelist. Both rate independently on Kaggle. Next frontier: a gen-6 league
+  containing both champions.
 
 ---
 
