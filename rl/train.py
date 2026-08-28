@@ -27,13 +27,21 @@ from multiprocessing import Pool  # noqa: E402
 
 from kagent import features  # noqa: E402
 from rl import rollout  # noqa: E402
-from rl.common import PlannerNet, masked_dists, to_layers, to_weights_data  # noqa: E402
+from rl.common import (  # noqa: E402
+    PlannerNet,
+    ValueNet,
+    masked_dists,
+    to_layers,
+    to_weights_data,
+)
 
 GAMMA = 0.997
 LAM = 0.95
 CLIP = 0.2
-LR = 1.5e-4          # conservative: protect the BC initialization
-ENT_COEF = 0.01
+LR = 1.5e-4          # initial; scheduled down over the run (see _lr_for)
+LR_FLOOR = 0.15      # linear decay floor as a fraction of LR
+PLATEAU_COOL = 0.6   # extra LR multiplier per eval without improvement
+ENT_COEF = 0.01      # initial; decays with the LR schedule
 VF_COEF = 0.5
 # Profit-first objective: the game scores final bank (only SOLD product
 # counts), so money dominates the terminal reward; the win term is a small
@@ -56,14 +64,14 @@ def _tensor_batch(records):
 
 
 def _joint_logprob_entropy(net, x, masks, choices):
-    logits, values = net(x)
+    logits = net(x)
     dists = masked_dists(logits, masks)
     lp = torch.zeros(x.shape[0])
     ent = torch.zeros(x.shape[0])
     for h, d in enumerate(dists):
         lp = lp + d.log_prob(choices[:, h])
         ent = ent + d.entropy()
-    return lp, ent, values
+    return lp, ent
 
 
 def bc_phase(net, pool, n_games, epochs=40):
@@ -88,14 +96,14 @@ def bc_phase(net, pool, n_games, epochs=40):
         total, correct, seen = 0.0, 0, 0
         for s in range(0, n, 512):
             idx = perm[s : s + 512]
-            lp, _, _ = _joint_logprob_entropy(net, x[idx], masks[idx], choices[idx])
+            lp, _ = _joint_logprob_entropy(net, x[idx], masks[idx], choices[idx])
             loss = -lp.mean()
             opt.zero_grad()
             loss.backward()
             opt.step()
             total += loss.item() * len(idx)
             with torch.no_grad():
-                logits, _ = net(x[idx])
+                logits = net(x[idx])
                 dists = masked_dists(logits, masks[idx])
                 hit = torch.ones(len(idx), dtype=torch.bool)
                 for h, d in enumerate(dists):
@@ -134,7 +142,7 @@ def _episode_advantages(ep, shaping_w):
     return adv, ret
 
 
-def ppo_phase(net, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bundles=(),
+def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bundles=(),
               patience=4):
     snapshots = []
     league = []          # weight paths of every new-best: future opponents
@@ -152,7 +160,7 @@ def ppo_phase(net, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bund
         shaping_w = max(0.0, 1.0 - it / (iters * 0.5))
         wpath = os.path.join(run_dir, f"w{it}.json")
         with open(wpath, "w") as f:
-            json.dump(to_layers(net), f)
+            json.dump(to_layers(net, vnet), f)
 
         jobs = []
         rng = random.Random(it)
@@ -192,9 +200,21 @@ def ppo_phase(net, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bund
 
         opt = getattr(ppo_phase, "_opt", None)
         if opt is None or getattr(ppo_phase, "_opt_net", None) is not net:
-            opt = torch.optim.Adam(net.parameters(), lr=LR)
+            opt = torch.optim.Adam(
+                list(net.parameters()) + list(vnet.parameters()), lr=LR
+            )
             ppo_phase._opt = opt
             ppo_phase._opt_net = net
+
+        # LR schedule: linear decay across the run, cooled further on each
+        # eval without improvement. Constant LR kept overshooting the profit
+        # peak (breakout -> collapse the very next eval, every generation).
+        decay = max(LR_FLOOR, 1.0 - it / max(1, iters))
+        cool = PLATEAU_COOL ** min(evals_since_best, 4)
+        lr_now = LR * decay * cool
+        ent_now = ENT_COEF * decay
+        for gparam in opt.param_groups:
+            gparam["lr"] = lr_now
 
         n = x.shape[0]
         warmup = it < WARMUP_ITERS
@@ -205,14 +225,16 @@ def ppo_phase(net, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bund
             perm = torch.randperm(n)
             for s in range(0, n, 512):
                 idx = perm[s : s + 512]
-                lp, ent, values = _joint_logprob_entropy(net, x[idx], masks[idx], choices[idx])
+                values = vnet(x[idx])
                 vloss = F.mse_loss(values, ret_t[idx])
                 if warmup:
-                    # Value-head warmup: advantages from an untrained critic
-                    # would wreck the BC policy (AlphaStar Unplugged: anchor
-                    # improvement to a settled value estimate).
+                    # Value warmup: advantages from an untrained critic would
+                    # wreck the BC policy (AlphaStar Unplugged: anchor
+                    # improvement to a settled value estimate). The value net
+                    # is decoupled, so this cannot touch the policy at all.
                     loss = VF_COEF * vloss
                 else:
+                    lp, ent = _joint_logprob_entropy(net, x[idx], masks[idx], choices[idx])
                     approx_kl = (old_lp[idx] - lp).mean()
                     if approx_kl > KL_STOP:
                         stop = True
@@ -222,10 +244,12 @@ def ppo_phase(net, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bund
                     pg = -torch.min(
                         ratio * a, torch.clamp(ratio, 1 - CLIP, 1 + CLIP) * a
                     ).mean()
-                    loss = pg + VF_COEF * vloss - ENT_COEF * ent.mean()
+                    loss = pg + VF_COEF * vloss - ent_now * ent.mean()
                 opt.zero_grad()
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
+                torch.nn.utils.clip_grad_norm_(
+                    list(net.parameters()) + list(vnet.parameters()), 0.5
+                )
                 opt.step()
 
         money = [ep["final_money"] for ep in episodes_out]
@@ -241,7 +265,7 @@ def ppo_phase(net, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bund
         print(
             f"iter {it:3}: money mean={sum(money)/len(money):8.0f} "
             f"win-vs-gate={sum(gate_wins)/max(1,len(gate_wins)):.2f} "
-            f"shaping={shaping_w:.2f} steps={n} bad={bad} "
+            f"shaping={shaping_w:.2f} lr={lr_now:.1e} steps={n} bad={bad} "
             f"ep_dur p50={durs[len(durs)//2]:.1f}s max={durs[-1]:.1f}s ({time.time()-t0:.0f}s)"
         )
 
@@ -260,12 +284,14 @@ def ppo_phase(net, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bund
                 for g, w, m in results
             )
             print(f"   EVAL argmax profit={profit:8.0f} min-win={min_win:.2f}  [{detail}]")
-            torch.save(net.state_dict(), os.path.join(run_dir, "last.pt"))
+            torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
+                       os.path.join(run_dir, "last.pt"))
             if profit > best_score:
                 best_score = profit
                 evals_since_best = 0
                 league.append(wpath)
-                torch.save(net.state_dict(), os.path.join(run_dir, "best.pt"))
+                torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
+                           os.path.join(run_dir, "best.pt"))
                 with open(os.path.join(run_dir, "best_weights.json"), "w") as f:
                     json.dump(to_weights_data(net), f)
                 print(f"   new best (profit={profit:.0f}) saved; league size {len(league)}")
@@ -328,17 +354,24 @@ def main():
     print(f"n_features={n_features} n_action_logits={features.N_ACTION_LOGITS}")
 
     net = PlannerNet(n_features)
+    vnet = ValueNet(n_features)
     if args.resume:
-        net.load_state_dict(torch.load(args.resume))
+        ckpt = torch.load(args.resume)
+        if isinstance(ckpt, dict) and "policy" in ckpt:
+            net.load_state_dict(ckpt["policy"])
+            vnet.load_state_dict(ckpt["value"])
+        else:
+            net.load_state_dict(ckpt)
         print(f"resumed from {args.resume}")
 
     bundles = tuple(b for b in (args.opp_bundles or "").split(",") if b)
     with Pool(args.procs) as pool:
         if args.bc_games > 0 and not args.resume:
             bc_phase(net, pool, args.bc_games)
-            torch.save(net.state_dict(), os.path.join(run_dir, "bc.pt"))
+            torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
+                       os.path.join(run_dir, "bc.pt"))
         ppo_phase(
-            net, pool, run_dir, args.iters, args.episodes, args.procs,
+            net, vnet, pool, run_dir, args.iters, args.episodes, args.procs,
             opp_bundles=bundles, patience=args.patience,
         )
 
