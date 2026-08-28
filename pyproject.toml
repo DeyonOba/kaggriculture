@@ -1,0 +1,17 @@
+[project]
+name = "kaggriculture"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ipython>=9.16.1",
+    "kaggle>=2.2.4",
+    "kaggle-environments>=1.32.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "torch>=2.13.0",
+]

@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Arena outputs
+arena/results/
+
+# Replay/debug artifacts
+kaggriculture.html
+player_*_obs.json
+replays/
+
+# Training runs (weights snapshots are large; champions live in kagent/weights.py + arena/agents/)
+rl/runs/
+*.pt
+nohup.out

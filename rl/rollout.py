@@ -1,0 +1,250 @@
+"""Episode rollout worker (multiprocessing-safe, NO torch import).
+
+Runs one full kaggriculture episode with the neural planner playing one side,
+recording per-day decisions (features, masks, choices, logprob, value,
+portfolio value) for PPO/BC training in the parent process.
+"""
+
+import json
+import os
+import random
+
+from kagent import econ, planner
+from kagent.constants import ANIMALS, CROPS
+from kagent.gamestate import Memory, View
+from kagent.nnpolicy import NeuralPolicy
+from kagent.policy import HeuristicPolicy
+from kagent import features
+
+_WEIGHTS_CACHE = {}
+
+
+def _load_layers(path):
+    if path is None:
+        return None
+    key = (path, os.path.getmtime(path))
+    if key not in _WEIGHTS_CACHE:
+        _WEIGHTS_CACHE.clear() if len(_WEIGHTS_CACHE) > 8 else None
+        with open(path) as f:
+            _WEIGHTS_CACHE[key] = json.load(f)
+    return _WEIGHTS_CACHE[key]
+
+
+# Rough per-animal value of remaining production (used only for reward
+# shaping during the curriculum; annealed to zero).
+_ANIMAL_DAILY = {"GOOSE": 60, "COW": 100, "SHEEP": 70}
+
+
+def portfolio_value(view):
+    """Money + liquidation-ish value of shed, herd, and standing crops."""
+    v = view.me.money
+    for item, n in view.shed.items():
+        if n <= 0:
+            continue
+        if item in ANIMALS:
+            v += 0.5 * ANIMALS[item]["cost"] * n
+            continue
+        inv = view.market_inv.get(item)
+        if inv is not None:
+            v += econ.sell_revenue(item, inv, min(n, 40))
+    days_left = max(0, 28 - view.day)
+    for _, _, t in view.me.animals():
+        v += _ANIMAL_DAILY.get(t.get("animal"), 50) * min(days_left, 8)
+        v += 0.3 * ANIMALS.get(t.get("animal"), {}).get("cost", 300)
+    for _, _, t in view.me.plants():
+        crop = CROPS.get(t.get("crop"))
+        if not crop:
+            continue
+        base = 0.6 * view.market_prices.get(t["crop"], 20)
+        v += base * t.get("yield_units", 0)
+        age = view.day - t.get("planted_day", view.day)
+        if age <= crop["max_yield_day"]:
+            v += 0.3 * base * max(0, crop["max_yield"] - t.get("yield_units", 0))
+    return v
+
+
+def _nearest_valid(vals, mask, target):
+    valid = [i for i in range(len(vals)) if mask[i]]
+    return min(valid, key=lambda i: abs(vals[i] - target))
+
+
+def plan_to_choices(plan, view, head_masks):
+    """Quantize a heuristic DayPlan into head choice indices (BC targets),
+    expressed as ABSOLUTE standing targets (current count + planned delta)
+    and projected onto the valid-action mask."""
+    crop_counts = {}
+    for _, _, t in view.me.plants():
+        crop_counts[t["crop"]] = crop_counts.get(t["crop"], 0) + 1
+    herd = {}
+    for _, _, t in view.me.animals():
+        herd[t["animal"]] = herd.get(t["animal"], 0) + 1
+
+    choices = []
+    for (name, vals), mask in zip(features.HEADS, head_masks):
+        if name in features.QUOTA_CROP:
+            crop = features.QUOTA_CROP[name]
+            target = crop_counts.get(crop, 0) + plan.plant_quota.get(crop, 0)
+        elif name in features.BUY_KIND:
+            kind = features.BUY_KIND[name]
+            target = (
+                herd.get(kind, 0)
+                + view.shed.get(kind, 0)
+                + plan.animal_buys.get(kind, 0)
+            )
+        elif name == "hires":
+            target = plan.hires_target
+        elif name == "land":
+            target = 1 if plan.land_buys else 0
+        elif name == "melon_floor":
+            target = plan.sell_floors.get("MELON", 80)
+        elif name.endswith("_floor_scale"):
+            target = 1.0  # heuristic floors are the BC baseline
+        else:
+            target = vals[0]
+        choices.append(_nearest_valid(vals, mask, target))
+    return choices
+
+
+def _make_learner_agent(layers, temperature, rng, records, mode):
+    mem = Memory()
+    if mode == "bc":
+        pol = HeuristicPolicy()
+
+        def agent_fn(obs):
+            view = View(obs)
+            mem.observe(view)
+            if mem.day_plan is None or mem.day_plan_day != view.day:
+                x = features.encode(view, mem)
+                m = features.masks(view)
+                plan = planner.make_day_plan(view, mem)
+                records.append(
+                    {
+                        "x": x,
+                        "masks": m,
+                        "choices": plan_to_choices(plan, view, m),
+                        "pv": portfolio_value(view),
+                    }
+                )
+                mem.day_plan = plan
+                mem.day_plan_day = view.day
+            return pol.act(view, mem)
+
+        return agent_fn
+
+    provider = NeuralPolicy(layers, temperature=temperature, rng=rng)
+    pol = HeuristicPolicy(provider)
+
+    def agent_fn(obs):
+        view = View(obs)
+        mem.observe(view)
+        provider.last_decision = None
+        action = pol.act(view, mem)
+        if provider.last_decision is not None:
+            x, m, choices, logprob, value = provider.last_decision
+            records.append(
+                {
+                    "x": x,
+                    "masks": m,
+                    "choices": choices,
+                    "logprob": logprob,
+                    "value": value,
+                    "pv": portfolio_value(view),
+                }
+            )
+        return action
+
+    return agent_fn
+
+
+_BUNDLE_CACHE = {}
+
+
+def _make_opponent(spec):
+    if isinstance(spec, (list, tuple)) and spec[0] == "bundle":
+        # A frozen self-contained main.py (e.g. arena/agents/rl-v1) exec'd the
+        # way the Kaggle loader does it. Immune to feature/head version skew.
+        path = spec[1]
+        key = (path, os.path.getmtime(path))
+        if key not in _BUNDLE_CACHE:
+            env_dict = {}
+            with open(path) as f:
+                exec(f.read(), env_dict)
+            _BUNDLE_CACHE.clear() if len(_BUNDLE_CACHE) > 4 else None
+            _BUNDLE_CACHE[key] = [v for v in env_dict.values() if callable(v)][-1]
+        return _BUNDLE_CACHE[key]
+    if spec == "heuristic":
+        mem = Memory()
+        pol = HeuristicPolicy()
+
+        def opp_fn(obs):
+            view = View(obs)
+            mem.observe(view)
+            return pol.act(view, mem)
+
+        return opp_fn
+    if isinstance(spec, (list, tuple)) and spec[0] in ("snapshot", "league"):
+        layers = _load_layers(spec[1])
+        mem = Memory()
+        # League members (past bests) play sharply; plain snapshots stay
+        # noisy for exploration diversity.
+        temp = 0.2 if spec[0] == "league" else 0.7
+        provider = NeuralPolicy(layers, temperature=temp, rng=random.Random(0))
+        pol = HeuristicPolicy(provider)
+
+        def opp_fn(obs):
+            view = View(obs)
+            mem.observe(view)
+            return pol.act(view, mem)
+
+        return opp_fn
+    return spec  # builtin name string like "starter"
+
+
+def run_episode(job):
+    """job: dict(weights_path, temperature, seed, side, opponent, mode).
+
+    Returns dict(records, final_money, opp_money, win, final_pv).
+    """
+    from kaggle_environments import make
+
+    layers = _load_layers(job.get("weights_path"))
+    rng = random.Random(job["seed"] * 7919 + job.get("side", 0))
+    records = []
+    mode = job.get("mode", "rl")
+    temperature = job.get("temperature", 1.0)
+    sample_rng = rng if (mode == "rl" and temperature > 0) else None
+
+    learner = _make_learner_agent(layers, temperature, sample_rng, records, mode)
+    opponent = _make_opponent(job.get("opponent", "heuristic"))
+
+    side = job.get("side", 0)
+    agents = [learner, opponent] if side == 0 else [opponent, learner]
+
+    import time as _time
+
+    t0 = _time.time()
+    env = make("kaggriculture", configuration={"seed": job["seed"]}, debug=False)
+    env.run(agents)
+    duration = _time.time() - t0
+
+    if duration > 60:
+        try:
+            with open("rl/runs/slow_jobs.jsonl", "a") as f:
+                f.write(json.dumps({"duration": round(duration, 1), "job": {
+                    k: v for k, v in job.items()}}) + "\n")
+        except OSError:
+            pass
+
+    final = env.steps[-1]
+    my_r = final[side].reward or 0.0
+    opp_r = final[1 - side].reward or 0.0
+
+    # Terminal portfolio == money (season over, everything unsold is worthless).
+    return {
+        "records": records,
+        "final_money": my_r,
+        "opp_money": opp_r,
+        "win": 1.0 if my_r > opp_r else (0.5 if my_r == opp_r else 0.0),
+        "statuses": [s.status for s in final],
+        "duration": duration,
+    }
