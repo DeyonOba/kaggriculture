@@ -174,13 +174,21 @@ def make_day_plan(view, memory, speculative=False):
     )
     yarn_shops = view.unlocked_shops.count("YARN_STORE")
     if speculative:
-        # Buy ruminants on expected demand from day 0 (milk is in 3 of 8 shop
-        # draws, wool doubled in 1) and ramp cows with every revealed milk
-        # shop, the way the leaderboard leaders do; skip the goose engine.
+        # Buy ruminants on expected demand early (milk is in 3 of 8 shop
+        # draws, wool doubled in 1) — but the speculation window CLOSES: from
+        # day 7 targets follow only REALIZED shops. Field replays showed the
+        # fatal version of this teacher's pattern: ramping cows into a
+        # yarn/berry draw while winners pivoted to 40+ strawberry tiles.
+        if day <= 6:
+            cow_t = min(15, 3 + day // 2 + 4 * milk_shops)
+            sheep_t = min(6, 2 + 3 * yarn_shops)
+        else:
+            cow_t = min(16, 2 + 5 * milk_shops)
+            sheep_t = min(14, 4 * yarn_shops)
         targets = {
             "GOOSE": 0,
-            "COW": min(15, 3 + day // 2 + 4 * milk_shops) if day <= 20 else 0,
-            "SHEEP": min(6, 2 + 3 * yarn_shops) if day <= 20 else 0,
+            "COW": cow_t if day <= 20 else 0,
+            "SHEEP": sheep_t if day <= 20 else 0,
         }
     else:
         targets = {

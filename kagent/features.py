@@ -307,7 +307,9 @@ def apply_to_plan(plan, choices, view):
     herd_total = sum(herd.values())
     feedable = max(0, feed_capacity - herd_total)
     headroom = max(0, HERD_CAP - herd_total)
-    budget = max(0.0, view.me.money - 300)
+    # Cash floor: field replays showed day-0 all-ins starving the agent for a
+    # week (no hires, no feed wheat — cows escaped by day 8 in rated games).
+    budget = max(0.0, view.me.money - 600)
     buys_day = BUYS_PER_DAY_CAP
     for head, kind in BUY_KIND.items():
         target = values[head]

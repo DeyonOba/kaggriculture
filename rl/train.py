@@ -41,13 +41,14 @@ CLIP = 0.2
 LR = 2.5e-4          # hot early (breakout-capable), scheduled down to consolidate
 LR_FLOOR = 0.15      # linear decay floor as a fraction of LR
 PLATEAU_COOL = 0.6   # extra LR multiplier per eval without improvement
-ENT_COEF = 0.01      # initial; decays with the LR schedule
+ENT_COEF = 0.02      # initial; decays with the LR schedule (field study: the
+                     # policy under-explored portfolio switches per shop draw)
 VF_COEF = 0.5
 # Profit-first objective: the game scores final bank (only SOLD product
 # counts), so money dominates the terminal reward; the win term is a small
 # tiebreaker, not the target.
 MONEY_COEF = 1.0 / 1000.0
-WIN_COEF = 2.0
+WIN_COEF = 6.0       # leaderboard rating is win-based; field study (gen-6) re-weighted
 CARRY_COEF = 0.005   # per-decision cost of holding unsold stock (softened: gen-4
 UNSOLD_COEF = 0.2    # coefficients handicapped raw profit vs a penalty-free champion)
 KL_STOP = 0.03       # per-iteration early stop on policy drift
@@ -278,13 +279,17 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                 )
                 results.append((gate, win, mean_money))
             profit = sum(m for _, _, m in results) / len(results)
+            mean_win = sum(w for _, w, _ in results) / len(results)
+            # Selection blends the objective (profit) with the leaderboard
+            # currency (wins): a clean sweep is worth ~$15k of credit.
+            profit = profit + 15_000 * mean_win
             min_win = min(w for _, w, _ in results)
             detail = "  ".join(
                 f"{g if isinstance(g, str) else os.path.basename(os.path.dirname(g[1]))}"
                 f":{w:.2f}/${m/1000:.1f}k"
                 for g, w, m in results
             )
-            print(f"   EVAL argmax profit={profit:8.0f} min-win={min_win:.2f}  [{detail}]")
+            print(f"   EVAL argmax score={profit:8.0f} mean-win={mean_win:.2f} min-win={min_win:.2f}  [{detail}]")
             torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
                        os.path.join(run_dir, "last.pt"))
             if profit > best_score:
@@ -295,7 +300,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                            os.path.join(run_dir, "best.pt"))
                 with open(os.path.join(run_dir, "best_weights.json"), "w") as f:
                     json.dump(to_weights_data(net), f)
-                print(f"   new best (profit={profit:.0f}) saved; league size {len(league)}")
+                print(f"   new best (score={profit:.0f}) saved; league size {len(league)}")
             else:
                 evals_since_best += 1
                 if evals_since_best >= patience:
