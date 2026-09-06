@@ -75,7 +75,7 @@ def _joint_logprob_entropy(net, x, masks, choices):
     return lp, ent
 
 
-def bc_phase(net, pool, n_games, epochs=40):
+def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
     print(f"== BC: collecting {n_games} heuristic games (50% speculative teacher) ==")
     jobs = []
     for i in range(n_games):
@@ -88,7 +88,10 @@ def bc_phase(net, pool, n_games, epochs=40):
     records = []
     for ep in pool.imap_unordered(rollout.run_episode, jobs):
         records.extend(ep["records"])
-    print(f"   {len(records)} day-decisions")
+    print(f"   {len(records)} teacher day-decisions")
+    if extra:
+        records = records + list(extra)
+        print(f"   + {len(extra)} champion day-decisions (harvested replays)")
 
     x, masks, choices = _tensor_batch(records)
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
@@ -114,6 +117,26 @@ def bc_phase(net, pool, n_games, epochs=40):
                 seen += len(idx)
         if epoch % 10 == 9 or epoch == 0:
             print(f"   bc epoch {epoch+1}: nll={total/n:.3f} exact-plan acc={correct/seen:.2%}")
+
+    if extra and ft_epochs > 0:
+        # Fine-tune on champion data only (AlphaStar Unplugged: train on the
+        # full dataset, then FT on the high-quality subset).
+        fx, fm, fc = _tensor_batch(list(extra))
+        fopt = torch.optim.Adam(net.parameters(), lr=3e-4)
+        fn = fx.shape[0]
+        for epoch in range(ft_epochs):
+            perm = torch.randperm(fn)
+            total = 0.0
+            for s in range(0, fn, 256):
+                idx = perm[s : s + 256]
+                lp, _ = _joint_logprob_entropy(net, fx[idx], fm[idx], fc[idx])
+                loss = -lp.mean()
+                fopt.zero_grad()
+                loss.backward()
+                fopt.step()
+                total += loss.item() * len(idx)
+            if epoch % 5 == 4 or epoch == 0:
+                print(f"   champion-FT epoch {epoch+1}: nll={total/fn:.3f}")
 
 
 def _episode_advantages(ep, shaping_w):
@@ -342,6 +365,11 @@ def main():
         help="comma-separated frozen main.py bundles used as incumbent opponents + eval gates",
     )
     ap.add_argument(
+        "--bc-extra",
+        default=None,
+        help="JSONL of champion day-decisions from rl/replay_bc.py, mixed into BC + used for FT",
+    )
+    ap.add_argument(
         "--patience",
         type=int,
         default=4,
@@ -371,9 +399,15 @@ def main():
         print(f"resumed from {args.resume}")
 
     bundles = tuple(b for b in (args.opp_bundles or "").split(",") if b)
+    extra = None
+    if args.bc_extra:
+        with open(args.bc_extra) as f:
+            extra = [json.loads(line) for line in f if line.strip()]
+        print(f"loaded {len(extra)} champion samples from {args.bc_extra}")
+
     with Pool(args.procs) as pool:
         if args.bc_games > 0 and not args.resume:
-            bc_phase(net, pool, args.bc_games)
+            bc_phase(net, pool, args.bc_games, extra=extra)
             torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
                        os.path.join(run_dir, "bc.pt"))
         ppo_phase(
