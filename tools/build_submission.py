@@ -27,6 +27,7 @@ MODULES = [
     "market",
     "features",
     "nnpolicy",
+    "mpcpolicy",
     "weights",
     "policy",
 ]

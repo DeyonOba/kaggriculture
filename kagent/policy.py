@@ -13,8 +13,13 @@ import traceback
 
 from kagent.gamestate import Memory, View
 from kagent import market, planner, scheduler
+from kagent.mpcpolicy import MPCPlanProvider
 from kagent.nnpolicy import NeuralPolicy, decode_weights
 from kagent.weights import WEIGHTS_DATA
+
+# In a bundle, the weights module body shares this namespace, so an exported
+# MPC flag lands in globals(); dev mode and legacy weights default to False.
+MPC_ENABLED = globals().get("MPC_ENABLED", False)
 
 
 class HeuristicPolicy:
@@ -95,6 +100,14 @@ class SafeAgent:
         try:
             view = View(observation)
             self.memory.observe(view)
+            # MPC support: the raw observation and the remaining overage
+            # budget let the day-planner simulate candidates safely.
+            self.memory.last_raw_obs = observation
+            self.memory.overage_left = (
+                observation.get("remainingOverageTime", 60.0)
+                if hasattr(observation, "get")
+                else 60.0
+            )
             action = self.policy.act(view, self.memory)
         except Exception:
             traceback.print_exc(file=sys.stderr)
@@ -114,8 +127,9 @@ class SafeAgent:
 
 _LAYERS = decode_weights(WEIGHTS_DATA)
 if _LAYERS is not None:
+    _provider_cls = MPCPlanProvider if MPC_ENABLED else NeuralPolicy
     _AGENT = SafeAgent(
-        HeuristicPolicy(NeuralPolicy(_LAYERS)), fallback=HeuristicPolicy()
+        HeuristicPolicy(_provider_cls(_LAYERS)), fallback=HeuristicPolicy()
     )
 else:
     _AGENT = SafeAgent(HeuristicPolicy())
