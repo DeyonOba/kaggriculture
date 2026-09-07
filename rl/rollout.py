@@ -95,11 +95,14 @@ def plan_to_choices(plan, view, head_masks):
     for _, _, t in view.me.animals():
         herd[t["animal"]] = herd.get(t["animal"], 0) + 1
 
+    anchor_vals = features.anchors(view)
     choices = []
     for (name, vals), mask in zip(features.HEADS, head_masks):
         if name in features.QUOTA_CROP:
             crop = features.QUOTA_CROP[name]
             target = crop_counts.get(crop, 0) + plan.plant_quota.get(crop, 0)
+            if name in features.ANCHORED:
+                target -= anchor_vals[name]
         elif name in features.BUY_KIND:
             kind = features.BUY_KIND[name]
             target = (
@@ -107,6 +110,8 @@ def plan_to_choices(plan, view, head_masks):
                 + view.shed.get(kind, 0)
                 + plan.animal_buys.get(kind, 0)
             )
+            if name in features.ANCHORED:
+                target -= anchor_vals[name]
         elif name == "hires":
             target = plan.hires_target
         elif name == "land":

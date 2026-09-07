@@ -44,13 +44,18 @@ def _counts(farm_tiles):
 
 
 def _targets_to_choices(view, masks, crops, herd, shed, hires, bought_land):
+    anchor_vals = features.anchors(view)
     choices = []
     for (name, vals), mask in zip(features.HEADS, masks):
         if name in features.QUOTA_CROP:
             target = crops.get(features.QUOTA_CROP[name], 0)
+            if name in features.ANCHORED:
+                target -= anchor_vals[name]
         elif name in features.BUY_KIND:
             kind = features.BUY_KIND[name]
             target = herd.get(kind, 0) + shed.get(kind, 0)
+            if name in features.ANCHORED:
+                target -= anchor_vals[name]
         elif name == "hires":
             target = hires
         elif name == "land":

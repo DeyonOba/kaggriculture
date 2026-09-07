@@ -30,17 +30,20 @@ from kagent.planner import apply_land_pressure
 # in the herd), not per-day deltas: targets are stable across days, so the BC
 # distribution isn't drowned in zeros and argmax play is coherent. The daily
 # delta (plant quota / buys) is derived in apply_to_plan.
-# Value ranges sized to the observed leaderboard meta (episode 101761797,
-# finals $105k/$96k): 30-36 strawberry tiles, 14-15 cows, 40 wheat tiles.
+# Scale-critical lines (wheat, strawberry, cow, sheep) are DEMAND-ANCHORED:
+# anchors(view) computes supply=demand targets from the drain forecast and
+# the head chooses an OFFSET around that anchor (field autopsy: we produced
+# 1/3-1/5 of same-priced opponents' volume — "crops planted per demand low").
+# Other lines stay absolute targets.
 HEADS = [
     ("melon_tiles", [0, 6, 12, 18, 24]),
-    ("wheat_tiles", [0, 8, 16, 28, 40]),
+    ("wheat_tiles", [-16, -8, 0, 8, 16]),       # offset around wheat anchor
     ("carrot_tiles", [0, 6, 12, 18, 26]),
     ("tomato_tiles", [0, 4, 8, 12]),
-    ("straw_tiles", [0, 8, 16, 24, 32]),
+    ("straw_tiles", [-16, -8, 0, 8, 16]),       # offset around strawberry anchor
     ("goose_target", [0, 8, 16, 24, 32]),
-    ("cow_target", [0, 4, 8, 12, 16]),
-    ("sheep_target", [0, 3, 6, 10, 14]),
+    ("cow_target", [-8, -4, 0, 4, 8]),          # offset around cow anchor
+    ("sheep_target", [-6, -3, 0, 3, 6]),        # offset around sheep anchor
     ("hires", [4, 8, 12, 14, 16]),
     ("land", [0, 1]),
     ("melon_floor", [1, 40, 80, 120, 180]),
@@ -49,6 +52,42 @@ HEADS = [
     ("premium_floor_scale", [0.6, 1.0, 1.4]),   # STRAWBERRY / MILK / WOOL
     ("staple_floor_scale", [0.7, 1.0, 1.3]),    # CARROT / TOMATO
 ]
+
+ANCHORED = {"wheat_tiles": "WHEAT", "straw_tiles": "STRAWBERRY",
+            "cow_target": "MILK", "sheep_target": "WOOL"}
+ANCHOR_CAPS = {"wheat_tiles": 44, "straw_tiles": 40, "cow_target": 18, "sheep_target": 14}
+
+# Care-boosted output per animal per day (fed+cared daily): production
+# 1 + banked bonus per cycle => ~interval-independent ~1.4x/interval.
+_OUT_PER_DAY = {"MILK": 1.5, "WOOL": 1.33}
+_STRAW_PER_TILE_DAY = 0.5   # fertilized+watered ongoing strawberry
+
+
+def anchors(view):
+    """Supply=demand production anchors from the season demand forecast."""
+    day = view.day
+    days_left = max(1, 29 - day)
+    fc = econ.forecast_drain(view.unlocked_shops, day)
+    herd_total = sum(1 for _ in view.me.animals())
+    out = {}
+    # Cows: match remaining milk drain with care-boosted cows (lead time 8d).
+    prod_days = max(0, 28 - day - 8)
+    out["cow_target"] = 0 if prod_days < 4 else min(
+        ANCHOR_CAPS["cow_target"], round(fc.get("MILK", 0) / days_left / _OUT_PER_DAY["MILK"])
+    )
+    prod_days = max(0, 28 - day - 6)
+    out["sheep_target"] = 0 if prod_days < 6 else min(
+        ANCHOR_CAPS["sheep_target"], round(fc.get("WOOL", 0) / days_left / _OUT_PER_DAY["WOOL"])
+    )
+    # Strawberries: 4 productions need planting by ~day 13.
+    out["straw_tiles"] = 0 if day > 13 else min(
+        ANCHOR_CAPS["straw_tiles"], round(fc.get("STRAWBERRY", 0) / days_left / _STRAW_PER_TILE_DAY)
+    )
+    # Wheat: the herd's feed plus a standing sale engine into the log market.
+    out["wheat_tiles"] = 0 if day > 25 else min(
+        ANCHOR_CAPS["wheat_tiles"], herd_total + 20
+    )
+    return out
 HEAD_SIZES = [len(vals) for _, vals in HEADS]
 N_ACTION_LOGITS = sum(HEAD_SIZES)
 
@@ -247,6 +286,13 @@ def encode(view, memory):
     f.append(getattr(memory, "yesterday_idle", 0.0))
     f.append(getattr(memory, "yesterday_hands", 0) / 16.0)
 
+    # The policy's own demand anchors (its offset heads act around these).
+    a = anchors(view)
+    f.append(a["wheat_tiles"] / 44.0)
+    f.append(a["straw_tiles"] / 40.0)
+    f.append(a["cow_target"] / 18.0)
+    f.append(a["sheep_target"] / 14.0)
+
     # Episode memory
     f.append(getattr(memory, "melons_sold", 0) / 150.0)
 
@@ -286,6 +332,11 @@ def apply_to_plan(plan, choices, view):
     feed capacity, structure pipelines, wheat reserve, and liquidation are
     computed downstream exactly as in the heuristic planner."""
     values = {name: vals[choices[i]] for i, (name, vals) in enumerate(HEADS)}
+
+    # Resolve offset heads against the demand anchors.
+    anchor_vals = anchors(view)
+    for head in ANCHORED:
+        values[head] = max(0, min(ANCHOR_CAPS[head], anchor_vals[head] + values[head]))
 
     crop_counts = {}
     for _, _, t in view.me.plants():
