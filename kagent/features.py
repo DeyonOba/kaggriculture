@@ -65,6 +65,11 @@ PLANTS_PER_DAY_CAP = 20   # labor limit on new plantings per day
 BUYS_PER_DAY_CAP = 12
 HERD_CAP = 60             # hard sanity ceiling on total animals
 
+# Last day an animal purchase can still pay for itself (lead time + at least
+# two productions before day 29). Field autopsy: the policy once bought 4
+# cows on day 22 — first milk would have landed on day 30, after the season.
+ANIMAL_LAST_BUY = {"GOOSE": 24, "COW": 18, "SHEEP": 20}
+
 # Days from investment to first sellable unit, per product (lead times).
 FIRST_YIELD = {
     "WHEAT": 2, "CARROT": 2, "TOMATO": 8, "STRAWBERRY": 10, "MELON": 10,
@@ -315,7 +320,7 @@ def apply_to_plan(plan, choices, view):
         target = values[head]
         deficit = max(0, target - herd.get(kind, 0) - view.shed.get(kind, 0))
         n = max(0, min(deficit, feedable, buys_day, headroom, int(budget // ANIMALS[kind]["cost"])))
-        if n > 0 and not plan.liquidation and view.day <= 24:
+        if n > 0 and not plan.liquidation and view.day <= ANIMAL_LAST_BUY[kind]:
             plan.animal_buys[kind] = n
             feedable -= n
             buys_day -= n

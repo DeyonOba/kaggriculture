@@ -1,6 +1,6 @@
 """Market controller: builds the (priority-ordered, <=10) market order list."""
 
-from kagent.constants import ANIMALS, CROPS, MAX_MARKET_ORDERS
+from kagent.constants import ANIMALS, CROPS, MARKET_PARAMS, MAX_MARKET_ORDERS
 from kagent import econ
 from kagent.planner import FINAL_STEP
 
@@ -97,15 +97,28 @@ def _sell_orders(view, plan, memory):
     # Shed pressure valve: midnight overflow is silently destroyed, so when
     # the shed runs hot, dump the biggest stacks at any price.
     pressure = view.shed_total > 80
+    final_push = view.step >= FINAL_STEP - 8
     candidates = []
     for item, stock in view.shed.items():
         if stock <= 0 or item in ANIMALS:
             continue
+        # Endgame: units DROP their loads before market orders resolve this
+        # same turn, so size sells on shed + inbound carried stock — anything
+        # dropped on the last step otherwise strands (field autopsy: 29-43
+        # unsold wool at game end).
+        if final_push:
+            stock += sum(view.unit_inv(i).get(item, 0) for i, _, _ in view.me.units)
         if item == "WHEAT":
             stock = max(0, stock - plan.wheat_reserve)
         if stock <= 0:
             continue
         floor = 1 if (pressure and stock >= 10) else floors.get(item, 1)
+        # Crashed-market release: once a premium market has collapsed well
+        # below base, the town drain cannot lift it back inside our horizon —
+        # holding has no option value, so take what the market gives.
+        base = MARKET_PARAMS[item]["base"]
+        if view.market_prices.get(item, base) <= 0.3 * base:
+            floor = 1
         inv = view.market_inv.get(item)
         if inv is None:
             continue
