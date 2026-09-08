@@ -51,6 +51,26 @@ def process_episode(eid, agents_meta, tmp_dir, samples_f, stats_f, min_reward):
         steps = replay["steps"]
         rewards = [s.get("reward") or 0 for s in steps[-1]]
         n = 0
+        # Emit a session file too (seed + both action scripts): the raw
+        # replay is deleted below, but sessions power replay training.
+        seed = (replay.get("info") or {}).get("seed")
+        if seed is not None and min(rewards) >= 15000:
+            sess_dir = "rl/datasets/sessions"
+            os.makedirs(sess_dir, exist_ok=True)
+            sp = os.path.join(sess_dir, f"session-{eid}.json")
+            if not os.path.exists(sp):
+                actions = [[], []]
+                for t in range(len(steps) - 1):
+                    for side in (0, 1):
+                        actions[side].append(steps[t + 1][side].get("action") or {})
+                with open(sp, "w") as f:
+                    json.dump({
+                        "episode": int(eid), "seed": int(seed),
+                        "teams": (replay.get("info") or {}).get("TeamNames"),
+                        "finals": rewards,
+                        "shops": steps[-1][0]["observation"]["town"]["unlocked_shops"],
+                        "actions": actions,
+                    }, f)
         for side in (0, 1):
             my_r, opp_r = rewards[side], rewards[1 - side]
             win = 1 if my_r > opp_r else 0
