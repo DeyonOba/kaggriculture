@@ -64,26 +64,36 @@ _STRAW_PER_TILE_DAY = 0.5   # fertilized+watered ongoing strawberry
 
 
 def anchors(view):
-    """Supply=demand production anchors from the season demand forecast."""
+    """Supply=demand production anchors: season demand forecast MINUS the
+    opponent's projected supply (their farm is public). Sharing a demand pool
+    the opponent already saturates just crashes the price for both — field
+    autopsy: 110 milk sold at $13-45 into a jointly-flooded market while the
+    winner pivoted lines."""
     day = view.day
     days_left = max(1, 29 - day)
     fc = econ.forecast_drain(view.unlocked_shops, day)
+    opp = supply_projection(view.opp, day, horizon=29 - day)
     herd_total = sum(1 for _ in view.me.animals())
+
+    def net_per_day(item):
+        return max(0.0, fc.get(item, 0.0) - opp.get(item, 0.0)) / days_left
+
+    def crashed(item):
+        base = MARKET_PARAMS[item]["base"]
+        return view.market_prices.get(item, base) < 0.35 * base
+
     out = {}
-    # Cows: match remaining milk drain with care-boosted cows (lead time 8d).
     prod_days = max(0, 28 - day - 8)
-    out["cow_target"] = 0 if prod_days < 4 else min(
-        ANCHOR_CAPS["cow_target"], round(fc.get("MILK", 0) / days_left / _OUT_PER_DAY["MILK"])
+    out["cow_target"] = 0 if (prod_days < 4 or crashed("MILK")) else min(
+        ANCHOR_CAPS["cow_target"], round(net_per_day("MILK") / _OUT_PER_DAY["MILK"])
     )
     prod_days = max(0, 28 - day - 6)
-    out["sheep_target"] = 0 if prod_days < 6 else min(
-        ANCHOR_CAPS["sheep_target"], round(fc.get("WOOL", 0) / days_left / _OUT_PER_DAY["WOOL"])
+    out["sheep_target"] = 0 if (prod_days < 6 or crashed("WOOL")) else min(
+        ANCHOR_CAPS["sheep_target"], round(net_per_day("WOOL") / _OUT_PER_DAY["WOOL"])
     )
-    # Strawberries: 4 productions need planting by ~day 13.
-    out["straw_tiles"] = 0 if day > 13 else min(
-        ANCHOR_CAPS["straw_tiles"], round(fc.get("STRAWBERRY", 0) / days_left / _STRAW_PER_TILE_DAY)
+    out["straw_tiles"] = 0 if (day > 13 or crashed("STRAWBERRY")) else min(
+        ANCHOR_CAPS["straw_tiles"], round(net_per_day("STRAWBERRY") / _STRAW_PER_TILE_DAY)
     )
-    # Wheat: the herd's feed plus a standing sale engine into the log market.
     out["wheat_tiles"] = 0 if day > 25 else min(
         ANCHOR_CAPS["wheat_tiles"], herd_total + 20
     )

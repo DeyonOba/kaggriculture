@@ -13,7 +13,7 @@ priority-contested. Survival tasks keep a global override; logistics
 
 import math
 
-from kagent.constants import ANIMALS, CROPS, SHED_ACCESS, TURNS_PER_DAY
+from kagent.constants import ANIMALS, CROPS, MARKET_PARAMS, SHED_ACCESS, TURNS_PER_DAY
 from kagent.planner import FINAL_STEP
 
 # Task priorities (lower = more urgent).
@@ -153,7 +153,15 @@ def build_tasks(view, plan):
             pri = P_SURVIVAL if t.get("consecutive_unfed", 0) >= 1 else P_TEND
             tasks.append(Task(pri, x, y, ["FEED"], need="WHEAT"))
         if feeding_day and t.get("fed_today") and not t.get("cared_today") and day < 28:
-            tasks.append(Task(P_TEND, x, y, ["CARE"]))
+            # Crash-pivot: caring boosts output we cannot profitably sell when
+            # the product's market has collapsed — release those actions.
+            product = ANIMALS.get(t.get("animal"), {}).get("product")
+            price_ok = (
+                not product
+                or view.market_prices.get(product, 999) >= 0.35 * MARKET_PARAMS[product]["base"]
+            )
+            if price_ok:
+                tasks.append(Task(P_TEND, x, y, ["CARE"]))
         if t.get("fertilizer_available"):
             tasks.append(Task(P_TEND, x, y, ["COLLECT_FERTILIZER"]))
         held = t.get("yield_units", 0)
