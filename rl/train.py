@@ -191,6 +191,15 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
     best_score = -1.0
     evals_since_best = 0
     os.makedirs(run_dir, exist_ok=True)
+
+    # Session-replay pool (primary training signal): real recorded opponents
+    # on their true worlds. Held-out fifth is never trained on — it is the
+    # honest field-difficulty eval.
+    import glob as _glob
+    sessions = sorted(_glob.glob("rl/datasets/sessions/session-*.json"))
+    train_sessions = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 != 0]
+    held_out = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 == 0]
+    print(f"session pool: {len(train_sessions)} train / {len(held_out)} held-out")
     # Gates: the heuristic plus every incumbent bundle. Training against ONE
     # static incumbent breeds a brittle exploiter (measured: a v3 < rl-v1 <
     # exploiter < v3 cycle). Selection is PROFIT-first: mean final money
@@ -208,20 +217,22 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
         rng = random.Random(it)
         for e in range(episodes):
             roll = rng.random()
-            if opp_bundles and roll < 0.30:
+            side = e % 2
+            if train_sessions and roll < 0.50:
+                script_side = rng.randint(0, 1)
+                opp = ("session", rng.choice(train_sessions), script_side)
+                side = 1 - script_side
+            elif opp_bundles and roll < 0.70:
                 opp = ("bundle", rng.choice(opp_bundles))
-            elif league and roll < 0.42:
-                # Past bests join the opposition (league growth).
+            elif league and roll < 0.78:
                 opp = ("league", rng.choice(league[-4:]))
-            elif roll < 0.62 or not snapshots:
+            elif roll < 0.92 or not snapshots:
                 opp = "heuristic"
-            elif roll < 0.68:
-                opp = "starter"
             else:
                 opp = ("snapshot", rng.choice(snapshots[-5:]))
             jobs.append(
                 {"weights_path": wpath, "temperature": 1.0,
-                 "seed": 10_000 + it * episodes + e, "side": e % 2,
+                 "seed": 10_000 + it * episodes + e, "side": side,
                  "opponent": opp, "mode": "rl"}
             )
         episodes_out = list(pool.imap_unordered(rollout.run_episode, jobs))
@@ -320,16 +331,28 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                 results.append((gate, win, mean_money))
             profit = sum(m for _, _, m in results) / len(results)
             mean_win = sum(w for _, w, _ in results) / len(results)
-            # Selection blends the objective (profit) with the leaderboard
-            # currency (wins): a clean sweep is worth ~$15k of credit.
-            profit = profit + 15_000 * mean_win
+            # Held-out sessions: the honest field-difficulty gate (rl-v9
+            # baseline: 8%). Weighted heaviest in selection — this is the
+            # primary track.
+            sess_jobs = []
+            for k, sp in enumerate(held_out[:14]):
+                script_side = k % 2
+                sess_jobs.append({
+                    "weights_path": os.path.join(run_dir, "eval.json"),
+                    "temperature": 0.0, "seed": 0, "side": 1 - script_side,
+                    "opponent": ("session", sp, script_side), "mode": "rl"})
+            sess_out = list(pool.imap_unordered(rollout.run_episode, sess_jobs))
+            session_wr = sum(ep["win"] for ep in sess_out) / max(1, len(sess_out))
+            session_money = sum(ep["final_money"] for ep in sess_out) / max(1, len(sess_out))
+            profit = profit + 15_000 * mean_win + 60_000 * session_wr
             min_win = min(w for _, w, _ in results)
             detail = "  ".join(
                 f"{g if isinstance(g, str) else os.path.basename(os.path.dirname(g[1]))}"
                 f":{w:.2f}/${m/1000:.1f}k"
                 for g, w, m in results
             )
-            print(f"   EVAL argmax score={profit:8.0f} mean-win={mean_win:.2f} min-win={min_win:.2f}  [{detail}]")
+            print(f"   EVAL argmax score={profit:8.0f} mean-win={mean_win:.2f} min-win={min_win:.2f} "
+                  f"SESSION-WR={session_wr:.2f} (${session_money/1000:.1f}k)  [{detail}]")
             torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
                        os.path.join(run_dir, "last.pt"))
             if profit > best_score:

@@ -184,9 +184,37 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react"):
 
 
 _BUNDLE_CACHE = {}
+_SESSION_CACHE = {}
+
+
+def load_session(path):
+    key = (path, os.path.getmtime(path))
+    if key not in _SESSION_CACHE:
+        if len(_SESSION_CACHE) > 32:
+            _SESSION_CACHE.clear()
+        with open(path) as f:
+            _SESSION_CACHE[key] = json.load(f)
+    return _SESSION_CACHE[key]
+
+
+def make_script_agent(actions):
+    """Replays a recorded side's actions verbatim on its original world."""
+    state = {"t": 0}
+
+    def agent(obs):
+        t = obs.get("step", state["t"])
+        state["t"] = t + 1
+        if t < len(actions) and actions[t]:
+            return actions[t]
+        return {"farmer": ["PASS"], "hands": [], "market": []}
+
+    return agent
 
 
 def _make_opponent(spec):
+    if isinstance(spec, (list, tuple)) and spec[0] == "session":
+        session = load_session(spec[1])
+        return make_script_agent(session["actions"][spec[2]])
     if isinstance(spec, (list, tuple)) and spec[0] == "bundle":
         # A frozen self-contained main.py (e.g. arena/agents/rl-v1) exec'd the
         # way the Kaggle loader does it. Immune to feature/head version skew.
@@ -233,6 +261,11 @@ def run_episode(job):
     Returns dict(records, final_money, opp_money, win, final_pv).
     """
     from kaggle_environments import make
+
+    opp_spec = job.get("opponent", "heuristic")
+    if isinstance(opp_spec, (list, tuple)) and opp_spec[0] == "session":
+        # Session-replay: play on the recorded game's true world.
+        job = dict(job, seed=load_session(opp_spec[1])["seed"])
 
     layers = _load_layers(job.get("weights_path"))
     rng = random.Random(job["seed"] * 7919 + job.get("side", 0))
