@@ -117,6 +117,21 @@ def main():
         jobs = [(p, args.agent, seat) for p in paths for seat in (0, 1)]
         with Pool(args.procs) as pool:
             results = pool.map(bench_job, jobs)
+        def _bin(r):
+            top = max(r["orig_seat"], r["orig_script"])
+            for b, edge in enumerate((60_000, 85_000, 110_000)):
+                if top < edge:
+                    return b
+            return 3
+        labels = ["<60k", "60-85k", "85-110k", "110k+"]
+        per_bin = {}
+        for r in results:
+            per_bin.setdefault(_bin(r), []).append(r)
+        print("win-rate by session difficulty (recorded top final):")
+        for b in sorted(per_bin):
+            rows = per_bin[b]
+            w = sum(x["win"] for x in rows)
+            print(f"  {labels[b]:>8}: {w}/{len(rows)} ({w/len(rows):.0%})")
         wins = sum(r["win"] for r in results)
         uplift = [r["us"] - r["orig_seat"] for r in results]
         vs_winner = [r for r in results if not r["orig_seat_won"]]

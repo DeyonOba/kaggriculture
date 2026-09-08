@@ -48,7 +48,9 @@ VF_COEF = 0.5
 # counts), so money dominates the terminal reward; the win term is a small
 # tiebreaker, not the target.
 MONEY_COEF = 1.0 / 1000.0
-WIN_COEF = 6.0       # leaderboard rating is win-based; field study (gen-6) re-weighted
+WIN_COEF = 6.0            # ordinary (league/heuristic) games
+SESSION_WIN_COEF = 15.0   # session-replay games: beating a real recorded
+                          # opponent on its true world IS the objective now
 CARRY_COEF = 0.005   # per-decision cost of holding unsold stock (softened: gen-4
 UNSOLD_COEF = 0.2    # coefficients handicapped raw profit vs a penalty-free champion)
 KL_STOP = 0.03       # per-iteration early stop on policy drift
@@ -167,7 +169,8 @@ def _episode_advantages(ep, shaping_w):
         r = shaping_w * (pvs[i + 1] - pvs[i]) / 1000.0
         r -= CARRY_COEF * recs[i].get("stock", 0.0) / 1000.0
         if i == n - 1:
-            r += MONEY_COEF * ep["final_money"] + WIN_COEF * (2 * ep["win"] - 1)
+            wc = SESSION_WIN_COEF if ep.get("is_session") else WIN_COEF
+            r += MONEY_COEF * ep["final_money"] + wc * (2 * ep["win"] - 1)
             r -= UNSOLD_COEF * ep.get("unsold_value", 0.0) / 1000.0
         rewards.append(r)
     values = [r["value"] for r in recs]
@@ -199,7 +202,22 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
     sessions = sorted(_glob.glob("rl/datasets/sessions/session-*.json"))
     train_sessions = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 != 0]
     held_out = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 == 0]
-    print(f"session pool: {len(train_sessions)} train / {len(held_out)} held-out")
+    # Difficulty bins by the SCRIPT side's recorded final (worst-case: the
+    # stronger seat). Curriculum climbs bins as each is mastered.
+    BIN_EDGES = (60_000, 85_000, 110_000)
+
+    def _session_bin(path):
+        f = max(json.load(open(path))["finals"])
+        for b, edge in enumerate(BIN_EDGES):
+            if f < edge:
+                return b
+        return len(BIN_EDGES)
+
+    session_bin = {p: _session_bin(p) for p in train_sessions}
+    bins = [[p for p in train_sessions if session_bin[p] == b] for b in range(4)]
+    bin_wins = [[1, 2] for _ in range(4)]  # laplace-smoothed rolling [wins, games]
+    print(f"session pool: {len(train_sessions)} train / {len(held_out)} held-out; "
+          f"bins={[len(b) for b in bins]}")
     # Gates: the heuristic plus every incumbent bundle. Training against ONE
     # static incumbent breeds a brittle exploiter (measured: a v3 < rl-v1 <
     # exploiter < v3 cycle). Selection is PROFIT-first: mean final money
@@ -219,8 +237,18 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             roll = rng.random()
             side = e % 2
             if train_sessions and roll < 0.50:
-                script_side = rng.randint(0, 1)
-                opp = ("session", rng.choice(train_sessions), script_side)
+                # Curriculum: 70% mass on the first unmastered bin, rest uniform.
+                rates = [w / g for w, g in bin_wins]
+                frontier = next((b for b in range(4) if bins[b] and rates[b] < 0.55), None)
+                if frontier is not None and rng.random() < 0.7:
+                    pool_b = bins[frontier]
+                else:
+                    pool_b = train_sessions
+                path = rng.choice(pool_b)
+                # Face the STRONGER recorded seat (the winner's script).
+                s = json.load(open(path))
+                script_side = 0 if s["finals"][0] >= s["finals"][1] else 1
+                opp = ("session", path, script_side)
                 side = 1 - script_side
             elif opp_bundles and roll < 0.70:
                 opp = ("bundle", rng.choice(opp_bundles))
@@ -237,6 +265,16 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             )
         episodes_out = list(pool.imap_unordered(rollout.run_episode, jobs))
         snapshots.append(wpath)
+        for ep, j in zip(episodes_out, jobs):
+            o = j["opponent"]
+            if isinstance(o, tuple) and o[0] == "session":
+                b = session_bin.get(o[1])
+                if b is not None:
+                    bin_wins[b][0] += ep["win"]
+                    bin_wins[b][1] += 1
+                    if bin_wins[b][1] > 60:  # rolling window
+                        bin_wins[b][0] *= 0.5
+                        bin_wins[b][1] *= 0.5
 
         all_recs, all_adv, all_ret = [], [], []
         for ep in episodes_out:
@@ -344,7 +382,8 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             sess_out = list(pool.imap_unordered(rollout.run_episode, sess_jobs))
             session_wr = sum(ep["win"] for ep in sess_out) / max(1, len(sess_out))
             session_money = sum(ep["final_money"] for ep in sess_out) / max(1, len(sess_out))
-            profit = profit + 15_000 * mean_win + 60_000 * session_wr
+            bin_report = "/".join(f"{w/g:.0%}" for w, g in bin_wins)
+            profit = 100_000 * session_wr + (profit + 15_000 * mean_win) / 10.0
             min_win = min(w for _, w, _ in results)
             detail = "  ".join(
                 f"{g if isinstance(g, str) else os.path.basename(os.path.dirname(g[1]))}"
@@ -352,7 +391,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                 for g, w, m in results
             )
             print(f"   EVAL argmax score={profit:8.0f} mean-win={mean_win:.2f} min-win={min_win:.2f} "
-                  f"SESSION-WR={session_wr:.2f} (${session_money/1000:.1f}k)  [{detail}]")
+                  f"SESSION-WR={session_wr:.2f} (${session_money/1000:.1f}k) train-bins={bin_report}  [{detail}]")
             torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
                        os.path.join(run_dir, "last.pt"))
             if profit > best_score:

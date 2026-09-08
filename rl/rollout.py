@@ -316,4 +316,5 @@ def run_episode(job):
         "statuses": [s.status for s in final],
         "duration": duration,
         "unsold_value": unsold,
+        "is_session": isinstance(opp_spec, (list, tuple)) and opp_spec[0] == "session",
     }

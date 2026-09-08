@@ -67,6 +67,7 @@ def process_episode(eid, agents_meta, tmp_dir, samples_f, stats_f, min_reward):
                     json.dump({
                         "episode": int(eid), "seed": int(seed),
                         "teams": (replay.get("info") or {}).get("TeamNames"),
+                        "scores": [a.get("initialScore") for a in agents_meta],
                         "finals": rewards,
                         "shops": steps[-1][0]["observation"]["town"]["unlocked_shops"],
                         "actions": actions,
