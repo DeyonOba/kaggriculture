@@ -64,6 +64,21 @@ def _tensor_batch(records):
     return x, masks, choices
 
 
+def _sample_weights(records):
+    """Outcome-weighted imitation: winners count 1-2x scaled by profit
+    margin; losers stay as low-weight contrast (state coverage without
+    imitating losing plans). Unlabeled samples (teacher games) weigh 1."""
+    w = []
+    for r in records:
+        if "win" not in r:
+            w.append(1.0)
+        elif r["win"]:
+            w.append(1.0 + min(max(r.get("margin", 0), 0), 60000) / 60000.0)
+        else:
+            w.append(0.25)
+    return torch.tensor(w, dtype=torch.float32)
+
+
 def _joint_logprob_entropy(net, x, masks, choices):
     logits = net(x)
     dists = masked_dists(logits, masks)
@@ -94,6 +109,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         print(f"   + {len(extra)} champion day-decisions (harvested replays)")
 
     x, masks, choices = _tensor_batch(records)
+    weights = _sample_weights(records)
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
     n = x.shape[0]
     for epoch in range(epochs):
@@ -102,7 +118,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         for s in range(0, n, 512):
             idx = perm[s : s + 512]
             lp, _ = _joint_logprob_entropy(net, x[idx], masks[idx], choices[idx])
-            loss = -lp.mean()
+            loss = -(lp * weights[idx]).sum() / weights[idx].sum()
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -122,6 +138,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         # Fine-tune on champion data only (AlphaStar Unplugged: train on the
         # full dataset, then FT on the high-quality subset).
         fx, fm, fc = _tensor_batch(list(extra))
+        fw = _sample_weights(list(extra))
         fopt = torch.optim.Adam(net.parameters(), lr=3e-4)
         fn = fx.shape[0]
         for epoch in range(ft_epochs):
@@ -130,7 +147,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
             for s in range(0, fn, 256):
                 idx = perm[s : s + 256]
                 lp, _ = _joint_logprob_entropy(net, fx[idx], fm[idx], fc[idx])
-                loss = -lp.mean()
+                loss = -(lp * fw[idx]).sum() / fw[idx].sum()
                 fopt.zero_grad()
                 loss.backward()
                 fopt.step()
