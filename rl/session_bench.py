@@ -92,9 +92,12 @@ def main():
     ap.add_argument("--n", type=int, default=12)
     ap.add_argument("--procs", type=int, default=10)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--heldout", action="store_true", help="only sessions never used in training (episode %% 5 == 0)")
     args = ap.parse_args()
 
     paths = sorted(glob.glob(os.path.join(SESS_DIR, "session-*.json")))
+    if args.heldout:
+        paths = [p for p in paths if int(p.split("-")[-1][:-5]) % 5 == 0]
     random.Random(args.seed).shuffle(paths)
 
     if args.mode == "ladder":
