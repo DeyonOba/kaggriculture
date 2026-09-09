@@ -49,7 +49,21 @@ class DayPlan:
     __slots__ = (
         "hires_target", "land_buys", "plant_quota", "animal_buys",
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
+        "fert_reserve",
     )
+
+    def __init__(self):
+        self.hires_target = 0
+        self.land_buys = []
+        self.plant_quota = {}
+        self.animal_buys = {}
+        self.structure_builds = {"COOP": 0, "PASTURE": 0}
+        self.sell_floors = {}
+        self.liquidation = False
+        self.wheat_reserve = 0
+        # Fertilizer units kept out of the market for today's FERTILIZE tasks
+        # (set each turn by the policy from the task list).
+        self.fert_reserve = 0
 
 
 def _count_crops(farm):
@@ -69,11 +83,10 @@ def _projected_melons(farm):
 
 
 def make_day_plan(view, memory, speculative=False):
-    """Day plan. `speculative=True` selects the leaderboard-meta teacher used
-    only for BC data (episode 101761797: finals $105k/$96k): early ruminants
-    bought on EXPECTED shop demand before any shop exists, strawberries at
-    scale, investment over profit through ~day 10. The deployed fallback
-    stays reactive (default)."""
+    """Day plan. `speculative=True` selects the champion teacher
+    (make_champion_plan); the default is the reactive planner."""
+    if speculative:
+        return make_champion_plan(view, memory)
     plan = DayPlan()
     day = view.day
     me = view.me
@@ -121,10 +134,7 @@ def make_day_plan(view, memory, speculative=False):
                 quota["MELON"] = min(10, max(0, room // CROPS["MELON"]["max_yield"]))
 
         # Wheat: rolling engine sized to labor, feed needs, and land.
-        # The speculative teacher runs a bigger engine (leaders held 15-40
-        # wheat tiles as combined feed + $40+ sale inventory).
-        wheat_cap = 32 if speculative else WHEAT_TILE_CAP
-        wheat_target = min(wheat_cap, (10 if speculative else 8) + my_animals)
+        wheat_target = min(WHEAT_TILE_CAP, 8 + my_animals)
         if day <= WHEAT_LAST_PLANT_DAY:
             quota["WHEAT"] = max(0, wheat_target - crops.get("WHEAT", 0))
 
@@ -147,12 +157,7 @@ def make_day_plan(view, memory, speculative=False):
             view.unlocked_shops.count(s)
             for s in ("BRUNCH_SPOT", "ICE_CREAM_SHOP", "SMOOTHIE_SHOP", "FARMERS_MARKET")
         )
-        if speculative and day <= 13:
-            # Strawberry appears in 4 of 8 shop draws: plant on expectation,
-            # then scale hard with each revealed consumer.
-            straw_target = min(32, 10 + 6 * straw_shops)
-            quota["STRAWBERRY"] = max(0, straw_target - crops.get("STRAWBERRY", 0))
-        elif straw_shops >= 2 and day <= 13:  # 4 productions need planting by ~13
+        if straw_shops >= 2 and day <= 13:  # 4 productions need planting by ~13
             straw_target = min(10, 3 * straw_shops)
             quota["STRAWBERRY"] = max(0, straw_target - crops.get("STRAWBERRY", 0))
     plan.plant_quota = quota
@@ -173,31 +178,13 @@ def make_day_plan(view, memory, speculative=False):
         view.unlocked_shops.count(s) for s in ("PIZZA_SHOP", "ICE_CREAM_SHOP", "SMOOTHIE_SHOP")
     )
     yarn_shops = view.unlocked_shops.count("YARN_STORE")
-    if speculative:
-        # Buy ruminants on expected demand early (milk is in 3 of 8 shop
-        # draws, wool doubled in 1) — but the speculation window CLOSES: from
-        # day 7 targets follow only REALIZED shops. Field replays showed the
-        # fatal version of this teacher's pattern: ramping cows into a
-        # yarn/berry draw while winners pivoted to 40+ strawberry tiles.
-        if day <= 6:
-            cow_t = min(15, 3 + day // 2 + 4 * milk_shops)
-            sheep_t = min(6, 2 + 3 * yarn_shops)
-        else:
-            cow_t = min(16, 2 + 5 * milk_shops)
-            sheep_t = min(14, 4 * yarn_shops)
-        targets = {
-            "GOOSE": 0,
-            "COW": cow_t if day <= 20 else 0,
-            "SHEEP": sheep_t if day <= 20 else 0,
-        }
-    else:
-        targets = {
-            "GOOSE": GEESE_TARGET if day <= GEESE_LAST_BUY_DAY else 0,
-            "COW": min(8, 4 * milk_shops) if day <= 18 else 0,
-            "SHEEP": min(10, 4 * yarn_shops) if day <= 20 else 0,
-        }
+    targets = {
+        "GOOSE": GEESE_TARGET if day <= GEESE_LAST_BUY_DAY else 0,
+        "COW": min(8, 4 * milk_shops) if day <= 18 else 0,
+        "SHEEP": min(10, 4 * yarn_shops) if day <= 20 else 0,
+    }
 
-    if not plan.liquidation and day >= (0 if speculative else GEESE_BUY_START_DAY):
+    if not plan.liquidation and day >= GEESE_BUY_START_DAY:
         # Feed security: never grow the herd past what the wheat pipeline
         # (stock + growing tiles + market top-ups) can keep alive.
         feed_capacity = view.shed.get("WHEAT", 0) + 3 * crops.get("WHEAT", 0) + 10
@@ -228,6 +215,126 @@ def make_day_plan(view, memory, speculative=False):
     plan.wheat_reserve = 0 if plan.liquidation and day >= 29 else my_animals + 2
 
     # --- Sell floors ---------------------------------------------------------
+    plan.sell_floors = _sell_floors(view)
+    return plan
+
+
+# ---- Champion teacher --------------------------------------------------------
+# Decoded from 1500+/2500+ rated sides (tools/decode_sessions.py, $117k
+# finals): day-0 ruminants, land on wool money at day 5-6, 33 strawberries by
+# day 12, an 8-cow/8-sheep herd by day 14 bought BEFORE demand is revealed, a
+# 20-30 tile rolling wheat engine, and late carrots on freed tiles.
+CHAMP_OPENING = {"MELON": 12, "WHEAT": 7}
+CHAMP_STRAW_TARGET = 33
+CHAMP_STRAW_EARLY = 18          # before the day-10 melon money
+CHAMP_WHEAT_ENGINE = 28
+CHAMP_CARROT_DAY = 22           # from here freed tiles go to 2-day carrots
+CHAMP_LAND_BUYS = 2             # champions never bought the $4000 quadrant
+CHAMP_LAND_DAY = 5
+CHAMP_HIRES = [5, 4, 4, 5, 4, 5, 7, 9, 9, 10,
+               11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+               11, 11, 11, 11, 11, 11, 10, 10, 10, 8]
+
+
+def _champ_herd_targets(day):
+    cow = 2 if day < 3 else min(8, 2 + (day - 2))
+    sheep = 2 if day < 8 else min(8, 2 + (day - 7))
+    return {
+        "GOOSE": 0,
+        "COW": cow if day <= 18 else 0,
+        "SHEEP": sheep if day <= 20 else 0,
+    }
+
+
+def make_champion_plan(view, memory):
+    plan = DayPlan()
+    day = view.day
+    me = view.me
+    plan.liquidation = day >= LIQUIDATION_DAY
+
+    crops = _count_crops(me)
+    my_animals = sum(1 for _ in me.animals())
+    herd = {}
+    for _, _, t in me.animals():
+        herd[t["animal"]] = herd.get(t["animal"], 0) + 1
+    empty_by_kind = {"COOP": 0, "PASTURE": 0}
+    for _, _, t in me.empty_structures():
+        empty_by_kind[t["kind"]] = empty_by_kind.get(t["kind"], 0) + 1
+    empty_tiles = sum(1 for _ in me.empty_tiles())
+
+    # --- Hiring: lean until the second quadrant, then ~11 ---------------------
+    schedule = CHAMP_HIRES[day] if day < len(CHAMP_HIRES) else 8
+    workload = sum(crops.values()) + 2 * my_animals + 10
+    plan.hires_target = min(schedule, max(3, workload // 3))
+    budget = max(150.0, me.money * 0.25)
+    while plan.hires_target > 2 and econ.hire_total_cost(plan.hires_target) > budget:
+        plan.hires_target -= 1
+
+    # --- Land: a standing wish from day 5; the market controller buys the
+    # turn the cash is there (the day-6 wool lands mid-day, after planning).
+    plan.land_buys = []
+    owned = me.unlocked_quadrants
+    next_idx = sum(1 for q in LAND_ORDER if q in owned)
+    if next_idx < CHAMP_LAND_BUYS and CHAMP_LAND_DAY <= day <= 22:
+        plan.land_buys.append(LAND_ORDER[next_idx])
+
+    # --- Animals: speculative herd, gated by cash only (feed is bought) --------
+    plan.animal_buys = {}
+    plan.structure_builds = {"COOP": 0, "PASTURE": 0}
+    if not plan.liquidation:
+        # Full deficits, not gated on hour-0 cash: the market controller buys
+        # animals before seeds the turn money lands (wool/milk arrive mid-day),
+        # so the herd wins the intra-day cash race the way champions' does.
+        targets = _champ_herd_targets(day)
+        for kind in ("SHEEP", "COW"):  # wool lands first (day 6) and pays for land
+            want = targets[kind] - herd.get(kind, 0) - view.shed.get(kind, 0)
+            n = max(0, min(want, 4))
+            if n > 0:
+                plan.animal_buys[kind] = n
+    for kind, structure in (("GOOSE", "COOP"), ("COW", "PASTURE"), ("SHEEP", "PASTURE")):
+        pipeline = plan.animal_buys.get(kind, 0) + view.shed.get(kind, 0)
+        need = pipeline - empty_by_kind.get(structure, 0)
+        if need > 0:
+            plan.structure_builds[structure] += need
+            empty_by_kind[structure] = 0
+        else:
+            empty_by_kind[structure] = -need
+
+    # --- Planting: opening, then strawberries, then a wheat engine ------------
+    quota = {}
+    if not plan.liquidation:
+        # Tiles plantable today: empty now plus those harvested clean today.
+        ripe_today = 0
+        for _, _, t in me.plants():
+            cd = CROPS.get(t["crop"])
+            if cd is None:
+                continue
+            age = day - t.get("planted_day", day)
+            if not cd["ongoing"] and age >= cd["max_yield_day"]:
+                ripe_today += 1
+            elif 0 <= t.get("max_lifespan_step", -1) <= (day + 1) * TURNS_PER_DAY:
+                ripe_today += 1
+        free = max(0, empty_tiles + ripe_today - sum(plan.structure_builds.values()))
+        if day <= 1:
+            for crop, n in CHAMP_OPENING.items():
+                quota[crop] = max(0, n - crops.get(crop, 0))
+        if CHAMP_LAND_DAY <= day <= 13:
+            # Strawberries take freed tiles first (4 productions by 29), staged
+            # so the herd is funded before the day-10 melon money: 18 by day
+            # 9, then the full 33 — the recorded champion pace.
+            straw_target = CHAMP_STRAW_TARGET if day >= 10 else CHAMP_STRAW_EARLY
+            quota["STRAWBERRY"] = max(0, straw_target - crops.get("STRAWBERRY", 0))
+        if day >= CHAMP_CARROT_DAY and day <= CARROT_LAST_PLANT_DAY:
+            quota["CARROT"] = min(20, free)
+        elif day > 1 and day <= WHEAT_LAST_PLANT_DAY:
+            if day < 10:
+                wheat_target = 8
+            else:
+                wheat_target = min(CHAMP_WHEAT_ENGINE, crops.get("WHEAT", 0) + free)
+            quota["WHEAT"] = max(0, wheat_target - crops.get("WHEAT", 0))
+    plan.plant_quota = {k: v for k, v in quota.items() if v > 0}
+
+    plan.wheat_reserve = 0 if plan.liquidation and day >= 29 else my_animals + 2
     plan.sell_floors = _sell_floors(view)
     return plan
 

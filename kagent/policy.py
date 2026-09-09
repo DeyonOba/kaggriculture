@@ -47,6 +47,7 @@ class HeuristicPolicy:
         plan = memory.day_plan
 
         tasks = scheduler.build_tasks(view, plan)
+        plan.fert_reserve = sum(1 for t in tasks if t.op[0] == "FERTILIZE")
         actions = scheduler.assign(view, plan, tasks)
 
         # Consume day quotas as ops are actually emitted.

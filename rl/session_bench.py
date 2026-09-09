@@ -40,6 +40,28 @@ def make_script_agent(actions):
 
 
 def _load_bundle(path):
+    if path in ("heuristic", "heuristic:champion"):
+        # Dev heuristic agent (no bundle): "heuristic:champion" runs the
+        # champion teacher plan, plain "heuristic" the reactive planner.
+        from kagent.gamestate import Memory, View
+        from kagent.policy import HeuristicPolicy
+        from kagent import planner
+
+        champion = path.endswith("champion")
+
+        class _Provider:
+            def make_plan(self, view, memory):
+                return planner.make_day_plan(view, memory, speculative=champion)
+
+        mem = Memory()
+        pol = HeuristicPolicy(_Provider())
+
+        def agent(obs):
+            view = View(obs)
+            mem.observe(view)
+            return pol.act(view, mem)
+
+        return agent
     env_dict = {}
     with open(path) as f:
         exec(f.read(), env_dict)

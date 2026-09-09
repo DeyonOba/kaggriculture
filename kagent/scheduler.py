@@ -11,8 +11,6 @@ priority-contested. Survival tasks keep a global override; logistics
 (pickups, deliveries, drops, liquidation shuttles) stay global.
 """
 
-import math
-
 from kagent.constants import ANIMALS, CROPS, MARKET_PARAMS, SHED_ACCESS, TURNS_PER_DAY
 from kagent.planner import FINAL_STEP
 
@@ -25,6 +23,7 @@ P_FILLER = 5
 
 PLANT_LAST_HOUR = 21  # leave >= 2 turns to water the fresh plant
 DROP_THRESHOLD = 10   # mid-game inventory size that triggers a shed trip
+EARLY_DROP_THRESHOLD = 2  # days 0-9: every fertilizer unit is the day's cash
 MIN_ZONE_TILES = 5
 
 
@@ -81,8 +80,10 @@ def zone_map(view):
                 path.append((x0 + c, y0 + r))
     n_units = max(1, len(view.me.units))
     n_zones = max(1, min(n_units, len(path) // MIN_ZONE_TILES))
-    chunk = math.ceil(len(path) / n_zones)
-    zone_of = {tile: min(i // chunk, n_zones - 1) for i, tile in enumerate(path)}
+    # Even split (sizes differ by at most one): a ceil'd chunk left the last
+    # zone EMPTY (75 tiles / 12 hands -> 11 zones), so one hand roamed the
+    # whole farm every day.
+    zone_of = {tile: i * n_zones // len(path) for i, tile in enumerate(path)}
     return zone_of, n_zones
 
 
@@ -114,11 +115,18 @@ def build_tasks(view, plan):
                 tasks.append(Task(P_HARVEST if not decaying else P_SURVIVAL, x, y, ["HARVEST"]))
                 continue
 
+        # Fertilizer is cash (~$100/unit at base): only spend it on a crop
+        # when the market has glutted it below what the extra yield returns.
+        fert_price = view.market_prices.get("FERTILIZER", 100)
         if t.get("fertilized_until_day", -1) < day and not plan.liquidation:
+            # Strawberries: a fertilized production yields 2 instead of 1
+            # (~$165 each) for 3 days of cover — champions run ~270 units off
+            # 33 tiles this way versus ~130 unfertilized.
             want_fert = (
-                (t["crop"] == "TOMATO" and age in (8, 11))
-                or (t["crop"] == "WHEAT" and age == 2)
-                or (t["crop"] == "CARROT" and age == 2)
+                (t["crop"] == "STRAWBERRY" and 9 <= age <= 15 and fert_price < 150)
+                or (t["crop"] == "TOMATO" and age in (8, 11) and fert_price < 80)
+                or (t["crop"] == "WHEAT" and age == 2 and fert_price < 40)
+                or (t["crop"] == "CARROT" and age == 2 and fert_price < 50)
             )
             if want_fert:
                 tasks.append(Task(P_TEND, x, y, ["FERTILIZE"], need="FERTILIZER"))
@@ -133,14 +141,20 @@ def build_tasks(view, plan):
         age = day - t["planted_day"]
         if (x, y) in fert_targets and t.get("consecutive_unwatered", 0) == 0 and view.hour < 18:
             continue
+        # Engine rules: water adds yield only inside a one-shot crop's growth
+        # window, or on a fertilized ongoing crop's production night; any
+        # other day it is pure survival, and a plant survives one dry day.
+        # Watering everything daily is what starved planting of labor.
         if t.get("consecutive_unwatered", 0) >= 1:
             pri = P_SURVIVAL  # dies tonight if unwatered
-        elif not crop["ongoing"] and (crop["max_yield_day"] + 1) // 2 <= age <= crop["max_yield_day"]:
-            pri = P_TEND
-        elif crop["ongoing"]:
-            pri = P_TEND if t.get("fertilized_until_day", -1) >= day else P_FILLER
+        elif not crop["ongoing"]:
+            in_window = (crop["max_yield_day"] + 1) // 2 <= age <= crop["max_yield_day"]
+            pri = P_TEND if in_window else P_FILLER
         else:
-            pri = P_FILLER
+            since_first = day + 1 - t["planted_day"] - crop["first_yield_day"]
+            produces_tonight = since_first >= 0 and since_first % crop["interval"] == 0
+            fertilized = t.get("fertilized_until_day", -1) >= day
+            pri = P_TEND if (produces_tonight and fertilized) else P_FILLER
         tasks.append(Task(pri, x, y, ["WATER"]))
 
     # --- Animals: the care regime is first-class (3x output multiplier) --------
@@ -197,13 +211,14 @@ def build_tasks(view, plan):
                 break
 
     if view.hour <= PLANT_LAST_HOUR:
-        for crop, n in plan.plant_quota.items():
-            for _ in range(n):
-                if cursor >= len(empties):
-                    break
-                x, y = empties[cursor]
-                cursor += 1
-                tasks.append(Task(P_GROW, x, y, ["PLANT", crop]))
+        # One PLANT task per empty tile, crops interleaved by remaining quota,
+        # so every zone plants its own ground instead of all hands converging
+        # on the few center-most empties. The daily quota is enforced at
+        # execution time (assign.try_execute).
+        wanted = [crop for crop, n in plan.plant_quota.items() for _ in range(n)]
+        if wanted:
+            for i, (x, y) in enumerate(empties[cursor:]):
+                tasks.append(Task(P_GROW, x, y, ["PLANT", wanted[i % len(wanted)]]))
 
     weed_pri = P_GROW if len(empties) - cursor < 6 else P_FILLER
     for x, y, _ in me.weeds():
@@ -224,6 +239,22 @@ def _feed_pickup_needs(view, zone_of, n_zones):
     return needs
 
 
+MOVE_STATS = {}  # debug: moves per assignment step (filled only when enabled)
+ASSIGN_LABEL = {}  # debug: unit idx -> step that assigned its action this turn
+MOVE_STATS_ENABLED = False
+
+
+def _count_moves(actions, before, label):
+    if not MOVE_STATS_ENABLED:
+        return
+    for idx, op in actions.items():
+        if idx in before or not op:
+            continue
+        ASSIGN_LABEL[idx] = label
+        key = label if op[0] in ("NORTH", "SOUTH", "EAST", "WEST") else "act:" + label
+        MOVE_STATS[key] = MOVE_STATS.get(key, 0) + 1
+
+
 def assign(view, plan, tasks):
     """Zone-based assignment. Returns {unit_idx: op_list}."""
     me = view.me
@@ -238,6 +269,9 @@ def assign(view, plan, tasks):
     aggressive = view.day >= 29 or final_push
 
     # ---- 1. Liquidation / heavy-load shuttles (global) ----------------------
+    # Fertilizer in a pocket is only working stock while a FERTILIZE task
+    # wants it; otherwise it is unsold cash and goes to the shed.
+    fert_wanted = any(t.need == "FERTILIZER" for t in tasks)
     for idx, x, y in me.units:
         inv = view.unit_inv(idx)
         total = sum(
@@ -245,13 +279,15 @@ def assign(view, plan, tasks):
             for item, n in inv.items()
             if not (
                 item in ("GOOSE", "COW", "SHEEP")
-                or (not aggressive and item == "FERTILIZER" and n <= 3)
+                or (not aggressive and fert_wanted and item == "FERTILIZER" and n <= 3)
                 or (not aggressive and item == "WHEAT" and n <= 5)
             )
         )
         if total == 0:
             continue
         threshold = 1 if (aggressive and view.hour >= 4) or view.step >= FINAL_STEP - 6 else DROP_THRESHOLD
+        if view.day < 10:
+            threshold = min(threshold, EARLY_DROP_THRESHOLD)
         if plan.liquidation and not aggressive:
             threshold = 8
         if total < threshold:
@@ -273,13 +309,20 @@ def assign(view, plan, tasks):
             actions[idx] = [step] if step else ["PASS"]
         free.discard(idx)
 
+    _count_moves(actions, set(), "shuttle")
+    _seen = set(actions)
+
     # ---- 1.5 Global need-provisioning: animals, fertilizer, and any wheat the
     # morning zone pickups missed. Without this, bought animals strand in the
     # shed forever (measured: 47 structures built, zero animals ever placed).
+    # Only ANIMALS are provisioned globally here (rare, high-value, any unit
+    # may carry one to its pasture). Wheat and fertilizer are fetched by the
+    # zone that needs them (step 2) so hands never turn into farm-wide
+    # couriers — measured: 150-200 zone moves/day for 40-60 actions.
     wants = {}
     carried = {}
     for t in tasks:
-        if t.need:
+        if t.need in ("GOOSE", "COW", "SHEEP"):
             wants[t.need] = wants.get(t.need, 0) + 1
     for idx, _, _ in me.units:
         for item, n in view.unit_inv(idx).items():
@@ -306,22 +349,48 @@ def assign(view, plan, tasks):
             free.discard(idx)
             shortage -= n
 
-    # ---- 2. Morning feed provisioning: stock YOUR zone's wheat at the shed ---
-    if view.hour <= 2 and view.day < 29:
-        needs = _feed_pickup_needs(view, zone_of, n_zones)
-        for idx in sorted(free):
-            z = idx % n_zones
-            need = needs.get(z, 0)
-            if need <= 0:
-                continue
-            carried = view.unit_inv(idx).get("WHEAT", 0)
-            deficit = min(need - carried, view.shed.get("WHEAT", 0))
-            if deficit <= 0:
+    _count_moves(actions, _seen, "provision")
+    _seen = set(actions)
+
+    # ---- 2. Zone provisioning: each zone's hand fetches ITS zone's wheat and
+    # fertilizer from the shed (any hour), so deliveries stay intra-zone.
+    zone_needs = {}
+    for t in tasks:
+        if t.need in ("WHEAT", "FERTILIZER"):
+            z = zone_of.get((t.x, t.y))
+            if z is not None:
+                zone_needs.setdefault(z, {}).setdefault(t.need, 0)
+                zone_needs[z][t.need] += 1
+    zone_carry = {}
+    for idx, _, _ in me.units:
+        z = idx % n_zones
+        for item in ("WHEAT", "FERTILIZER"):
+            zone_carry.setdefault(z, {}).setdefault(item, 0)
+            zone_carry[z][item] += view.unit_inv(idx).get(item, 0)
+    shed_left = {item: view.shed.get(item, 0) for item in ("WHEAT", "FERTILIZER")}
+    for idx in sorted(free):
+        z = idx % n_zones
+        for item in ("WHEAT", "FERTILIZER"):
+            need = zone_needs.get(z, {}).get(item, 0) - zone_carry.get(z, {}).get(item, 0)
+            n = min(need, shed_left[item], 5 if item == "WHEAT" else 3)
+            if n <= 0:
                 continue
             x, y = units[idx]
-            if (x, y) in SHED_ACCESS or _dist(x, y, *_nearest_shed_tile(x, y)) == 0:
-                actions[idx] = ["PICKUP", "WHEAT", deficit]
-                free.discard(idx)
+            tx, ty = _nearest_shed_tile(x, y)
+            if (x, y) == (tx, ty):
+                actions[idx] = ["PICKUP", item, n]
+            else:
+                step = _step_toward(x, y, tx, ty)
+                if not step:
+                    continue
+                actions[idx] = [step]
+            shed_left[item] -= n
+            zone_carry[z][item] = zone_carry[z].get(item, 0) + n
+            free.discard(idx)
+            break
+
+    _count_moves(actions, _seen, "morning")
+    _seen = set(actions)
 
     # ---- 3. Zone rounds: each unit serves its own zone -----------------------
     zone_tasks = {}
@@ -347,7 +416,8 @@ def assign(view, plan, tasks):
             return False
         if task.op[0] == "PLANT":
             crop = task.op[1]
-            if plant_requests.get(crop, 0) + 1 > seeds_left.get(crop, 0):
+            allowed = min(seeds_left.get(crop, 0), plan.plant_quota.get(crop, 0))
+            if plant_requests.get(crop, 0) + 1 > allowed:
                 return False
         if (x, y) == (task.x, task.y):
             if not _unlocked(view, task.x, task.y):
@@ -363,10 +433,21 @@ def assign(view, plan, tasks):
         claimed.add(key)
         return True
 
+    # A unit carrying an ANIMAL places it FIRST, anywhere on the farm. Without
+    # this the provisioning carrier fell back into its own zone's rounds and
+    # hauled a cow around for days while the pasture sat empty (traced on
+    # day 0-3). Wheat/fertilizer deliveries stay inside the zone round.
+    need_tasks = [t for t in tasks if t.need in ("GOOSE", "COW", "SHEEP")]
+
     for idx in sorted(free):
         z = idx % n_zones
-        pool = zone_tasks.get(z, [])
         x, y = units[idx]
+        inv = view.unit_inv(idx)
+        deliveries = [
+            t for t in need_tasks
+            if inv.get(t.need, 0) >= 1 and (t.x, t.y, t.op[0]) not in claimed
+        ]
+        pool = deliveries if deliveries else zone_tasks.get(z, [])
         best = None
         for task in pool:
             key = (task.x, task.y, task.op[0])
@@ -380,6 +461,9 @@ def assign(view, plan, tasks):
                 best = (score, task)
         if best and try_execute(idx, best[1]):
             free.discard(idx)
+
+    _count_moves(actions, _seen, "zone")
+    _seen = set(actions)
 
     # ---- 4. Idle units help: nearest unclaimed task anywhere ----------------
     all_tasks = sorted(
@@ -402,16 +486,21 @@ def assign(view, plan, tasks):
         if best and try_execute(idx, best[1]):
             free.discard(idx)
 
+    _count_moves(actions, _seen, "idlehelp")
+    _seen = set(actions)
+
     # ---- 5. Survival override: nothing urgent goes unserved -----------------
     urgent = [
         t for t in all_tasks
         if t.pri == P_SURVIVAL and (t.x, t.y, t.op[0]) not in claimed
     ]
     if urgent:
-        movable = [
-            idx for idx, op in actions.items()
-            if op and op[0] in ("PASS", "NORTH", "SOUTH", "EAST", "WEST")
-        ] + list(free)
+        # Only genuinely idle units are pulled: re-targeting hands that are
+        # already walking to their zone's work made every unfed animal or dry
+        # plant a farm-wide emergency and hands paced between quadrants
+        # (traced: 200 moves for 60 actions a day). Zone rounds already
+        # serve P_SURVIVAL first inside each zone.
+        movable = [idx for idx, op in actions.items() if op and op[0] == "PASS"] + list(free)
         for task in urgent:
             if not movable:
                 break
@@ -425,6 +514,9 @@ def assign(view, plan, tasks):
             if try_execute(idx, task):
                 movable.remove(idx)
                 free.discard(idx)
+
+    _count_moves(actions, _seen, "survival")
+    _seen = set(actions)
 
     # ---- 6. Whoever is left: stage toward own zone / end-of-day shed --------
     for idx in list(free):
@@ -446,5 +538,6 @@ def assign(view, plan, tasks):
             else:
                 actions[idx] = ["PASS"]
         free.discard(idx)
+    _count_moves(actions, _seen, "stage")
 
     return actions

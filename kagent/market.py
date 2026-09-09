@@ -1,6 +1,8 @@
 """Market controller: builds the (priority-ordered, <=10) market order list."""
 
-from kagent.constants import ANIMALS, CROPS, MARKET_PARAMS, MAX_MARKET_ORDERS
+from kagent.constants import (
+    ANIMALS, CROPS, LAND_ORDER, LAND_PRICES, MARKET_PARAMS, MAX_MARKET_ORDERS,
+)
 from kagent import econ
 from kagent.planner import FINAL_STEP
 
@@ -41,22 +43,26 @@ def build_orders(view, plan, memory):
         wheat_stock = view.shed.get("WHEAT", 0) + sum(
             view.unit_inv(i).get("WHEAT", 0) for i, _, _ in view.me.units
         )
-        deficit = animals - wheat_stock
-        hungry_now = sum(
-            1
-            for _, _, t in view.me.animals()
-            if not t.get("fed_today") and t.get("consecutive_unfed", 0) >= 1
-        )
-        # Don't chase a self-inflicted wheat price spiral for buffer stock;
-        # survival feeds are bought at any price.
-        pricey = view.market_prices.get("WHEAT", 25) > 40
-        if deficit > 0 and money > 100 and (hungry_now > wheat_stock or not pricey):
-            add(["BUY_PRODUCT", "WHEAT", min(deficit, 15)])
+        # Stock today's feed plus tomorrow morning's: an unfed animal skips a
+        # $100-200 production and escapes after two dry days, so feed is
+        # bought at any sane price, down to the last dollar (champions buy
+        # 370-480 units a game at $25-50).
+        target = animals if view.day >= 28 else 2 * animals
+        deficit = target - wheat_stock
+        price = view.market_prices.get("WHEAT", 25)
+        affordable = int(money // max(1.0, price))
+        if deficit > 0 and affordable > 0 and price <= 120:
+            add(["BUY_PRODUCT", "WHEAT", min(deficit, 15, affordable)])
+            money -= min(deficit, 15, affordable) * price
 
-    # --- Land ----------------------------------------------------------------
+    # --- Land (bought the turn it becomes affordable) -------------------------
     remaining_land = []
-    for quad in plan.land_buys:
-        if not add(["BUY_LAND"]):
+    owned = sum(1 for q in LAND_ORDER if q in view.me.unlocked_quadrants)
+    for i, quad in enumerate(plan.land_buys):
+        idx = min(owned + i, len(LAND_PRICES) - 1)
+        if money >= LAND_PRICES[idx] + 100 and add(["BUY_LAND"]):
+            money -= LAND_PRICES[idx]
+        else:
             remaining_land.append(quad)
     plan.land_buys = remaining_land
 
@@ -110,6 +116,9 @@ def _sell_orders(view, plan, memory):
             stock += sum(view.unit_inv(i).get(item, 0) for i, _, _ in view.me.units)
         if item == "WHEAT":
             stock = max(0, stock - plan.wheat_reserve)
+        if item == "FERTILIZER":
+            # Keep what today's FERTILIZE tasks need (strawberry doubling).
+            stock = max(0, stock - plan.fert_reserve)
         if stock <= 0:
             continue
         floor = 1 if (pressure and stock >= 10) else floors.get(item, 1)

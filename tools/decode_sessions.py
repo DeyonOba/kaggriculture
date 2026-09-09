@@ -217,7 +217,7 @@ def report(out):
     for r in rows:
         if r["kind"] == "ours":
             groups["OURS vs " + LABELS[rating_bin(r["opp_rating"] or 0)]].append(r)
-        elif r["rating"] is not None:
+        elif r["kind"] == "recorded" and r["rating"] is not None:
             groups[LABELS[rating_bin(r["rating"])]].append(r)
     order = LABELS + sorted(k for k in groups if k.startswith("OURS"))
     for g in order:
