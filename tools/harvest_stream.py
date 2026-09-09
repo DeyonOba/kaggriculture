@@ -100,6 +100,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed-subs", required=True)
     ap.add_argument("--min-score", type=float, default=2200.0)
+    ap.add_argument("--max-score", type=float, default=99999.0, help="frontier band upper bound")
     ap.add_argument("--max-subs", type=int, default=40)
     ap.add_argument("--per-sub", type=int, default=30)
     ap.add_argument("--min-reward", type=float, default=15000.0)
@@ -137,7 +138,7 @@ def main():
         for ep in episodes:
             for a in ep.get("agents", []):
                 sid, score = a.get("submissionId"), a.get("initialScore") or 0
-                if sid and sid not in visited and sid not in frontier and score >= args.min_score:
+                if sid and sid not in visited and sid not in frontier and args.min_score <= score < args.max_score:
                     frontier.append(sid)
             if taken >= args.per_sub or ep["id"] in seen:
                 continue

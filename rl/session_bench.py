@@ -87,7 +87,7 @@ def bench_job(job):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["fidelity", "bench"])
+    ap.add_argument("mode", choices=["fidelity", "bench", "ladder"])
     ap.add_argument("--agent", default="arena/agents/rl-v9/main.py")
     ap.add_argument("--n", type=int, default=12)
     ap.add_argument("--procs", type=int, default=10)
@@ -96,6 +96,41 @@ def main():
 
     paths = sorted(glob.glob(os.path.join(SESS_DIR, "session-*.json")))
     random.Random(args.seed).shuffle(paths)
+
+    if args.mode == "ladder":
+        # Rating ladder: our agent vs each RATED recorded side's script on its
+        # world, win rate binned by that opponent's rating at game time.
+        edges = [(0, 600), (600, 1000), (1000, 1500), (1500, 2000), (2000, 2500), (2500, 99999)]
+        labels = ["<600", "600-1000", "1000-1500", "1500-2000", "2000-2500", "2500+"]
+        per_bin = {i: [] for i in range(len(edges))}
+        for p in paths:
+            s = json.load(open(p))
+            sc = s.get("scores") or [None, None]
+            for script_side in (0, 1):
+                r = sc[script_side]
+                if r is None:
+                    continue
+                b = next(i for i, (lo, hi) in enumerate(edges) if lo <= r < hi)
+                if len(per_bin[b]) < args.n:
+                    per_bin[b].append((p, args.agent, 1 - script_side))
+        jobs = [j for b in per_bin for j in per_bin[b]]
+        with Pool(args.procs) as pool:
+            results = pool.map(bench_job, jobs)
+        idx = 0
+        print(f"agent: {args.agent}\nRATING LADDER (our win rate vs opponent rating bin):")
+        for b in range(len(edges)):
+            n_b = len(per_bin[b])
+            rows = results[idx: idx + n_b]
+            idx += n_b
+            if not rows:
+                print(f"  {labels[b]:>10}: (no rated sessions yet)")
+                continue
+            w = sum(r["win"] for r in rows)
+            us = sum(r["us"] for r in rows) / n_b
+            them = sum(r["script"] for r in rows) / n_b
+            print(f"  {labels[b]:>10}: win-rate={w/n_b:.2f} ({w}/{n_b})  us=${us:,.0f} them=${them:,.0f}")
+        return
+
     paths = paths[: args.n]
 
     if args.mode == "fidelity":

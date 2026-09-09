@@ -202,22 +202,32 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
     sessions = sorted(_glob.glob("rl/datasets/sessions/session-*.json"))
     train_sessions = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 != 0]
     held_out = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 == 0]
-    # Difficulty bins by the SCRIPT side's recorded final (worst-case: the
-    # stronger seat). Curriculum climbs bins as each is mastered.
-    BIN_EDGES = (60_000, 85_000, 110_000)
-
-    def _session_bin(path):
-        f = max(json.load(open(path))["finals"])
-        for b, edge in enumerate(BIN_EDGES):
-            if f < edge:
-                return b
-        return len(BIN_EDGES)
-
-    session_bin = {p: _session_bin(p) for p in train_sessions}
-    bins = [[p for p in train_sessions if session_bin[p] == b] for b in range(4)]
-    bin_wins = [[1, 2] for _ in range(4)]  # laplace-smoothed rolling [wins, games]
+    # RATING-BIN curriculum (user design): each rated recorded side is a
+    # (session, script_side) entry binned by that opponent's rating at game
+    # time. Frontier = first bin with rolling win rate < 0.55; rl-v9 ladder:
+    # 0.85 / 0.10 / 0 / 0 / 0 / 0 -> frontier is the 600-1000 bin.
+    EDGES = [(0, 600), (600, 1000), (1000, 1500), (1500, 2000), (2000, 2500), (2500, 99999)]
+    NB = len(EDGES)
+    entries = []          # (path, script_side, bin)
+    unrated = []          # (path, winner script_side)
+    for p in train_sessions:
+        s = json.load(open(p))
+        sc = s.get("scores") or [None, None]
+        any_rated = False
+        for ss in (0, 1):
+            r = sc[ss]
+            if r is None:
+                continue
+            any_rated = True
+            b = next(i for i, (lo, hi) in enumerate(EDGES) if lo <= r < hi)
+            entries.append((p, ss, b))
+        if not any_rated:
+            unrated.append((p, 0 if s["finals"][0] >= s["finals"][1] else 1))
+    bins = [[e for e in entries if e[2] == b] for b in range(NB)]
+    bin_wins = [[1, 2] for _ in range(NB)]
+    entry_bin = {(p, ss): b for p, ss, b in entries}
     print(f"session pool: {len(train_sessions)} train / {len(held_out)} held-out; "
-          f"bins={[len(b) for b in bins]}")
+          f"rating-bins={[len(b) for b in bins]} unrated={len(unrated)}")
     # Gates: the heuristic plus every incumbent bundle. Training against ONE
     # static incumbent breeds a brittle exploiter (measured: a v3 < rl-v1 <
     # exploiter < v3 cycle). Selection is PROFIT-first: mean final money
@@ -237,17 +247,15 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             roll = rng.random()
             side = e % 2
             if train_sessions and roll < 0.50:
-                # Curriculum: 70% mass on the first unmastered bin, rest uniform.
+                # Curriculum: 70% mass on the frontier rating bin, 30% anywhere.
                 rates = [w / g for w, g in bin_wins]
-                frontier = next((b for b in range(4) if bins[b] and rates[b] < 0.55), None)
+                frontier = next((b for b in range(NB) if bins[b] and rates[b] < 0.55), None)
                 if frontier is not None and rng.random() < 0.7:
-                    pool_b = bins[frontier]
+                    path, script_side, _ = rng.choice(bins[frontier])
+                elif entries and (not unrated or rng.random() < 0.8):
+                    path, script_side, _ = rng.choice(entries)
                 else:
-                    pool_b = train_sessions
-                path = rng.choice(pool_b)
-                # Face the STRONGER recorded seat (the winner's script).
-                s = json.load(open(path))
-                script_side = 0 if s["finals"][0] >= s["finals"][1] else 1
+                    path, script_side = rng.choice(unrated)
                 opp = ("session", path, script_side)
                 side = 1 - script_side
             elif opp_bundles and roll < 0.70:
@@ -268,7 +276,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
         for ep, j in zip(episodes_out, jobs):
             o = j["opponent"]
             if isinstance(o, tuple) and o[0] == "session":
-                b = session_bin.get(o[1])
+                b = entry_bin.get((o[1], o[2]))
                 if b is not None:
                     bin_wins[b][0] += ep["win"]
                     bin_wins[b][1] += 1

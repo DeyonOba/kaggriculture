@@ -1,0 +1,35 @@
+sub 56079070: +12 games (total 12 games, 600 samples, frontier 22)
+sub 55577426: +12 games (total 24 games, 1230 samples, frontier 180)
+sub 55392100: +12 games (total 36 games, 1950 samples, frontier 202)
+sub 55773716: +12 games (total 48 games, 2610 samples, frontier 233)
+sub 56082749: +12 games (total 60 games, 3330 samples, frontier 253)
+sub 55911633: +12 games (total 72 games, 4020 samples, frontier 322)
+sub 55980309: +12 games (total 84 games, 4740 samples, frontier 367)
+sub 56076227: +12 games (total 96 games, 5460 samples, frontier 383)
+
+DONE: 96 games, 5460 outcome-labeled samples -> rl/datasets/field
+sub 56082749: +4 games (total 4 games, 240 samples, frontier 20)
+sub 56092241: +12 games (total 16 games, 960 samples, frontier 33)
+sub 56091666: +12 games (total 28 games, 1590 samples, frontier 32)
+sub 56118875: +12 games (total 40 games, 2310 samples, frontier 38)
+sub 56116760: +12 games (total 52 games, 3000 samples, frontier 61)
+sub 56108624: +12 games (total 64 games, 3720 samples, frontier 71)
+sub 56036961: +12 games (total 76 games, 4440 samples, frontier 119)
+sub 56089018: +12 games (total 88 games, 5160 samples, frontier 121)
+
+DONE: 88 games, 5160 outcome-labeled samples -> rl/datasets/field
+sub 55930784: +12 games (total 12 games, 720 samples, frontier 152)
+sub 56090356: +12 games (total 24 games, 1440 samples, frontier 187)
+sub 56089025: +12 games (total 36 games, 2160 samples, frontier 197)
+sub 56106653: +12 games (total 48 games, 2880 samples, frontier 254)
+sub 55946212: +12 games (total 60 games, 3600 samples, frontier 400)
+sub 55746198: +12 games (total 72 games, 4320 samples, frontier 494)
+sub 56114411: +12 games (total 84 games, 5040 samples, frontier 497)
+sub 55771148: +12 games (total 96 games, 5760 samples, frontier 560)
+
+DONE: 96 games, 5760 outcome-labeled samples -> rl/datasets/field
+sub 56065741: +12 games (total 12 games, 690 samples, frontier 124)
+sub 56052280: +12 games (total 24 games, 1410 samples, frontier 393)
+sub 56062057: +12 games (total 36 games, 2130 samples, frontier 557)
+sub 56062132: +12 games (total 48 games, 2820 samples, frontier 749)
+sub 56085106: +12 games (total 60 games, 3540 samples, frontier 752)
