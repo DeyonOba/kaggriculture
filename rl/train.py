@@ -380,9 +380,20 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             # Held-out sessions: the honest field-difficulty gate (rl-v9
             # baseline: 8%). Weighted heaviest in selection — this is the
             # primary track.
+            # Bin-stratified held-out eval: up to 3 rated opponents per rating
+            # bin so low-bin mastery is visible, not drowned by champion games.
+            strat, per_bin_n = [], [0] * NB
+            for sp in held_out:
+                s_ = json.load(open(sp))
+                for ss, r in enumerate(s_.get("scores") or [None, None]):
+                    if r is None:
+                        continue
+                    b = next(i for i, (lo, hi) in enumerate(EDGES) if lo <= r < hi)
+                    if per_bin_n[b] < 3:
+                        per_bin_n[b] += 1
+                        strat.append((sp, ss))
             sess_jobs = []
-            for k, sp in enumerate(held_out[:14]):
-                script_side = k % 2
+            for k, (sp, script_side) in enumerate(strat):
                 sess_jobs.append({
                     "weights_path": os.path.join(run_dir, "eval.json"),
                     "temperature": 0.0, "seed": 0, "side": 1 - script_side,

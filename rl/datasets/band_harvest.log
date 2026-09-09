@@ -33,3 +33,19 @@ sub 56052280: +12 games (total 24 games, 1410 samples, frontier 393)
 sub 56062057: +12 games (total 36 games, 2130 samples, frontier 557)
 sub 56062132: +12 games (total 48 games, 2820 samples, frontier 749)
 sub 56085106: +12 games (total 60 games, 3540 samples, frontier 752)
+sub 56084355: +12 games (total 72 games, 4260 samples, frontier 768)
+sub 56082733: +12 games (total 84 games, 4980 samples, frontier 888)
+sub 56024444: +12 games (total 96 games, 5670 samples, frontier 1083)
+
+DONE: 96 games, 5670 outcome-labeled samples -> rl/datasets/field
+sub 56079600: +12 games (total 12 games, 720 samples, frontier 49)
+sub 55722794: +12 games (total 24 games, 1440 samples, frontier 286)
+sub 55755642: +12 games (total 36 games, 2160 samples, frontier 362)
+sub 56083706: +12 games (total 48 games, 2880 samples, frontier 466)
+sub 56093240: +12 games (total 60 games, 3600 samples, frontier 481)
+sub 56092540: +12 games (total 72 games, 4320 samples, frontier 585)
+sub 56087161: +12 games (total 84 games, 5040 samples, frontier 699)
+sub 56090538: +12 games (total 96 games, 5760 samples, frontier 732)
+
+DONE: 96 games, 5760 outcome-labeled samples -> rl/datasets/field
+BAND HARVEST DONE
