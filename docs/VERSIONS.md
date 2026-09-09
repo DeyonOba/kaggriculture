@@ -9,6 +9,56 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h1 — decoded champion playbook (2026-09-09, submitted id 56128207)
+
+**Why it exists.** The rating ladder (`rl/session_bench.py ladder --heldout`: our win rate vs
+recorded opponents replayed on their true worlds, binned by the opponent's Kaggle rating) read
+identically for rl-v9 and for g13, the 200-iteration rating-curriculum run: 0.83 / 0.08 / 0 /
+0 / 0 / 0. Opponents rated 1000+ earned $104–145k on their worlds while we earned $51–54k on
+the same worlds. Training was not the constraint; the economy the executor could express was.
+
+**Decode.** `tools/decode_sessions.py` replays harvested sessions (exact fidelity) and logs
+both sides' per-day state and clipped cash flow. The 1500+/2500+ profile ($117k): 2 cows +
+2 sheep + 12 melon + 7 wheat on day 0; days 1–5 live on animal fertilizer ($400–590/day —
+every animal yields one unit nightly, fed or not); the day-6 wool pays for the first quadrant
+the same day; milk day 8; melons day 10 ($12–15k); second quadrant day 10–11; 33 strawberries
+by day 12; 8 cows + 7–9 sheep by day 10–14 bought before demand is revealed; 20–30 standing
+wheat tiles replanted every 4 days (600 units, $25k); 55 of ~58 plantable tiles standing days
+14–26; 12–19 carrots planted days 22–27. rl-v9 on the same worlds: 1 cow on day 0, no sheep
+until a yarn shop appears, land on day 10–11, income under $1k/day on days 11–16 vs their
+$4–5k/day, 34 → 23 tiles after day 14.
+
+**Architecture.** `planner.make_champion_plan` replaces the old speculative BC teacher and
+runs as the primary policy when the bundle carries `CHAMPION_PLAN = True`
+(`rl/export.py --clear --champion --freeze champ-h1`); the reactive planner stays the
+SafeAgent fallback. Executor changes, each found by an hour-by-hour trace of the champion plan
+on a champion world:
+
+| Symptom (traced) | Fix |
+|---|---|
+| Cow carried around for 3 days, pasture empty | animal carriers place first, anywhere |
+| Herd starved at $3 cash on days 1–4 | fertilizer is cash: no wheat/carrot fertilizing at base price, shed trips at ≤2 units early; feed bought at any price ≤ $120 down to the last dollar |
+| Land bought day 9–11 although wool cash arrives day 6 mid-day | land is a standing wish; the market controller buys the turn it is affordable |
+| 20–27 empty tiles with seeds in stock, 0–7 plantings/day | watering only where the engine pays (one-shot growth window, fertilized production night, survival); planting tasks on every empty tile with the quota enforced at execution |
+| 200 moves for 60 actions a day | zone-local wheat/fertilizer provisioning; survival override pulls only idle units; even zone split (12 hands had 11 zones) |
+| Fertilizer sold before FERTILIZE tasks could use it | `plan.fert_reserve` from the task list |
+| Herd starving late at $40k cash | two days of feed stock, no "pricey" guard |
+| Strawberry seeds beat cows to mid-day cash | animal buys planned as full deficits (market buys animals before seeds) |
+
+**Benchmarks.** Solo on 8 champion worlds: $80.4k (rl-v9 $57k). Arena vs rl-v9, 20 games on
+fresh seeds 7000+: **20–0, $100,345 mean / $119,824 max** vs $59,182. Mirror: symmetric
+$57–97k. Held-out rating ladder: **1.00 / 0.75 / 0.08 / 0.00 / 0.00 / 0.33**. p99 turn
+0.32 ms. Labor on day 18: 109–121 productive actions (champions 113–156), 143–165 moves
+(champions 123–160).
+
+**Remaining gaps vs the $117k profile.** Wool $17k vs $35–40k (sheep reach 4 on day 10 vs
+their 6; 2 sheep from day 0 give champions 8 productions each), wheat 382 vs 600 units,
+carrots $3k vs $5–13k, 5–8 animals unfed at night on days 18–26, milk $22k vs $29k.
+
+**Lessons.** Trace before tuning: every executor defect here was invisible in aggregates and
+obvious in a per-unit hourly table. Fertilizer is the bootstrap currency. Watering everything
+daily is the single largest labor waste in this engine.
+
 ## Scripted lineage (heuristic planner)
 
 The scripted agents share one architecture (`kagent/`): a **day-level planner** (quotas, buys,

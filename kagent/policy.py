@@ -20,6 +20,14 @@ from kagent.weights import WEIGHTS_DATA
 # In a bundle, the weights module body shares this namespace, so an exported
 # MPC flag lands in globals(); dev mode and legacy weights default to False.
 MPC_ENABLED = globals().get("MPC_ENABLED", False)
+# Champion-plan bundles run the decoded champion playbook (planner.
+# make_champion_plan) as the primary policy, weights or not.
+CHAMPION_PLAN = globals().get("CHAMPION_PLAN", False)
+
+
+class ChampionPlanProvider:
+    def make_plan(self, view, memory):
+        return planner.make_day_plan(view, memory, speculative=True)
 
 
 class HeuristicPolicy:
@@ -127,7 +135,9 @@ class SafeAgent:
 
 
 _LAYERS = decode_weights(WEIGHTS_DATA)
-if _LAYERS is not None:
+if CHAMPION_PLAN:
+    _AGENT = SafeAgent(HeuristicPolicy(ChampionPlanProvider()), fallback=HeuristicPolicy())
+elif _LAYERS is not None:
     _provider_cls = MPCPlanProvider if MPC_ENABLED else NeuralPolicy
     _AGENT = SafeAgent(
         HeuristicPolicy(_provider_cls(_LAYERS)), fallback=HeuristicPolicy()

@@ -4,6 +4,34 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## champ-h1 — 2026-09-09 · SUBMITTED · decoded champion playbook (heuristic)
+
+The session-replay track's rating ladder showed rl-v9 and every trained successor
+(g10–g13) frozen at 0.83 / 0.08 / 0 / 0 / 0 / 0 win rate against recorded opponents
+binned by Kaggle rating — a ~600-rated economy that no training signal moved. So this
+version comes from **decoding what 1500+/2500+ players do** (`tools/decode_sessions.py`
+replays 683 harvested sessions on their true seeds and profiles both sides per day) and
+fixing the executor until it could express that playbook.
+
+- **Playbook** (`planner.make_champion_plan`): day 0 = 2 cows + 2 sheep + 12 melon + 7 wheat;
+  days 1–5 funded by animal fertilizer (~$100/unit, produced fed or not); first quadrant
+  bought the turn the day-6 wool lands; strawberries 18 → 33 by day 13 (fertilized: 2 units
+  per production); 8 cows / 8 sheep by day 10–14 bought before demand is revealed; a 28-tile
+  rolling wheat engine; carrots on freed tiles from day 22.
+- **Executor fixes found by hour-by-hour tracing**: animal carriers place first (a cow was
+  hauled around for 3 days); fertilizer treated as cash (no wheat/carrot fertilizing at base
+  price, early shed trips, reserve for strawberry tasks); feed bought at any sane price with
+  two days of stock (the herd starved at $40k cash behind a "pricey" guard); watering only
+  where the engine pays (growth window / fertilized production night / survival) — daily
+  watering had starved planting of labor; zone-local wheat/fertilizer provisioning; planting
+  tasks on every empty tile; even zone split (12 hands had 11 zones); survival override only
+  pulls idle units (it was re-targeting walking hands every turn: 200 moves per 60 actions).
+- **Results**: solo on champion worlds $80.4k (rl-v9: $57k there); arena vs rl-v9 **20–0**,
+  **$100,345 mean / $119,824 max** vs $59,182; held-out rating ladder
+  **1.00 / 0.75 / 0.08 / 0.00 / 0.00 / 0.33**; p99 turn 0.32 ms.
+- Next: this heuristic becomes the BC teacher; remaining gaps vs $117k champions are sheep
+  timing (wool $17k vs $35k+), wheat volume (382 vs 600 units), and late-game feeding.
+
 ## rl-v5 — 2026-08-28 · SUBMITTED (id 55853641) · profit champion
 
 Generation-5 **speculative-invest planner**, built from the decoded leaderboard meta.
