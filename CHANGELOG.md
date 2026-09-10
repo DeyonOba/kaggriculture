@@ -4,7 +4,26 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
-## champ-h1 — 2026-09-09 · SUBMITTED · decoded champion playbook (heuristic)
+## champ-h2 — 2026-09-10 · SUBMITTED · animal chores first, champion sheep ramp
+
+Pure heuristic (no neural net), same playbook as champ-h1 with the three levers the decode
+left open — feeding, sheep, wheat — after tracing nightly fed/cared coverage per animal.
+
+- **Feed/care above routine watering** (`P_ANIMAL = 1.5`). Engine: a fed+cared production
+  yields 1 + banked care days (a sheep cared for 3 days gives 4 wool, not 1) and an *unfed*
+  production night forfeits the whole bank. Coverage was 9–11 of 16 animals on days 16–28;
+  now 14–16 of 16.
+- **Two-pass zone round**: real work in your zone, then real work anywhere, then filler
+  watering. Pastures are built centre-first, so 16 animals sat in 2–3 overloaded zones while
+  other hands watered plants that weren't due.
+- Sheep ramp at the recorded pace (4 by day 8, 6 by day 10, 8 by day 12); wheat engine 32.
+- **Results**: solo on champion worlds $80.4k → $83.9k; wool $17k/116u → **$32k/162u**
+  (champion range $35–44k); arena vs champ-h1 **16–4** (p = 0.012), $79.3k vs $76.0k, max
+  $115.9k; held-out ladder 1.00 / 0.75 / 0.00 / 0.08 / 0.00 / 0.17 (unchanged within noise).
+- Still open vs the $117k profile: milk $21k vs $29k (181 vs 224–265 units), wheat 372 vs
+  600 units (labor-bound), 1000–2500 rating bins still ~0.
+
+## champ-h1 — 2026-09-09 · SUBMITTED (id 56128207, rated 690 after 24h) · decoded champion playbook (heuristic)
 
 The session-replay track's rating ladder showed rl-v9 and every trained successor
 (g10–g13) frozen at 0.83 / 0.08 / 0 / 0 / 0 / 0 win rate against recorded opponents

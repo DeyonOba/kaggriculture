@@ -9,7 +9,28 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
-## champ-h1 — decoded champion playbook (2026-09-09, submitted id 56128207)
+## champ-h2 — animal chores first (2026-09-10, submitted)
+
+Same playbook and executor as champ-h1; three changes from tracing nightly per-animal
+fed/cared state on a champion world (fed 11/15 and cared 9/15 on day 16, 9/16 on day 24):
+
+- `scheduler.P_ANIMAL = 1.5` for FEED and CARE — between harvest and tend. Engine rule: on a
+  production night an animal yields `1 + pending_care_bonus` (one banked per fed+cared day,
+  cap `max_held`) **only if fed that day**; otherwise the bank is zeroed. So an unfed sheep
+  loses 3 wool, not 1.
+- Zone round split into passes: (1) own-zone tasks below filler priority (animal deliveries
+  first), (2) any task below filler anywhere, (3) filler watering in own zone then anywhere.
+  Fixes the workload skew from centre-first pasture placement.
+- `_champ_herd_targets`: sheep `2 + (day − 6)` from day 7 (4/6/8 by days 8/10/12);
+  `CHAMP_WHEAT_ENGINE = 32`.
+
+Benchmarks: solo on champion worlds $83.9k (h1 $80.4k); wool $32,064 / 162 units (h1 $16,960 /
+116); nightly coverage 14–16 of 16; arena vs champ-h1 20 games seeds 9000+: 16–4, $79,320 vs
+$76,034, max $115,856; held-out ladder 1.00 / 0.75 / 0.00 / 0.08 / 0.00 / 0.17; moves 147–190
+for 84–105 actions per day (cross-zone help costs ~35–55 moves). Open: milk 181 vs 224–265
+units, wheat 372 vs 600 units.
+
+## champ-h1 — decoded champion playbook (2026-09-09, submitted id 56128207, rated 690 after 24h)
 
 **Why it exists.** The rating ladder (`rl/session_bench.py ladder --heldout`: our win rate vs
 recorded opponents replayed on their true worlds, binned by the opponent's Kaggle rating) read
