@@ -1,0 +1,47 @@
+{
+  "dataset": "gideonoba/kaggriculture-datasets",
+  "artifacts": {
+    "sessions.tar.gz": {
+      "source": "sessions",
+      "count": 683,
+      "raw_bytes": 187652799,
+      "bytes": 12035617,
+      "sha256": "6ef3aa97bcbde6585d6bee42731e2e00f32994c31261a34050c84b3321ab686e"
+    },
+    "field-samples.jsonl.gz": {
+      "source": "field/samples.jsonl",
+      "count": 99660,
+      "raw_bytes": 217797516,
+      "bytes": 30778241,
+      "sha256": "0ea2a61daabfe9797098d44afe0603937825e8927653fc52d7bb290e0fe20764"
+    },
+    "field-stats.jsonl.gz": {
+      "source": "field/stats.jsonl",
+      "count": 3344,
+      "raw_bytes": 495508,
+      "bytes": 97882,
+      "sha256": "8096b0af1607f3d5e3e1ba844f641f1ffe6a60a739722eff170224d8162d1eb8"
+    },
+    "field-seen.txt.gz": {
+      "source": "field/seen.txt",
+      "count": 1674,
+      "raw_bytes": 15869,
+      "bytes": 6601,
+      "sha256": "58328f1007c5ed4db6ded07686b798af2897c5fcd9a114675f0e5a3b730568ea"
+    },
+    "champions.jsonl.gz": {
+      "source": "champions.jsonl",
+      "count": 11430,
+      "raw_bytes": 24466819,
+      "bytes": 3526742,
+      "sha256": "2884f99d7576aa3ad8c9e173b047ecac20388b8d1c9cff190d5c16fa6643ffa1"
+    },
+    "decode-profiles.jsonl.gz": {
+      "source": "decode/profiles.jsonl",
+      "count": 154,
+      "raw_bytes": 2166223,
+      "bytes": 226375,
+      "sha256": "9206477792d045ee00fafe794c3ff19ff14914251230215635b0c247f007fef1"
+    }
+  }
+}

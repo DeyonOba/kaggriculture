@@ -19,5 +19,10 @@ replays/
 
 # Training runs (weights snapshots are large; champions live in kagent/weights.py + arena/agents/)
 rl/runs/
+
+# Datasets live in a Kaggle Dataset (tools/data.py); only the manifest + README are tracked
+rl/datasets/*
+!rl/datasets/README.md
+!rl/datasets/MANIFEST.json
 *.pt
 nohup.out
