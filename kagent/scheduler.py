@@ -17,6 +17,7 @@ from kagent.planner import FINAL_STEP
 # Task priorities (lower = more urgent).
 P_SURVIVAL = 0
 P_HARVEST = 1
+P_ANIMAL = 1.5   # feed/care: a fed+cared production is 3-4x a bare one
 P_TEND = 2
 P_GROW = 3
 P_FILLER = 5
@@ -164,7 +165,7 @@ def build_tasks(view, plan):
             # Feed EVERY animal EVERY day: the CARE bonus (banked only on
             # fed+cared days, paid only on fed production days) is what turns
             # 0.5 milk/cow/day into ~1.5. Survival cases stay hard-urgent.
-            pri = P_SURVIVAL if t.get("consecutive_unfed", 0) >= 1 else P_TEND
+            pri = P_SURVIVAL if t.get("consecutive_unfed", 0) >= 1 else P_ANIMAL
             tasks.append(Task(pri, x, y, ["FEED"], need="WHEAT"))
         if feeding_day and t.get("fed_today") and not t.get("cared_today") and day < 28:
             # Crash-pivot: caring boosts output we cannot profitably sell when
@@ -175,7 +176,7 @@ def build_tasks(view, plan):
                 or view.market_prices.get(product, 999) >= 0.35 * MARKET_PARAMS[product]["base"]
             )
             if price_ok:
-                tasks.append(Task(P_TEND, x, y, ["CARE"]))
+                tasks.append(Task(P_ANIMAL, x, y, ["CARE"]))
         if t.get("fertilizer_available"):
             tasks.append(Task(P_TEND, x, y, ["COLLECT_FERTILIZER"]))
         held = t.get("yield_units", 0)
@@ -439,54 +440,58 @@ def assign(view, plan, tasks):
     # day 0-3). Wheat/fertilizer deliveries stay inside the zone round.
     need_tasks = [t for t in tasks if t.need in ("GOOSE", "COW", "SHEEP")]
 
-    for idx in sorted(free):
-        z = idx % n_zones
+    def pick(idx, pool, lo, hi):
+        """Nearest best-priority executable task in pool with lo <= pri < hi."""
         x, y = units[idx]
         inv = view.unit_inv(idx)
-        deliveries = [
-            t for t in need_tasks
-            if inv.get(t.need, 0) >= 1 and (t.x, t.y, t.op[0]) not in claimed
-        ]
-        pool = deliveries if deliveries else zone_tasks.get(z, [])
         best = None
         for task in pool:
+            if not (lo <= task.pri < hi):
+                continue
             key = (task.x, task.y, task.op[0])
             if key in claimed:
                 continue
-            if task.need and view.unit_inv(idx).get(task.need, 0) < 1:
+            if task.need and inv.get(task.need, 0) < 1:
                 continue
-            d = _dist(x, y, task.x, task.y)
-            score = (task.pri, d)
+            score = (task.pri, _dist(x, y, task.x, task.y))
             if best is None or score < best[0]:
                 best = (score, task)
-        if best and try_execute(idx, best[1]):
-            free.discard(idx)
+        return best[1] if best else None
 
-    _count_moves(actions, _seen, "zone")
-    _seen = set(actions)
-
-    # ---- 4. Idle units help: nearest unclaimed task anywhere ----------------
     all_tasks = sorted(
         (t for pool in zone_tasks.values() for t in pool),
         key=lambda t: (t.pri, t.y, t.x),
     )
-    for idx in sorted(free):
-        x, y = units[idx]
-        best = None
-        for task in all_tasks + global_tasks:
-            key = (task.x, task.y, task.op[0])
-            if key in claimed:
-                continue
-            if task.need and view.unit_inv(idx).get(task.need, 0) < 1:
-                continue
-            d = _dist(x, y, task.x, task.y)
-            score = (task.pri, d)
-            if best is None or score < best[0]:
-                best = (score, task)
-        if best and try_execute(idx, best[1]):
-            free.discard(idx)
 
+    # Pass 1 — own zone, real work (below filler): animal deliveries first.
+    for idx in sorted(free):
+        inv = view.unit_inv(idx)
+        deliveries = [t for t in need_tasks if inv.get(t.need, 0) >= 1]
+        task = pick(idx, deliveries, P_SURVIVAL, P_FILLER) if deliveries else None
+        if task is None:
+            task = pick(idx, zone_tasks.get(idx % n_zones, []), P_SURVIVAL, P_FILLER)
+        if task is not None and try_execute(idx, task):
+            free.discard(idx)
+    _count_moves(actions, _seen, "zone")
+    _seen = set(actions)
+
+    # Pass 2 — real work anywhere: animal-heavy zones (pastures cluster near
+    # the shed) get help before anyone waters a plant that is not due.
+    for idx in sorted(free):
+        task = pick(idx, all_tasks + global_tasks, P_SURVIVAL, P_FILLER)
+        if task is not None and try_execute(idx, task):
+            free.discard(idx)
     _count_moves(actions, _seen, "idlehelp")
+    _seen = set(actions)
+
+    # Pass 3 — filler work: own zone, then anywhere.
+    for idx in sorted(free):
+        task = pick(idx, zone_tasks.get(idx % n_zones, []), P_FILLER, 99)
+        if task is None:
+            task = pick(idx, all_tasks + global_tasks, P_FILLER, 99)
+        if task is not None and try_execute(idx, task):
+            free.discard(idx)
+    _count_moves(actions, _seen, "filler")
     _seen = set(actions)
 
     # ---- 5. Survival override: nothing urgent goes unserved -----------------

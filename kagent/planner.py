@@ -227,7 +227,7 @@ def make_day_plan(view, memory, speculative=False):
 CHAMP_OPENING = {"MELON": 12, "WHEAT": 7}
 CHAMP_STRAW_TARGET = 33
 CHAMP_STRAW_EARLY = 18          # before the day-10 melon money
-CHAMP_WHEAT_ENGINE = 28
+CHAMP_WHEAT_ENGINE = 32
 CHAMP_CARROT_DAY = 22           # from here freed tiles go to 2-day carrots
 CHAMP_LAND_BUYS = 2             # champions never bought the $4000 quadrant
 CHAMP_LAND_DAY = 5
@@ -238,7 +238,8 @@ CHAMP_HIRES = [5, 4, 4, 5, 4, 5, 7, 9, 9, 10,
 
 def _champ_herd_targets(day):
     cow = 2 if day < 3 else min(8, 2 + (day - 2))
-    sheep = 2 if day < 8 else min(8, 2 + (day - 7))
+    # Recorded pace: 4 sheep by day 8, 6 by day 10, 8 by day 12-14.
+    sheep = 2 if day < 7 else min(8, 2 + (day - 6))
     return {
         "GOOSE": 0,
         "COW": cow if day <= 18 else 0,
