@@ -4,7 +4,30 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
-## champ-h2 — 2026-09-10 · SUBMITTED · animal chores first, champion sheep ramp
+## champ-h3 experiments — 2026-09-10 · not shipped (negative results)
+
+Milk and labor were the next levers after champ-h2; each candidate was measured on **24
+paired champion worlds** (same sessions, same seats) against the shipped champ-h2, with
+hooks that reproduce champ-h2 exactly (+$0) as the control. Per-world outcomes swing by
+±$30k between near-identical policies (paired s.d. ≈ $26–28k; arena s.d. ≈ $17k), so 8-world
+readings earlier in the day ($88k) were noise.
+
+| Candidate | Δ vs champ-h2 (24 paired worlds) | Verdict |
+|---|---|---|
+| cows before sheep in the buy order | −$6.0k ± 2.5k (better 6/24) | breaks the day-6 wool → land bootstrap |
+| workload-weighted zones (pasture tiles ×4) | −$2.2k ± 5.0k | neutral; state-based weights drifted zones mid-day and starved a sheep |
+| cash reserve for the first quadrant | −$4.9k to −$8.9k | delays the cow ramp |
+| care skipped below 15% of base (was 35%) | +$0.2k ± 1.1k | neutral |
+| melon window-watering at harvest priority | melon avg price unchanged (~$170–230) | the shared price is set by the opponent's day-10 dump |
+| demand-conditional crops (strawberries scaled to consumers, standing carrots/tomatoes) + 3 geese in egg worlds | +$3.7k ± 4.9k | geese cost −$30k in the worlds that bought them: their daily feed/care/collect/egg load broke the cow/sheep care regime |
+| same without geese | +$3.4k ± 5.3k (16/24); **arena vs champ-h2 12–18**, $79.8k vs $81.1k | not shippable |
+
+Kept: the finding that outcome variance, not mean economy, is now the dominant term — the same
+playbook earns $46k–$136k on champion worlds depending on the shop draw and on the opponent's
+market pressure (in the bad draws the recorded champions still hold ~$90k). Code reverted to
+the champ-h2 state.
+
+## champ-h2 — 2026-09-10 · SUBMITTED (id 56152624) · animal chores first, champion sheep ramp
 
 Pure heuristic (no neural net), same playbook as champ-h1 with the three levers the decode
 left open — feeding, sheep, wheat — after tracing nightly fed/cared coverage per animal.
