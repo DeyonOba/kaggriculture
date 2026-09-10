@@ -66,11 +66,10 @@ def _logger(inner, log):
         if view.hour == 12 or view.step == 718:
             log["days"][view.day] = _snapshot(view)
         log["prices"][view.step] = dict(view.market_prices)
-        held = dict(view.shed)
-        for idx, _, _ in view.me.units:
-            for k, n in view.unit_inv(idx).items():
-                held[k] = held.get(k, 0) + n
-        log["held"][view.step] = held
+        # Sells execute from the SHED at end of turn; counting carried stock
+        # here inflated dump-order scripts (a hand carrying 6 milk for 3
+        # turns counted as 18 sold).
+        log["held"][view.step] = dict(view.shed)
         log["money"][view.step] = view.me.money
         return inner(obs)
 
@@ -290,6 +289,8 @@ def main():
     ap.add_argument("--ours-n", type=int, default=15)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="rl/datasets/decode")
+    ap.add_argument("--episodes", default=None,
+                    help="explicit worlds 'episode:our_seat,...': decode the recorded game and seat --ours there")
     args = ap.parse_args()
 
     if args.mode == "report":
@@ -300,9 +301,19 @@ def main():
     rng = random.Random(args.seed)
     paths = sorted(glob.glob(os.path.join(SESS_DIR, "session-*.json")))
     rng.shuffle(paths)
-    chosen = select_sessions(paths, args.per_bin, rng)
-    jobs = [(p, None, None) for p, _ in chosen]
-    if args.ours:
+    if args.episodes:
+        jobs = []
+        for spec in args.episodes.split(","):
+            ep, seat = spec.split(":")
+            p = os.path.join(SESS_DIR, f"session-{ep}.json")
+            jobs.append((p, None, None))
+            if args.ours:
+                jobs.append((p, args.ours, int(seat)))
+        chosen = []
+    else:
+        chosen = select_sessions(paths, args.per_bin, rng)
+        jobs = [(p, None, None) for p, _ in chosen]
+    if args.ours and not args.episodes:
         want = {int(b) for b in args.ours_bins.split(",")}
         count = defaultdict(int)
         for p, sc in chosen + [(p, json.load(open(p)).get("scores") or [None, None]) for p in paths]:
