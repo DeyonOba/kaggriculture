@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import copy
 import json
 import os
 import random
@@ -192,6 +193,7 @@ def _episode_advantages(ep, shaping_w):
 
 
 def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bundles=(),
+              prior_net=None, prior_kl=0.0,
               patience=4):
     snapshots = []
     league = []          # weight paths of every new-best: future opponents
@@ -348,6 +350,18 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                         ratio * a, torch.clamp(ratio, 1 - CLIP, 1 + CLIP) * a
                     ).mean()
                     loss = pg + VF_COEF * vloss - ent_now * ent.mean()
+                    if prior_net is not None and prior_kl > 0:
+                        # Trust region around the base controller (residual
+                        # RL): keep the policy close to the BC prior so
+                        # exploration is a few offsets per game, not twenty.
+                        with torch.no_grad():
+                            p_dists = masked_dists(prior_net(x[idx]), masks[idx])
+                        c_dists = masked_dists(net(x[idx]), masks[idx])
+                        kl_prior = sum(
+                            torch.distributions.kl_divergence(pd, cd)
+                            for pd, cd in zip(p_dists, c_dists)
+                        ).mean()
+                        loss = loss + prior_kl * kl_prior
                 opt.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(
@@ -471,6 +485,10 @@ def main():
         default=None,
         help="JSONL of champion day-decisions from rl/replay_bc.py, mixed into BC + used for FT",
     )
+    ap.add_argument("--ent-coef", type=float, default=None, help="entropy bonus (default ENT_COEF)")
+    ap.add_argument("--prior-kl", type=float, default=0.0,
+                    help="KL penalty toward the frozen BC prior (residual trust region)")
+    ap.add_argument("--lr", type=float, default=None, help="policy/value learning rate (default LR)")
     ap.add_argument(
         "--residual", action="store_true",
         help="offset heads over the champion plan (champ-h3 lineage); zero = the shipped heuristic",
@@ -482,8 +500,13 @@ def main():
         help="stop after this many evals without a profit improvement",
     )
     args = ap.parse_args()
-    global RESIDUAL
+    global RESIDUAL, ENT_COEF, LR
     RESIDUAL = bool(args.residual)
+    if args.ent_coef is not None:
+        ENT_COEF = args.ent_coef
+    if args.lr is not None:
+        LR = args.lr
+    print(f"ENT_COEF={ENT_COEF} LR={LR} prior_kl={args.prior_kl}")
     if RESIDUAL:
         os.environ["KAGG_RESIDUAL"] = "1"  # inherited by Pool workers
         features.set_mode("residual")
@@ -522,9 +545,15 @@ def main():
             bc_phase(net, pool, args.bc_games, extra=extra)
             torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
                        os.path.join(run_dir, "bc.pt"))
+        prior_net = None
+        if args.prior_kl > 0:
+            prior_net = copy.deepcopy(net).eval()
+            for prm in prior_net.parameters():
+                prm.requires_grad_(False)
         ppo_phase(
             net, vnet, pool, run_dir, args.iters, args.episodes, args.procs,
             opp_bundles=bundles, patience=args.patience,
+            prior_net=prior_net, prior_kl=args.prior_kl,
         )
 
 
