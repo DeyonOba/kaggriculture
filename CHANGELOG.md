@@ -4,7 +4,27 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
-## champ-h5 candidate — 2026-09-11 · not shipped
+## champ-h5 — 2026-09-11 · SUBMITTED · premium sell floors ×0.35 (knob bandit round 2)
+
+Round 2 of the knob bandit with **champ-h4 as the twin** (its knobs became the plan's defaults;
+verified identical play) over a widened set of 21 arms / 11 knobs, 4,680 paired samples including
+two focused follow-ups on the premium floor scale.
+
+- **Premium floor scale is monotone below 1**: ×0.5 +$844 ± 121 (n=541), **×0.35 +$1,391 ± 203**
+  (n=215), ×0.2 +$617 ± 164, ×0.1 +$1,330 ± 153 — a plateau around +$1.2k; ×0.85 −$792. Across
+  rounds: ×1.0 → ×0.7 → ×0.35 is worth ~+$3.3k. In this market the first seller takes the price,
+  so premium products (strawberry / milk / wool) should be sold almost as soon as they exist.
+- Everything else measured is neutral or worse against champ-h4: carrot day 24 (−$846) and 26
+  (−$1,258) bracket the shipped 25; feed stock 1 day −$7.9k, 3 days −$0.9k; liquidation day 26
+  +$13, 28 −$942; wheat floor 20/30 ≈ 0; wheat engine 28 −$591; opening melons 8/16 ±$900 (n.s.);
+  $1.5k margin before the second quadrant +$466 ± 307 (n.s.); early strawberries 24 +$457 ± 536,
+  12 −$4.2k; strawberry target 36 −$88 (the interim +$2.3k "with consumers" signal faded to
+  +$508 ± 452). Diminishing returns are visible: round 1 ≈ +$3.5k of knobs, round 2 ≈ +$1.4k.
+- **Gates vs champ-h4**: arena **20–10** ($101.7k vs $100.9k); 24 paired champion worlds
+  **+$76 ± 347** (no harm against 2500-rated scripts — the gain comes against everyone else, where
+  the rating is decided); held-out ladder unchanged 1.00 / 0.83 / 0.17 / 0.17 / 0.00 / 0.50.
+
+## champ-h5 candidate (strawberries by demand) — 2026-09-11 · not shipped
 
 Final knob table (3,600 paired samples): premium floors ×0.7 **+$1,949 ± 157** (n=501), carrot
 day 25 **+$1,545 ± 116** (n=498) — champ-h4's knobs at ~12σ. The only surviving context rule,

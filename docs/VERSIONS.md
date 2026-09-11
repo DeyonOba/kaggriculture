@@ -9,6 +9,34 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h5 — premium floors ×0.35 (2026-09-11, submitted)
+
+champ-h4 with one rule changed: `premium_scale = 0.35` (KnobBanditPolicy `conditions` in
+`arena/agents/champ-h5/rules.json`; `planner.KNOB_DEFAULTS` carry champ-h4's values so the dev
+twin equals the previous champion). Round-2 knob bandit summary (twin = champ-h4, 4,680 paired
+samples; gain vs champ-h4, mean ± s.e., n):
+
+| knob | gain | n | | knob | gain | n |
+|---|---|---|---|---|---|---|
+| premium_scale 0.35 | **+1,391 ± 203** | 215 | | wheat_engine 28 | −591 ± 289 | 230 |
+| premium_scale 0.1 | +1,330 ± 153 | 232 | | land2_margin 4000 | −620 ± 396 | 337 |
+| premium_scale 0.5 | +844 ± 121 | 541 | | premium_scale 0.85 | −792 ± 388 | 38 |
+| premium_scale 0.2 | +617 ± 164 | 248 | | carrot_day 24 | −846 ± 269 | 37 |
+| land2_margin 1500 | +466 ± 307 | 293 | | feed_days 3 | −907 ± 759 | 294 |
+| straw_early 24 | +457 ± 536 | 281 | | liquidation_day 28 | −942 ± 173 | 30 |
+| melon_opening 8 / 16 | +386 / +337 (± ~900) | 281 / 293 | | carrot_day 26 | −1,258 ± 381 | 32 |
+| wheat_floor 20 / 30 | 0 / +55 | 279 / 307 | | straw_target 40 | −3,044 ± 1,151 | 56 |
+| liquidation_day 26 | +13 ± 64 | 313 | | straw_early 12 | −4,230 ± 1,996 | 31 |
+| straw_target 36 | −88 ± 366 (+508 ± 452 with ≥1 consumer) | 289 | | feed_days 1 | −7,911 ± 2,199 | 33 |
+
+New knobs this round (defaults reproduce champ-h4): `melon_opening`, `land2_margin`
+(`DayPlan.land_margin` consumed by the market controller), `wheat_floor`, `liquidation_day`,
+`carrot_cap`, `feed_days` (`DayPlan.feed_days`). `rl/bandit.py --tag` separates rounds,
+`--arms` runs focused follow-ups.
+
+Benchmarks vs champ-h4: arena 30 games seeds 17000+: 20–10, $101,659 vs $100,904; 24 paired
+champion worlds +$76 ± 347 (13/24); held-out ladder 1.00 / 0.83 / 0.17 / 0.17 / 0.00 / 0.50.
+
 ## champ-h4 — bandit knobs over champ-h3 (2026-09-11, submitted)
 
 **Architecture.** champ-h3's plan and executor, plus `planner.KNOB_DEFAULTS` — season-long
