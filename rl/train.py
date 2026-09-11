@@ -489,6 +489,9 @@ def main():
     ap.add_argument("--prior-kl", type=float, default=0.0,
                     help="KL penalty toward the frozen BC prior (residual trust region)")
     ap.add_argument("--lr", type=float, default=None, help="policy/value learning rate (default LR)")
+    ap.add_argument("--plateau-cool", type=float, default=None,
+                    help="LR multiplier per eval without improvement (1.0 = off; residual argmax evals stay flat by design)")
+    ap.add_argument("--prior-pt", default=None, help="checkpoint to use as the frozen prior for --prior-kl (default: the resumed/BC net)")
     ap.add_argument(
         "--residual", action="store_true",
         help="offset heads over the champion plan (champ-h3 lineage); zero = the shipped heuristic",
@@ -500,8 +503,10 @@ def main():
         help="stop after this many evals without a profit improvement",
     )
     args = ap.parse_args()
-    global RESIDUAL, ENT_COEF, LR
+    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL
     RESIDUAL = bool(args.residual)
+    if args.plateau_cool is not None:
+        PLATEAU_COOL = args.plateau_cool
     if args.ent_coef is not None:
         ENT_COEF = args.ent_coef
     if args.lr is not None:
@@ -548,6 +553,10 @@ def main():
         prior_net = None
         if args.prior_kl > 0:
             prior_net = copy.deepcopy(net).eval()
+            if args.prior_pt:
+                pck = torch.load(args.prior_pt)
+                prior_net.load_state_dict(pck["policy"] if isinstance(pck, dict) and "policy" in pck else pck)
+                print(f"prior for KL: {args.prior_pt}")
             for prm in prior_net.parameters():
                 prm.requires_grad_(False)
         ppo_phase(
