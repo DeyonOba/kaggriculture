@@ -4,6 +4,27 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## champ-h3 — 2026-09-11 · SUBMITTED · sweep executor
+
+Measured on our five worst worlds against the recorded occupant of our own seat: they got
+105–159 productive actions a day out of the same crew with 94–140 moves and idle time to spare;
+champ-h2 got 71–105 with 156–184 moves and no idle. The zone round scored tasks by
+(priority, distance), so a hand walked four tiles to a harvest and four back to a water next
+door. Now (distance, priority): finish what is on and around the current tile, move on;
+survival tasks (dies tonight) jump the queue from hour 16; cross-zone help within 5 steps.
+
+- Productive actions 105–128/day (from ~100), moves 128–169 (from 148–171), 58 tiles standing
+  on day 18 (from 48); wheat +123 units, carrots +40, strawberries +21 per game.
+- **Arena vs champ-h2: 30–0**, $91.0k vs $78.2k. **Held-out ladder 1.00 / 0.83 / 0.08 / 0.17 /
+  0.00 / 0.42** (best yet; $108k earned in the 600–1000 bin, was $94k). p99 turn 0.40 ms.
+- Paired champion worlds: neutral (−$1.2k ± 4.5k). The extra output lands in markets that the
+  2500-rated scripts already flood: inventory only recovers through shop consumption (6 units a
+  day per consumer) and the first seller takes the price. Two market experiments failed for the
+  same reason and were reverted: paced selling (hold above a floor until the final week) let the
+  opponent sell first and lost $30k on the traced world; capping strawberry tiles by the demand
+  anchor was neutral. Converting throughput against strong opponents needs the adaptive
+  allocation layer, not more executor.
+
 ## champ-h3 experiments — 2026-09-10 · not shipped (negative results)
 
 Milk and labor were the next levers after champ-h2; each candidate was measured on **24

@@ -9,6 +9,23 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h3 — sweep executor (2026-09-11, submitted)
+
+Same plan and market controller as champ-h2; one scheduler change. `assign()`'s `pick()` scores
+tasks `(urgent, distance, priority)` where `urgent` is 0 only for P_SURVIVAL tasks from
+`SWEEP_DEADLINE_HOUR = 16`; cross-zone help (pass 2) is limited to `HELP_RADIUS = 5` steps.
+Rationale and measurement in the CHANGELOG. Market lessons recorded here because they bound what
+the executor can convert: market inventory has no decay, only shop consumption (`24 /
+TOWN_SHOP_SELL_INTERVAL = 6` units/day per consuming shop, 12 for single-product shops, 1/day
+from the town centre); contested units are quoted against the pre-commit inventory, so selling
+first beats holding; strawberry's curve is steep (T = 100). Two farms with 33 fertilized
+strawberry tiles produce ~66 units/day against ~30 of drain even with five consumers.
+
+Benchmarks: arena vs champ-h2 30 games (seeds 13000+) 30–0, $91,039 vs $78,246, max $115,521;
+held-out ladder 1.00 / 0.83 / 0.08 / 0.17 / 0.00 / 0.42; paired champion worlds −$1.2k ± 4.5k
+(neutral); p99 0.40 ms. Not shipped from this round: paced selling (−$30k on the traced world),
+demand-anchored strawberry cap (−$2.7k ± 4.6k).
+
 ## champ-h2 — animal chores first (2026-09-10, submitted)
 
 Same playbook and executor as champ-h1; three changes from tracing nightly per-animal
