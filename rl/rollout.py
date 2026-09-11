@@ -136,9 +136,40 @@ def _residual():
     return False
 
 
-def _make_learner_agent(layers, temperature, rng, records, mode, style="react"):
+def _make_learner_agent(layers, temperature, rng, records, mode, style="react", dev=None, extra=None):
     mem = Memory()
     residual = _residual()
+    if mode == "deviate":
+        # Counterfactual bandit: the champion plan every day except ONE
+        # (day, head, offset) deviation; the state at that day is recorded so
+        # the paired gain attributes to exactly one decision.
+        dev_day, dev_head, dev_off = dev
+        pol = HeuristicPolicy()
+
+        def agent_fn(obs):
+            view = View(obs)
+            mem.observe(view)
+            if mem.day_plan is None or mem.day_plan_day != view.day:
+                plan = planner.make_day_plan(view, mem, speculative=True)
+                if view.day == dev_day:
+                    m = features.masks(view)
+                    choices = features.residual_choices(plan, view, m)
+                    choices[dev_head] = dev_off
+                    before = (dict(plan.plant_quota), dict(plan.animal_buys), plan.hires_target,
+                              list(plan.land_buys), dict(plan.sell_floors))
+                    plan = features.apply_residual(plan, choices, view)
+                    after = (dict(plan.plant_quota), dict(plan.animal_buys), plan.hires_target,
+                             list(plan.land_buys), dict(plan.sell_floors))
+                    if extra is not None:
+                        extra["dev_x"] = features.encode(view, mem)
+                        extra["dev_ctx"] = features.context(view)
+                        extra["dev_applied"] = bool(m[dev_head][dev_off])
+                        extra["dev_noop"] = before == after
+                mem.day_plan = plan
+                mem.day_plan_day = view.day
+            return pol.act(view, mem)
+
+        return agent_fn
     if mode == "bc":
         pol = HeuristicPolicy()
         speculative = style == "spec" or residual
@@ -290,8 +321,10 @@ def run_episode(job):
     temperature = job.get("temperature", 1.0)
     sample_rng = rng if (mode == "rl" and temperature > 0) else None
 
+    extra = {}
     learner = _make_learner_agent(
-        layers, temperature, sample_rng, records, mode, style=job.get("style", "react")
+        layers, temperature, sample_rng, records, mode, style=job.get("style", "react"),
+        dev=job.get("dev"), extra=extra,
     )
     opponent = _make_opponent(job.get("opponent", "heuristic"))
 
@@ -333,4 +366,5 @@ def run_episode(job):
         "duration": duration,
         "unsold_value": unsold,
         "is_session": isinstance(opp_spec, (list, tuple)) and opp_spec[0] == "session",
+        "extra": extra,
     }

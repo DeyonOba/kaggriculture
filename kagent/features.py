@@ -549,3 +549,32 @@ def residual_choices(plan, view, head_masks):
         valid = [i for i in range(len(vals)) if mask[i]]
         choices.append(min(valid, key=lambda i: abs(vals[i] - target)))
     return choices
+
+
+def context(view):
+    """Compact, human-readable state summary for the counterfactual bandit
+    (rule extraction). The 168-dim encode() stays the model input."""
+    from kagent.constants import SHOPS, MARKET_PARAMS
+    consumers = {}
+    for item in ("WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MILK", "WOOL", "EGG"):
+        consumers[item] = sum(1 for shop in view.unlocked_shops if item in SHOPS.get(shop, ()))
+    price_ratio = {
+        item: round(view.market_prices.get(item, MARKET_PARAMS[item]["base"]) / MARKET_PARAMS[item]["base"], 3)
+        for item in MARKET_PARAMS
+    }
+    crops, herd, opp_crops, opp_herd = {}, {}, {}, {}
+    for _, _, t in view.me.plants():
+        crops[t["crop"]] = crops.get(t["crop"], 0) + 1
+    for _, _, t in view.me.animals():
+        herd[t["animal"]] = herd.get(t["animal"], 0) + 1
+    for _, _, t in view.opp.plants():
+        opp_crops[t["crop"]] = opp_crops.get(t["crop"], 0) + 1
+    for _, _, t in view.opp.animals():
+        opp_herd[t["animal"]] = opp_herd.get(t["animal"], 0) + 1
+    return {
+        "day": view.day, "money": round(view.me.money), "land": len(view.me.unlocked_quadrants),
+        "hands": len(view.me.units) - 1, "shops": list(view.unlocked_shops),
+        "consumers": consumers, "price_ratio": price_ratio,
+        "crops": crops, "herd": herd, "opp_crops": opp_crops, "opp_herd": opp_herd,
+        "opp_money": round(view.opp.money), "shed_total": view.shed_total,
+    }
