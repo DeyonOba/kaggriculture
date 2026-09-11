@@ -360,11 +360,12 @@ def fit(args):
         r2 = 1 - ((y - pred) ** 2).sum() / max(1e-9, ((y - y.mean()) ** 2).sum())
         m, se, n = _stats(list(y))
         rules["models"].append({
-            "head": head, "off_idx": off_idx, "n": n, "mean": m, "se": se, "r2": round(r2, 3),
+            "head": head, "off_idx": off_idx, "offset": rs[0]["offset"], "n": n, "mean": m, "se": se, "r2": round(r2, 3),
             "mu": mu.tolist(), "sd": sd.tolist(), "w": w.tolist(), "b": float(y.mean()),
         })
         print(f"  {head:<20} off_idx={off_idx} n={n:<4} mean={m:+7,.0f} se={se:5,.0f} r2={r2:.3f}")
     rules["min_gain"] = args.min_gain
+    rules["kind"] = "knobs" if args.knobs else "offsets"
     with open(RULES, "w") as f:
         json.dump(rules, f)
     print(f"wrote {RULES} ({len(rules['models'])} models)")

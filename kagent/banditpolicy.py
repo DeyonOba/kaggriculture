@@ -61,3 +61,41 @@ class BanditPolicy:
             applied.append((features.HEADS[h][0], features.HEADS[h][1][off], round(gain)))
         self.last_decision = (view.day, applied)
         return features.apply_residual(plan, choices, view)
+
+
+class KnobBanditPolicy:
+    """Season-long knob version: at KNOB_DAY (shops revealed) score every
+    (knob, value) arm with its fitted gain model and set the best ones on
+    `memory.knobs` for the rest of the game; before that day, and when no
+    arm clears `min_gain`, the plan is exactly champ-h3."""
+
+    KNOB_DAY = 6
+
+    def __init__(self, rules, max_knobs=1):
+        self.models = rules.get("models", [])
+        self.min_gain = float(rules.get("min_gain", 1500.0))
+        self.max_knobs = max_knobs
+        self.last_decision = None
+
+    def _predict(self, model, x):
+        mu, sd, w = model["mu"], model["sd"], model["w"]
+        total = model["b"]
+        for i in range(len(w)):
+            total += w[i] * ((x[i] - mu[i]) / sd[i])
+        return total
+
+    def make_plan(self, view, memory):
+        if view.day == self.KNOB_DAY and self.models and getattr(memory, "knobs_decided", False) is False:
+            x = features.encode(view, memory)
+            scored = sorted(
+                ((self._predict(m, x), m["head"], m["offset"]) for m in self.models), reverse=True
+            )
+            chosen = {}
+            for gain, knob, value in scored:
+                if gain < self.min_gain or knob in chosen or len(chosen) >= self.max_knobs:
+                    continue
+                chosen[knob] = value
+            memory.knobs = chosen
+            memory.knobs_decided = True
+            self.last_decision = (view.day, chosen, [(round(g), k, v) for g, k, v in scored[:3]])
+        return planner.make_day_plan(view, memory, speculative=True)

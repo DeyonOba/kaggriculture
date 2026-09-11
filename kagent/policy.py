@@ -13,7 +13,7 @@ import traceback
 
 from kagent.gamestate import Memory, View
 from kagent import features, market, planner, scheduler
-from kagent.banditpolicy import BanditPolicy
+from kagent.banditpolicy import BanditPolicy, KnobBanditPolicy
 from kagent.mpcpolicy import MPCPlanProvider
 from kagent.nnpolicy import NeuralPolicy, decode_weights
 from kagent.weights import WEIGHTS_DATA
@@ -150,8 +150,9 @@ class SafeAgent:
 
 _LAYERS = decode_weights(WEIGHTS_DATA)
 if BANDIT_RULES:
+    _bandit_cls = KnobBanditPolicy if BANDIT_RULES.get("kind") == "knobs" else BanditPolicy
     _AGENT = SafeAgent(
-        HeuristicPolicy(BanditPolicy(BANDIT_RULES)), fallback=HeuristicPolicy(ChampionPlanProvider())
+        HeuristicPolicy(_bandit_cls(BANDIT_RULES)), fallback=HeuristicPolicy(ChampionPlanProvider())
     )
 elif CHAMPION_PLAN:
     _AGENT = SafeAgent(HeuristicPolicy(ChampionPlanProvider()), fallback=HeuristicPolicy())

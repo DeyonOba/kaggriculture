@@ -95,6 +95,10 @@ class Memory:
     def reset(self):
         self.last_step = -1
         self.day_plan = None
+        # Season-long champion-plan knob overrides (adaptive layer); None =
+        # champ-h3 defaults. Cleared per episode (processes are reused).
+        self.knobs = None
+        self.knobs_decided = False
         self.day_plan_day = -1
         self.prev_market_inv = None
         self.my_sells_last_turn = {}
