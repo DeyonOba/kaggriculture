@@ -71,10 +71,10 @@ class KnobBanditPolicy:
 
     KNOB_DAY = 6
 
-    def __init__(self, rules, max_knobs=1):
+    def __init__(self, rules, max_knobs=None):
         self.models = rules.get("models", [])
         self.min_gain = float(rules.get("min_gain", 1500.0))
-        self.max_knobs = max_knobs
+        self.max_knobs = max_knobs if max_knobs is not None else int(rules.get("max_knobs", 1))
         self.last_decision = None
 
     def _predict(self, model, x):
