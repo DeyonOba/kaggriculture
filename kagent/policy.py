@@ -13,6 +13,7 @@ import traceback
 
 from kagent.gamestate import Memory, View
 from kagent import features, market, planner, scheduler
+from kagent.banditpolicy import BanditPolicy
 from kagent.mpcpolicy import MPCPlanProvider
 from kagent.nnpolicy import NeuralPolicy, decode_weights
 from kagent.weights import WEIGHTS_DATA
@@ -25,8 +26,17 @@ MPC_ENABLED = globals().get("MPC_ENABLED", False)
 CHAMPION_PLAN = globals().get("CHAMPION_PLAN", False)
 # Residual bundles: weights are offset heads over the champion plan.
 RESIDUAL = globals().get("RESIDUAL", False)
+# Bandit bundles: fitted per-(head, offset) gain models over the champion plan.
+BANDIT_RULES = globals().get("BANDIT_RULES", None)
+if BANDIT_RULES:
+    (globals().get("set_mode") or features.set_mode)("residual")
 if RESIDUAL:
-    features.set_mode("residual")
+    # In a flat bundle the module aliases (features = namespace) are bound
+    # only after every source has executed, so `features.set_mode` is a
+    # NameError here; the bare function IS in the shared namespace, and
+    # switching now (before the namespace snapshot) makes the residual head
+    # set visible everywhere. Dev mode falls back to the package import.
+    (globals().get("set_mode") or features.set_mode)("residual")
 
 
 class ChampionPlanProvider:
@@ -139,7 +149,11 @@ class SafeAgent:
 
 
 _LAYERS = decode_weights(WEIGHTS_DATA)
-if CHAMPION_PLAN:
+if BANDIT_RULES:
+    _AGENT = SafeAgent(
+        HeuristicPolicy(BanditPolicy(BANDIT_RULES)), fallback=HeuristicPolicy(ChampionPlanProvider())
+    )
+elif CHAMPION_PLAN:
     _AGENT = SafeAgent(HeuristicPolicy(ChampionPlanProvider()), fallback=HeuristicPolicy())
 elif _LAYERS is not None:
     if MPC_ENABLED:

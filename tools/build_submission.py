@@ -28,6 +28,7 @@ MODULES = [
     "features",
     "nnpolicy",
     "mpcpolicy",
+    "banditpolicy",
     "weights",
     "policy",
 ]
