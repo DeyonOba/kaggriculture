@@ -67,11 +67,48 @@ def _zero_index(vals):
     return None
 
 
+def _live_arms(min_n=25):
+    """Successive elimination: an arm (head, offset index) is retired once it
+    has min_n samples and either every gain was exactly zero (inert) or its
+    mean + 2 s.e. is below zero (clearly harmful). Returns the live set, or
+    None if no data yet."""
+    if not os.path.exists(OUT):
+        return None
+    by = defaultdict(list)
+    for line in open(OUT):
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        if r.get("noop"):
+            continue
+        by[(r["head"], r["off_idx"])].append(r["gain_margin"])
+    live = set()
+    for h, (name, vals) in enumerate(features.HEADS):
+        zi = _zero_index(vals)
+        for off in range(len(vals)):
+            if off == zi:
+                continue
+            g = by.get((name, off), [])
+            if len(g) >= min_n:
+                m, se, n = _stats(g)
+                if all(v == 0 for v in g) or m + 2 * se < 0:
+                    continue
+            live.add((h, off))
+    return live
+
+
 def _world_jobs(rng, worlds, k, bundles):
     """Per world: one twin (champion plan) + k single-deviation games."""
     sessions = sorted(glob.glob(os.path.join(SESS_DIR, "session-*.json")))
     train_sessions = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 != 0]
     heads = features.HEADS
+    live = _live_arms()
+    if live is not None:
+        arms = sorted(live)
+        print(f"   live arms: {len(arms)}", flush=True)
+    else:
+        arms = [(h, off) for h, (name, vals) in enumerate(heads)
+                for off in range(len(vals)) if off != _zero_index(vals)]
     jobs = []
     for w in range(worlds):
         roll = rng.random()
@@ -93,11 +130,8 @@ def _world_jobs(rng, worlds, k, bundles):
                 "mode": "bc", "style": "spec", "world": w}
         jobs.append(base)
         for _ in range(k):
-            h = rng.randrange(len(heads))
+            h, off = rng.choice(arms)
             name, vals = heads[h]
-            zi = _zero_index(vals)
-            options = [i for i in range(len(vals)) if i != zi]
-            off = rng.choice(options)
             lo, hi = HEAD_DAYS[name]
             day = rng.randint(lo, hi)
             jobs.append(dict(base, mode="deviate", dev=(day, h, off)))
