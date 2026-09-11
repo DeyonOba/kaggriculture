@@ -49,7 +49,7 @@ class DayPlan:
     __slots__ = (
         "hires_target", "land_buys", "plant_quota", "animal_buys",
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
-        "fert_reserve",
+        "fert_reserve", "land_margin", "feed_days",
     )
 
     def __init__(self):
@@ -64,6 +64,8 @@ class DayPlan:
         # Fertilizer units kept out of the market for today's FERTILIZE tasks
         # (set each turn by the policy from the task list).
         self.fert_reserve = 0
+        self.land_margin = 100   # cash above the land price the market controller requires
+        self.feed_days = 2       # days of feed the buffer keeps in stock
 
 
 def _count_crops(farm):
@@ -248,8 +250,17 @@ KNOB_DEFAULTS = {
     "carrot_standing": 0,                 # standing carrot patch, days 6-26
     "tomato_standing": 0,                 # standing tomato tiles, days 6-18
     "hires_delta": 0,
-    "premium_scale": 1.0,                 # x on STRAWBERRY/MILK/WOOL sell floors
-    "carrot_day": CHAMP_CARROT_DAY,       # endgame: freed tiles -> carrots
+    # champ-h4 (knob bandit vs champ-h3, 3,600 paired samples): premium sell
+    # floors x0.7 +$1,949 +/- 157, endgame carrots from day 25 +$1,545 +/- 116.
+    "premium_scale": 0.7,                 # x on STRAWBERRY/MILK/WOOL sell floors
+    "carrot_day": 25,                     # endgame: freed tiles -> carrots
+    # Widened set (round 2, twin = champ-h4); defaults reproduce champ-h4.
+    "melon_opening": CHAMP_OPENING["MELON"],  # day-0 melon tiles
+    "land2_margin": 100,                  # cash above price required for quadrant #2
+    "wheat_floor": 1,                     # wheat sell floor (1 = sell all)
+    "liquidation_day": LIQUIDATION_DAY,
+    "carrot_cap": 20,                     # endgame carrots per day cap
+    "feed_days": 2,                       # days of feed kept in stock
 }
 
 
@@ -276,7 +287,9 @@ def make_champion_plan(view, memory):
     plan = DayPlan()
     day = view.day
     me = view.me
-    plan.liquidation = day >= LIQUIDATION_DAY
+    knobs = _knobs(memory)
+    plan.liquidation = day >= knobs["liquidation_day"]
+    plan.feed_days = knobs["feed_days"]
 
     crops = _count_crops(me)
     my_animals = sum(1 for _ in me.animals())
@@ -289,7 +302,6 @@ def make_champion_plan(view, memory):
     empty_tiles = sum(1 for _ in me.empty_tiles())
 
     # --- Hiring: lean until the second quadrant, then ~11 ---------------------
-    knobs = _knobs(memory)
     # Knobs are decided at day 6 (shops revealed); before that the plan is
     # the fixed champion opening (extra day-0 hires also push the market
     # order list past its 10-order cap and drop the seed orders).
@@ -307,6 +319,8 @@ def make_champion_plan(view, memory):
     next_idx = sum(1 for q in LAND_ORDER if q in owned)
     if next_idx < CHAMP_LAND_BUYS and CHAMP_LAND_DAY <= day <= 22:
         plan.land_buys.append(LAND_ORDER[next_idx])
+        if next_idx == 1:
+            plan.land_margin = knobs["land2_margin"]
 
     # --- Animals: speculative herd, gated by cash only (feed is bought) --------
     plan.animal_buys = {}
@@ -347,6 +361,8 @@ def make_champion_plan(view, memory):
         free = max(0, empty_tiles + ripe_today - sum(plan.structure_builds.values()))
         if day <= 1:
             for crop, n in CHAMP_OPENING.items():
+                if crop == "MELON":
+                    n = knobs["melon_opening"]
                 quota[crop] = max(0, n - crops.get(crop, 0))
         if CHAMP_LAND_DAY <= day <= 13:
             # Strawberries take freed tiles first (4 productions by 29), staged
@@ -359,7 +375,7 @@ def make_champion_plan(view, memory):
         if knobs["tomato_standing"] and 6 <= day <= TOMATO_LAST_PLANT_DAY:
             quota["TOMATO"] = max(0, knobs["tomato_standing"] - crops.get("TOMATO", 0))
         if day >= knobs["carrot_day"] and day <= CARROT_LAST_PLANT_DAY:
-            quota["CARROT"] = max(quota.get("CARROT", 0), min(20, free))
+            quota["CARROT"] = max(quota.get("CARROT", 0), min(knobs["carrot_cap"], free))
         elif day > 1 and day <= WHEAT_LAST_PLANT_DAY:
             if day < 10:
                 wheat_target = 8
@@ -373,6 +389,8 @@ def make_champion_plan(view, memory):
     if knobs["premium_scale"] != 1.0 and 6 <= day and view.step < 714:
         for item in ("STRAWBERRY", "MILK", "WOOL"):
             plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * knobs["premium_scale"]))
+    if knobs["wheat_floor"] > 1 and 6 <= day < FLOOR_DECAY_DAY:
+        plan.sell_floors["WHEAT"] = knobs["wheat_floor"]
     return plan
 
 

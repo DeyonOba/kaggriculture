@@ -47,7 +47,7 @@ def build_orders(view, plan, memory):
         # $100-200 production and escapes after two dry days, so feed is
         # bought at any sane price, down to the last dollar (champions buy
         # 370-480 units a game at $25-50).
-        target = animals if view.day >= 28 else 2 * animals
+        target = animals if view.day >= 28 else plan.feed_days * animals
         deficit = target - wheat_stock
         price = view.market_prices.get("WHEAT", 25)
         affordable = int(money // max(1.0, price))
@@ -60,7 +60,7 @@ def build_orders(view, plan, memory):
     owned = sum(1 for q in LAND_ORDER if q in view.me.unlocked_quadrants)
     for i, quad in enumerate(plan.land_buys):
         idx = min(owned + i, len(LAND_PRICES) - 1)
-        if money >= LAND_PRICES[idx] + 100 and add(["BUY_LAND"]):
+        if money >= LAND_PRICES[idx] + plan.land_margin and add(["BUY_LAND"]):
             money -= LAND_PRICES[idx]
         else:
             remaining_land.append(quad)

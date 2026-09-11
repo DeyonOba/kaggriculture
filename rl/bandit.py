@@ -61,17 +61,26 @@ HEAD_DAYS = {
 
 # Season-long knob arms: (knob, value) deviations from planner.KNOB_DEFAULTS,
 # applied for the whole game; context = the day-6 state (shops revealed).
-KNOB_ARMS = [
+KNOB_ARMS_R1 = [  # round 1, twin = champ-h3 (kept for the record)
     ("straw_target", 21), ("straw_target", 27), ("straw_target", 40),
-    ("cows", 6), ("cows", 10),
-    ("sheep", 6), ("sheep", 10),
-    ("geese", 2), ("geese", 3),
-    ("wheat_engine", 24), ("wheat_engine", 40),
-    ("carrot_standing", 8), ("carrot_standing", 16),
-    ("tomato_standing", 6),
-    ("hires_delta", -2), ("hires_delta", 2),
-    ("premium_scale", 0.7), ("premium_scale", 1.3),
-    ("carrot_day", 18), ("carrot_day", 25),
+    ("cows", 6), ("cows", 10), ("sheep", 6), ("sheep", 10), ("geese", 2), ("geese", 3),
+    ("wheat_engine", 24), ("wheat_engine", 40), ("carrot_standing", 8), ("carrot_standing", 16),
+    ("tomato_standing", 6), ("hires_delta", -2), ("hires_delta", 2),
+    ("premium_scale", 0.7), ("premium_scale", 1.3), ("carrot_day", 18), ("carrot_day", 25),
+]
+# Round 2, twin = champ-h4 (premium 0.7, carrot day 25 are now the defaults).
+KNOB_ARMS = [
+    ("premium_scale", 0.5), ("premium_scale", 0.85),
+    ("carrot_day", 24), ("carrot_day", 26),
+    ("straw_target", 36), ("straw_target", 40),
+    ("straw_early", 12), ("straw_early", 24),
+    ("wheat_engine", 28),
+    ("melon_opening", 8), ("melon_opening", 16),
+    ("land2_margin", 1500), ("land2_margin", 4000),
+    ("wheat_floor", 20), ("wheat_floor", 30),
+    ("liquidation_day", 26), ("liquidation_day", 28),
+    ("carrot_cap", 12), ("carrot_cap", 30),
+    ("feed_days", 1), ("feed_days", 3),
 ]
 KNOB_PRODUCT = {"straw_target": "STRAWBERRY", "cows": "MILK", "sheep": "WOOL", "geese": "EGG",
                 "wheat_engine": "WHEAT", "carrot_standing": "CARROT", "tomato_standing": "TOMATO"}
@@ -375,6 +384,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["collect", "report", "fit"])
     ap.add_argument("--knobs", action="store_true", help="season-long knob arms (KNOB_ARMS) instead of single-day offsets")
+    ap.add_argument("--tag", default=None, help="knob sample file tag: rl/datasets/bandit/knob_<tag>.jsonl")
     ap.add_argument("--worlds", type=int, default=30, help="worlds per batch")
     ap.add_argument("--k", type=int, default=4, help="deviations per world")
     ap.add_argument("--batches", type=int, default=1)
@@ -385,7 +395,10 @@ def main():
     ap.add_argument("--ridge", type=float, default=1.0)
     ap.add_argument("--min-gain", type=float, default=1500.0)
     args = ap.parse_args()
+    global KNOB_OUT
     if args.knobs:
+        if args.tag:
+            KNOB_OUT = f"rl/datasets/bandit/knob_{args.tag}.jsonl"
         SRC["path"] = KNOB_OUT
         if args.cmd == "collect":
             return collect_knobs(args)
