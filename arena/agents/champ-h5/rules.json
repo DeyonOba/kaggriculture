@@ -1,0 +1,1 @@
+{"kind": "knobs", "min_gain": 1500, "max_knobs": 3, "models": [], "conditions": [{"knob": "premium_scale", "value": 0.35}, {"knob": "carrot_day", "value": 25}]}
