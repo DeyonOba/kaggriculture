@@ -4,6 +4,17 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## champ-h5 candidate — 2026-09-11 · not shipped
+
+Final knob table (3,600 paired samples): premium floors ×0.7 **+$1,949 ± 157** (n=501), carrot
+day 25 **+$1,545 ± 116** (n=498) — champ-h4's knobs at ~12σ. The only surviving context rule,
+strawberry target 40 when ≥1 strawberry consumer is open (+$881 ± 391, n=418; −$3,423 ± 668
+with none), was tested as champ-h5c on top of champ-h4: arena 14–14–2, paired +$658 ± 1,901 —
+consistent with the measured effect but unverifiable at gate sample sizes. No herd knob (cows
+6/10, sheep 6/10, geese 2/3) pays in any demand context; standing carrot/tomato patches never pay.
+`KnobBanditPolicy` gained explicit `conditions` (min/max consumers on the day-6 context) for
+interpretable rules.
+
 ## champ-h4 — 2026-09-11 · SUBMITTED · first bandit-measured adaptive knobs
 
 The adaptive layer, finally with evidence. Two learning approaches failed first and are recorded
