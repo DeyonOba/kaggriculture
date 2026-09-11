@@ -126,11 +126,22 @@ def plan_to_choices(plan, view, head_masks):
     return choices
 
 
+def _residual():
+    """Residual mode is selected by the parent via KAGG_RESIDUAL=1 (Pool
+    workers inherit the environment); idempotent per process."""
+    if os.environ.get("KAGG_RESIDUAL") == "1":
+        if features.MODE != "residual":
+            features.set_mode("residual")
+        return True
+    return False
+
+
 def _make_learner_agent(layers, temperature, rng, records, mode, style="react"):
     mem = Memory()
+    residual = _residual()
     if mode == "bc":
         pol = HeuristicPolicy()
-        speculative = style == "spec"
+        speculative = style == "spec" or residual
 
         def agent_fn(obs):
             view = View(obs)
@@ -139,11 +150,15 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react"):
                 x = features.encode(view, mem)
                 m = features.masks(view)
                 plan = planner.make_day_plan(view, mem, speculative=speculative)
+                choices = (
+                    features.residual_choices(plan, view, m) if residual
+                    else plan_to_choices(plan, view, m)
+                )
                 records.append(
                     {
                         "x": x,
                         "masks": m,
-                        "choices": plan_to_choices(plan, view, m),
+                        "choices": choices,
                         "pv": portfolio_value(view),
                     }
                 )
@@ -153,7 +168,7 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react"):
 
         return agent_fn
 
-    provider = NeuralPolicy(layers, temperature=temperature, rng=rng)
+    provider = NeuralPolicy(layers, temperature=temperature, rng=rng, residual=residual)
     pol = HeuristicPolicy(provider)
 
     last_view = {}
@@ -243,7 +258,7 @@ def _make_opponent(spec):
         # League members (past bests) play sharply; plain snapshots stay
         # noisy for exploration diversity.
         temp = 0.2 if spec[0] == "league" else 0.7
-        provider = NeuralPolicy(layers, temperature=temp, rng=random.Random(0))
+        provider = NeuralPolicy(layers, temperature=temp, rng=random.Random(0), residual=_residual())
         pol = HeuristicPolicy(provider)
 
         def opp_fn(obs):
@@ -262,6 +277,7 @@ def run_episode(job):
     """
     from kaggle_environments import make
 
+    _residual()
     opp_spec = job.get("opponent", "heuristic")
     if isinstance(opp_spec, (list, tuple)) and opp_spec[0] == "session":
         # Session-replay: play on the recorded game's true world.

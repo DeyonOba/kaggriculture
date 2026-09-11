@@ -20,6 +20,7 @@ def main():
     ap.add_argument("--clear", action="store_true", help="reset weights.py to None (heuristic)")
     ap.add_argument("--mpc", action="store_true", help="enable the MPC day-planner in the bundle")
     ap.add_argument("--champion", action="store_true", help="run the champion playbook plan as the primary policy")
+    ap.add_argument("--residual", action="store_true", help="weights are offset heads over the champion plan")
     args = ap.parse_args()
     if not args.clear and not args.weights_json:
         ap.error("weights_json required unless --clear")
@@ -39,6 +40,7 @@ def main():
             f"WEIGHTS_DATA = {data!r}\n"
             f"MPC_ENABLED = {bool(args.mpc)!r}\n"
             f"CHAMPION_PLAN = {bool(args.champion)!r}\n"
+            f"RESIDUAL = {bool(args.residual)!r}\n"
         )
     with open(out, "w") as f:
         f.write(body)

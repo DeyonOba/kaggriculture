@@ -35,7 +35,7 @@ from kagent.planner import apply_land_pressure
 # the head chooses an OFFSET around that anchor (field autopsy: we produced
 # 1/3-1/5 of same-priced opponents' volume — "crops planted per demand low").
 # Other lines stay absolute targets.
-HEADS = [
+ABS_HEADS = [
     ("melon_tiles", [0, 6, 12, 18, 24]),
     ("wheat_tiles", [-16, -8, 0, 8, 16]),       # offset around wheat anchor
     ("carrot_tiles", [0, 6, 12, 18, 26]),
@@ -98,8 +98,42 @@ def anchors(view):
         ANCHOR_CAPS["wheat_tiles"], herd_total + 20
     )
     return out
+# RESIDUAL mode (champ-h3 lineage): every head is an OFFSET applied to the
+# champion plan (planner.make_champion_plan); all-zero choices reproduce the
+# shipped heuristic exactly, so a trained policy can only learn deviations
+# that pay (residual policy learning). melon_floor and the floor scales stay
+# absolute. `land` = 1 holds today's land purchase.
+RESIDUAL_HEADS = [
+    ("melon_tiles", [-6, -3, 0, 3]),
+    ("wheat_tiles", [-16, -8, 0, 8]),
+    ("carrot_tiles", [-8, 0, 8, 16]),
+    ("tomato_tiles", [0, 4, 8]),
+    ("straw_tiles", [-12, -6, 0, 6]),
+    ("goose_target", [0, 2, 4]),
+    ("cow_target", [-4, -2, 0, 2]),
+    ("sheep_target", [-4, -2, 0, 2]),
+    ("hires", [-4, -2, 0, 2]),
+    ("land", [0, 1]),
+    ("melon_floor", [1, 40, 80, 120, 180]),
+    ("premium_floor_scale", [0.6, 1.0, 1.4]),
+    ("staple_floor_scale", [0.7, 1.0, 1.3]),
+]
+
+MODE = "absolute"
+HEADS = ABS_HEADS
 HEAD_SIZES = [len(vals) for _, vals in HEADS]
 N_ACTION_LOGITS = sum(HEAD_SIZES)
+
+
+def set_mode(mode):
+    """Select the head set. Consumers read HEADS / HEAD_SIZES /
+    N_ACTION_LOGITS through the module at call time, so this must run before
+    a network is built or a bundle's provider is constructed."""
+    global MODE, HEADS, HEAD_SIZES, N_ACTION_LOGITS
+    MODE = mode
+    HEADS = RESIDUAL_HEADS if mode == "residual" else ABS_HEADS
+    HEAD_SIZES = [len(vals) for _, vals in HEADS]
+    N_ACTION_LOGITS = sum(HEAD_SIZES)
 
 QUOTA_CROP = {
     "melon_tiles": "MELON",
@@ -323,7 +357,7 @@ def masks(view):
     money = me.money
     out = []
     for name, vals in HEADS:
-        if name == "land":
+        if name == "land" and MODE != "residual":
             owned = me.unlocked_quadrants
             next_idx = sum(1 for q in LAND_ORDER if q in owned)
             can = next_idx < len(LAND_ORDER) and money >= LAND_PRICES[next_idx] + 400
@@ -434,3 +468,84 @@ def apply_to_plan(plan, choices, view):
     # Scripted safety net: expand land when planned work exceeds open tiles.
     apply_land_pressure(plan, view)
     return plan
+
+
+def apply_residual(plan, choices, view):
+    """Residual mode: `plan` is the champion plan; every head is an offset on
+    its field. Zero offsets leave the plan untouched. Scripted gates (last
+    planting day, animal deadlines, herd cap, liquidation) still apply."""
+    values = {name: vals[choices[i]] for i, (name, vals) in enumerate(HEADS)}
+    day = view.day
+
+    for head, crop in QUOTA_CROP.items():
+        off = values[head]
+        if not off:
+            continue
+        q = max(0, plan.plant_quota.get(crop, 0) + off)
+        if plan.liquidation or day > LAST_PLANT[crop]:
+            q = 0
+        if q:
+            plan.plant_quota[crop] = q
+        else:
+            plan.plant_quota.pop(crop, None)
+
+    herd = {}
+    for _, _, t in view.me.animals():
+        herd[t["animal"]] = herd.get(t["animal"], 0) + 1
+    herd_total = sum(herd.values())
+    for head, kind in BUY_KIND.items():
+        off = values[head]
+        if not off:
+            continue
+        n = max(0, plan.animal_buys.get(kind, 0) + off)
+        n = min(n, max(0, HERD_CAP - herd_total))
+        if plan.liquidation or day > ANIMAL_LAST_BUY[kind]:
+            n = 0
+        if n:
+            plan.animal_buys[kind] = n
+        else:
+            plan.animal_buys.pop(kind, None)
+        herd_total += n
+    # Structure pipeline per kind, recomputed for the adjusted buys.
+    empty_by_kind = {"COOP": 0, "PASTURE": 0}
+    for _, _, t in view.me.empty_structures():
+        empty_by_kind[t["kind"]] = empty_by_kind.get(t["kind"], 0) + 1
+    plan.structure_builds = {"COOP": 0, "PASTURE": 0}
+    for kind, structure in (("GOOSE", "COOP"), ("COW", "PASTURE"), ("SHEEP", "PASTURE")):
+        pipeline = plan.animal_buys.get(kind, 0) + view.shed.get(kind, 0)
+        need = pipeline - empty_by_kind.get(structure, 0)
+        if need > 0:
+            plan.structure_builds[structure] += need
+            empty_by_kind[structure] = 0
+        else:
+            empty_by_kind[structure] = -need
+
+    plan.hires_target = max(2, plan.hires_target + values["hires"])
+    if values["land"] == 1:
+        plan.land_buys = []
+
+    plan.sell_floors = dict(plan.sell_floors)
+    if view.step < 714:
+        plan.sell_floors["MELON"] = values["melon_floor"]
+        for item in ("STRAWBERRY", "MILK", "WOOL"):
+            plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * values["premium_floor_scale"]))
+        for item in ("CARROT", "TOMATO"):
+            plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * values["staple_floor_scale"]))
+    return plan
+
+
+def residual_choices(plan, view, head_masks):
+    """BC targets in residual mode: the champion plan itself, i.e. zero
+    offsets (melon floor nearest the plan's, scales 1.0), projected onto the
+    valid mask."""
+    choices = []
+    for (name, vals), mask in zip(HEADS, head_masks):
+        if name == "melon_floor":
+            target = plan.sell_floors.get("MELON", 80)
+        elif name.endswith("_floor_scale"):
+            target = 1.0
+        else:
+            target = 0
+        valid = [i for i in range(len(vals)) if mask[i]]
+        choices.append(min(valid, key=lambda i: abs(vals[i] - target)))
+    return choices

@@ -143,14 +143,16 @@ class NeuralPolicy:
     rl/common.to_layers output). Falls back to the pure heuristic plan when
     no weights are loaded."""
 
-    def __init__(self, layers, temperature=1.0, rng=None):
+    def __init__(self, layers, temperature=1.0, rng=None, residual=False):
         self.layers = layers
         self.temperature = temperature
         self.rng = rng
+        # residual: champion base plan + offset heads (features.RESIDUAL_HEADS)
+        self.residual = residual
         self.last_decision = None  # (features, masks, choices, logprob, value)
 
     def make_plan(self, view, memory):
-        plan = planner.make_day_plan(view, memory)
+        plan = planner.make_day_plan(view, memory, speculative=self.residual)
         if self.layers is None:
             return plan
         x = features.encode(view, memory)
@@ -161,4 +163,6 @@ class NeuralPolicy:
             logits, head_masks, rng=self.rng, temperature=self.temperature
         )
         self.last_decision = (x, head_masks, choices, logprob, value)
+        if self.residual:
+            return features.apply_residual(plan, choices, view)
         return features.apply_to_plan(plan, choices, view)

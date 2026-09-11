@@ -48,6 +48,9 @@ VF_COEF = 0.5
 # counts), so money dominates the terminal reward; the win term is a small
 # tiebreaker, not the target.
 MONEY_COEF = 1.0 / 1000.0
+RESIDUAL = False
+MARGIN_COEF = 3.0 / 1000.0  # within-episode margin: the two banks of one episode
+                            # correlate at +0.73, so margin is the cleaner signal
 WIN_COEF = 6.0            # ordinary (league/heuristic) games
 SESSION_WIN_COEF = 15.0   # session-replay games: beating a real recorded
                           # opponent on its true world IS the objective now
@@ -100,7 +103,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         jobs.append(
             {"weights_path": None, "seed": 5000 + i, "side": i % 2,
              "opponent": opponent, "mode": "bc",
-             "style": "spec" if i % 2 == 0 else "react"}
+             "style": "spec" if (i % 2 == 0 or RESIDUAL) else "react"}
         )
     records = []
     for ep in pool.imap_unordered(rollout.run_episode, jobs):
@@ -171,6 +174,7 @@ def _episode_advantages(ep, shaping_w):
         if i == n - 1:
             wc = SESSION_WIN_COEF if ep.get("is_session") else WIN_COEF
             r += MONEY_COEF * ep["final_money"] + wc * (2 * ep["win"] - 1)
+            r += MARGIN_COEF * (ep["final_money"] - ep.get("opp_money", ep["final_money"]))
             r -= UNSOLD_COEF * ep.get("unsold_value", 0.0) / 1000.0
         rewards.append(r)
     values = [r["value"] for r in recs]
@@ -468,12 +472,22 @@ def main():
         help="JSONL of champion day-decisions from rl/replay_bc.py, mixed into BC + used for FT",
     )
     ap.add_argument(
+        "--residual", action="store_true",
+        help="offset heads over the champion plan (champ-h3 lineage); zero = the shipped heuristic",
+    )
+    ap.add_argument(
         "--patience",
         type=int,
         default=4,
         help="stop after this many evals without a profit improvement",
     )
     args = ap.parse_args()
+    global RESIDUAL
+    RESIDUAL = bool(args.residual)
+    if RESIDUAL:
+        os.environ["KAGG_RESIDUAL"] = "1"  # inherited by Pool workers
+        features.set_mode("residual")
+        print("mode: RESIDUAL (offset heads over the champion plan)")
 
     run_dir = args.run or f"rl/runs/{time.strftime('%m%d_%H%M')}"
     os.makedirs(run_dir, exist_ok=True)

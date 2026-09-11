@@ -12,7 +12,7 @@ import time
 import traceback
 
 from kagent.gamestate import Memory, View
-from kagent import market, planner, scheduler
+from kagent import features, market, planner, scheduler
 from kagent.mpcpolicy import MPCPlanProvider
 from kagent.nnpolicy import NeuralPolicy, decode_weights
 from kagent.weights import WEIGHTS_DATA
@@ -23,6 +23,10 @@ MPC_ENABLED = globals().get("MPC_ENABLED", False)
 # Champion-plan bundles run the decoded champion playbook (planner.
 # make_champion_plan) as the primary policy, weights or not.
 CHAMPION_PLAN = globals().get("CHAMPION_PLAN", False)
+# Residual bundles: weights are offset heads over the champion plan.
+RESIDUAL = globals().get("RESIDUAL", False)
+if RESIDUAL:
+    features.set_mode("residual")
 
 
 class ChampionPlanProvider:
@@ -138,10 +142,12 @@ _LAYERS = decode_weights(WEIGHTS_DATA)
 if CHAMPION_PLAN:
     _AGENT = SafeAgent(HeuristicPolicy(ChampionPlanProvider()), fallback=HeuristicPolicy())
 elif _LAYERS is not None:
-    _provider_cls = MPCPlanProvider if MPC_ENABLED else NeuralPolicy
-    _AGENT = SafeAgent(
-        HeuristicPolicy(_provider_cls(_LAYERS)), fallback=HeuristicPolicy()
-    )
+    if MPC_ENABLED:
+        _provider = MPCPlanProvider(_LAYERS)
+    else:
+        _provider = NeuralPolicy(_LAYERS, residual=RESIDUAL)
+    _fallback = HeuristicPolicy(ChampionPlanProvider()) if RESIDUAL else HeuristicPolicy()
+    _AGENT = SafeAgent(HeuristicPolicy(_provider), fallback=_fallback)
 else:
     _AGENT = SafeAgent(HeuristicPolicy())
 
