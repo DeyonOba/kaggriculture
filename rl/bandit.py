@@ -385,6 +385,8 @@ def main():
     ap.add_argument("cmd", choices=["collect", "report", "fit"])
     ap.add_argument("--knobs", action="store_true", help="season-long knob arms (KNOB_ARMS) instead of single-day offsets")
     ap.add_argument("--tag", default=None, help="knob sample file tag: rl/datasets/bandit/knob_<tag>.jsonl")
+    ap.add_argument("--arms", default=None,
+                    help="focused collection: comma list knob:value (values parsed as numbers), replaces KNOB_ARMS")
     ap.add_argument("--worlds", type=int, default=30, help="worlds per batch")
     ap.add_argument("--k", type=int, default=4, help="deviations per world")
     ap.add_argument("--batches", type=int, default=1)
@@ -395,7 +397,14 @@ def main():
     ap.add_argument("--ridge", type=float, default=1.0)
     ap.add_argument("--min-gain", type=float, default=1500.0)
     args = ap.parse_args()
-    global KNOB_OUT
+    global KNOB_OUT, KNOB_ARMS
+    if args.arms:
+        parsed = []
+        for spec in args.arms.split(","):
+            knob, val = spec.split(":")
+            val = float(val) if "." in val else int(val)
+            parsed.append((knob, val))
+        KNOB_ARMS = parsed
     if args.knobs:
         if args.tag:
             KNOB_OUT = f"rl/datasets/bandit/knob_{args.tag}.jsonl"
