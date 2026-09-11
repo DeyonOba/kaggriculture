@@ -26,6 +26,8 @@ PLANT_LAST_HOUR = 21  # leave >= 2 turns to water the fresh plant
 DROP_THRESHOLD = 10   # mid-game inventory size that triggers a shed trip
 EARLY_DROP_THRESHOLD = 2  # days 0-9: every fertilizer unit is the day's cash
 MIN_ZONE_TILES = 5
+SWEEP_DEADLINE_HOUR = 16  # from here survival tasks (dies tonight) jump the sweep
+HELP_RADIUS = 5           # cross-zone help only within this many steps
 
 
 class Task:
@@ -440,8 +442,17 @@ def assign(view, plan, tasks):
     # day 0-3). Wheat/fertilizer deliveries stay inside the zone round.
     need_tasks = [t for t in tasks if t.need in ("GOOSE", "COW", "SHEEP")]
 
-    def pick(idx, pool, lo, hi):
-        """Nearest best-priority executable task in pool with lo <= pri < hi."""
+    # SWEEP scoring: nearest task first, priority only as a tie-break. The
+    # old (priority, distance) order walked a hand four tiles to a harvest
+    # and four back to a water next door: 1.7 moves per action against the
+    # leaders' ~1.0 (measured on our five worst worlds: 71-105 productive
+    # actions a day vs their 105-159 with the same crew). Late in the day
+    # survival tasks (dies tonight) jump the queue so the sweep never
+    # strands them.
+    late = view.hour >= SWEEP_DEADLINE_HOUR
+
+    def pick(idx, pool, lo, hi, max_dist=None):
+        """Nearest executable task in pool with lo <= pri < hi."""
         x, y = units[idx]
         inv = view.unit_inv(idx)
         best = None
@@ -453,7 +464,11 @@ def assign(view, plan, tasks):
                 continue
             if task.need and inv.get(task.need, 0) < 1:
                 continue
-            score = (task.pri, _dist(x, y, task.x, task.y))
+            d = _dist(x, y, task.x, task.y)
+            if max_dist is not None and d > max_dist:
+                continue
+            urgent = 0 if (late and task.pri == P_SURVIVAL) else 1
+            score = (urgent, d, task.pri)
             if best is None or score < best[0]:
                 best = (score, task)
         return best[1] if best else None
@@ -478,7 +493,7 @@ def assign(view, plan, tasks):
     # Pass 2 — real work anywhere: animal-heavy zones (pastures cluster near
     # the shed) get help before anyone waters a plant that is not due.
     for idx in sorted(free):
-        task = pick(idx, all_tasks + global_tasks, P_SURVIVAL, P_FILLER)
+        task = pick(idx, all_tasks + global_tasks, P_SURVIVAL, P_FILLER, max_dist=HELP_RADIUS)
         if task is not None and try_execute(idx, task):
             free.discard(idx)
     _count_moves(actions, _seen, "idlehelp")
