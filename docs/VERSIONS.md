@@ -9,6 +9,49 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h4 — bandit knobs over champ-h3 (2026-09-11, submitted)
+
+**Architecture.** champ-h3's plan and executor, plus `planner.KNOB_DEFAULTS` — season-long
+parameters of the champion plan (strawberry target, herd caps incl. geese, wheat engine, standing
+carrot/tomato patches, hire delta, premium sell-floor scale, endgame carrot day) overridden per
+agent through `memory.knobs`, effective from day 6. `KnobBanditPolicy` (kagent/banditpolicy.py)
+scores every (knob, value) arm at day 6 with a fitted gain model and sets the winners; champ-h4
+ships two constant rules: `premium_scale = 0.7`, `carrot_day = 25`.
+
+**How the knobs were measured** (`rl/bandit.py collect --knobs`). Per world one twin game (plain
+champion plan) and four games each with one knob changed for the season; the label is the paired
+margin gain. Worlds: 60% recorded champion sessions on their true seeds, 30% champ-h3/h2 on fresh
+seeds, 10% the reactive heuristic. Successive elimination retires arms whose mean + 2 s.e. < 0.
+Interim table at 1,200 samples (gain vs champ-h3, mean ± s.e., n):
+
+| knob | gain | n | | knob | gain | n |
+|---|---|---|---|---|---|---|
+| premium_scale 0.7 | +1,836 ± 380 | 89 | | sheep 10 | −1,754 ± 742 | 55 |
+| carrot_day 25 | +1,572 ± 249 | 81 | | premium_scale 1.3 | −2,360 ± 745 | 30 |
+| straw_target 40 | +922 ± 879 (+2,274 ± 927 with ≥1 consumer) | 112 | | carrot_day 18 | −2,691 ± 514 | 33 |
+| geese 2 | +332 ± 1,037 | 87 | | hires +2 | −4,408 ± 1,384 | 34 |
+| wheat_engine 40 | −87 ± 402 | 83 | | straw_target 21 | −5,667 ± 2,565 | 30 |
+| cows 10 | −1,432 ± 865 (≈0 with milk consumers) | 92 | | carrot_standing 16 | −7,702 ± 1,978 | 39 |
+| cows 6 | −2,136 ± 1,442 | 80 | | hires −2 | −11,746 ± 1,829 | 31 |
+
+**What did not work, and why** (both fully instrumented; see `rl/train.py --residual --paired`,
+`rl/bandit.py collect` without `--knobs`): residual PPO over the champion plan (gen-14 a–e) — with
+entropy bonus the policy wandered and returns collapsed; without it the BC prior was too peaked
+(P(zero offset) 0.996) to explore; after softening it to 0.85 and adding a paired-twin reward it
+learned mostly to *stop* deviating (P(zero) rose on 11 of 13 heads) and its argmax played
+identically to champ-h3 on 24 paired worlds after 45 iterations. The single-day counterfactual
+bandit (4,800 samples) found every one-day deviation neutral-to-harmful within ±$500: standing
+quotas refill one-day changes, so they only test timing.
+
+**Benchmarks.** Arena vs champ-h3, 30 games seeds 15000+: 29–1, $90,718 vs $86,112. 24 paired
+champion worlds: +$1,478 ± 692, better in 18/24. Held-out ladder 1.00 / 0.83 / 0.17 / 0.17 /
+0.00 / 0.50. p99 4.6 ms (day-6 scoring).
+
+**Next.** Fit the context-conditional rules (strawberry target by consumers, cows by milk demand,
+geese by egg demand) from the completed knob collection and gate them the same way; extend the
+knob set (second-quadrant timing, sheep/cow ratio, wheat sale floor) and re-collect against
+champ-h4 as the new twin.
+
 ## champ-h3 — sweep executor (2026-09-11, submitted)
 
 Same plan and market controller as champ-h2; one scheduler change. `assign()`'s `pick()` scores

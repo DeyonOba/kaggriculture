@@ -4,6 +4,30 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## champ-h4 — 2026-09-11 · SUBMITTED · first bandit-measured adaptive knobs
+
+The adaptive layer, finally with evidence. Two learning approaches failed first and are recorded
+in `docs/VERSIONS.md`: a residual PPO planner (offset heads over the champion plan, four runs)
+converged back onto the prior — whole-episode credit over ~60 deviations per game is too weak
+against ±$30k outcomes — and a single-day counterfactual bandit (4,800 paired samples) found no
+positive one-day tweak within ±$500, because the plan's standing quotas refill any one-day change
+the next day. What worked: **season-long knobs** of the champion plan, one per game, applied from
+day 6 (shops revealed), each paired against the unchanged plan on the identical world
+(`rl/bandit.py collect --knobs`).
+
+- At 1,200 paired samples, two knobs are unconditionally positive at ~5σ: **premium sell floors
+  ×0.7** (sell strawberry/milk/wool sooner — the first seller takes the price in this market),
+  +$1,836 ± 380; **endgame carrot switch on day 25 instead of 22**, +$1,572 ± 249. Shipped as
+  constant rules through `KnobBanditPolicy` (`arena/agents/champ-h4/rules.json`).
+- Context-dependent signal already visible: strawberry target 40 is **+$2,274 ± 927 when at least
+  one strawberry consumer is open and −$3,548 with none**; cows 10 only pays with milk consumers.
+  Those need the regression fit (collection continues on the 9 surviving arms).
+- Clearly harmful, measured: hires −2 (−$11.7k), 16 standing carrots (−$7.7k), strawberries 21
+  (−$5.7k), hires +2 (−$4.4k), geese 3, carrot day 18, wheat engine 24, premium floors ×1.3.
+- **Results**: arena vs champ-h3 **29–1**, $90.7k vs $86.1k; **24 paired champion worlds +$1,478 ±
+  692 (18/24)** — the first candidate positive on both; held-out ladder **1.00 / 0.83 / 0.17 /
+  0.17 / 0.00 / 0.50** (champ-h3 …0.08 / 0.17 / 0.00 / 0.42); p99 4.6 ms.
+
 ## champ-h3 — 2026-09-11 · SUBMITTED · sweep executor
 
 Measured on our five worst worlds against the recorded occupant of our own seat: they got
