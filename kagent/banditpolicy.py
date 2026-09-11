@@ -75,6 +75,7 @@ class KnobBanditPolicy:
         self.models = rules.get("models", [])
         self.min_gain = float(rules.get("min_gain", 1500.0))
         self.max_knobs = max_knobs if max_knobs is not None else int(rules.get("max_knobs", 1))
+        self.conditions = rules.get("conditions", [])
         self.last_decision = None
 
     def _predict(self, model, x):
@@ -85,16 +86,27 @@ class KnobBanditPolicy:
         return total
 
     def make_plan(self, view, memory):
-        if view.day == self.KNOB_DAY and self.models and getattr(memory, "knobs_decided", False) is False:
-            x = features.encode(view, memory)
-            scored = sorted(
-                ((self._predict(m, x), m["head"], m["offset"]) for m in self.models), reverse=True
-            )
+        if view.day == self.KNOB_DAY and getattr(memory, "knobs_decided", False) is False:
             chosen = {}
-            for gain, knob, value in scored:
-                if gain < self.min_gain or knob in chosen or len(chosen) >= self.max_knobs:
-                    continue
-                chosen[knob] = value
+            # Explicit, interpretable rules first: {"knob", "value",
+            # "min_consumers": {product: k}} evaluated on the day-6 context.
+            if self.conditions:
+                ctx = features.context(view)
+                for rule in self.conditions:
+                    ok = all(ctx["consumers"].get(p, 0) >= k for p, k in rule.get("min_consumers", {}).items())
+                    ok = ok and all(ctx["consumers"].get(p, 0) <= k for p, k in rule.get("max_consumers", {}).items())
+                    if ok:
+                        chosen[rule["knob"]] = rule["value"]
+            scored = []
+            if self.models:
+                x = features.encode(view, memory)
+                scored = sorted(
+                    ((self._predict(m, x), m["head"], m["offset"]) for m in self.models), reverse=True
+                )
+                for gain, knob, value in scored:
+                    if gain < self.min_gain or knob in chosen or len(chosen) >= self.max_knobs:
+                        continue
+                    chosen[knob] = value
             memory.knobs = chosen
             memory.knobs_decided = True
             self.last_decision = (view.day, chosen, [(round(g), k, v) for g, k, v in scored[:3]])
