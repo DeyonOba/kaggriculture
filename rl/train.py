@@ -50,6 +50,7 @@ VF_COEF = 0.5
 # tiebreaker, not the target.
 MONEY_COEF = 1.0 / 1000.0
 RESIDUAL = False
+PAIRED = False
 MARGIN_COEF = 3.0 / 1000.0  # within-episode margin: the two banks of one episode
                             # correlate at +0.73, so margin is the cleaner signal
 WIN_COEF = 6.0            # ordinary (league/heuristic) games
@@ -174,8 +175,21 @@ def _episode_advantages(ep, shaping_w):
         r -= CARRY_COEF * recs[i].get("stock", 0.0) / 1000.0
         if i == n - 1:
             wc = SESSION_WIN_COEF if ep.get("is_session") else WIN_COEF
-            r += MONEY_COEF * ep["final_money"] + wc * (2 * ep["win"] - 1)
-            r += MARGIN_COEF * (ep["final_money"] - ep.get("opp_money", ep["final_money"]))
+            margin = ep["final_money"] - ep.get("opp_money", ep["final_money"])
+            if "base_final" in ep:
+                # Paired baseline: the zero-offset champion plan played the
+                # SAME world (seed, seat, opponent). Rewarding the difference
+                # removes the +/-$30k shared-world variance that drowned the
+                # per-decision advantage (the two banks of one episode
+                # correlate at +0.73; a policy and its prior on one world far
+                # more).
+                base_margin = ep["base_final"] - ep.get("base_opp", ep["base_final"])
+                r += MONEY_COEF * (ep["final_money"] - ep["base_final"])
+                r += wc * (ep["win"] - ep["base_win"])
+                r += MARGIN_COEF * (margin - base_margin)
+            else:
+                r += MONEY_COEF * ep["final_money"] + wc * (2 * ep["win"] - 1)
+                r += MARGIN_COEF * margin
             r -= UNSOLD_COEF * ep.get("unsold_value", 0.0) / 1000.0
         rewards.append(r)
     values = [r["value"] for r in recs]
@@ -277,7 +291,20 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                  "seed": 10_000 + it * episodes + e, "side": side,
                  "opponent": opp, "mode": "rl"}
             )
-        episodes_out = list(pool.imap_unordered(rollout.run_episode, jobs))
+        if PAIRED:
+            # Twin of every episode: the champion plan (zero offsets) on the
+            # identical world; its outcome is the reward baseline.
+            twins = [dict(j, weights_path=None, mode="bc", style="spec") for j in jobs]
+            outs = pool.map(rollout.run_episode, jobs + twins)  # ordered
+            episodes_out = outs[: len(jobs)]
+            for ep, tw in zip(episodes_out, outs[len(jobs):]):
+                ep["base_final"] = tw["final_money"]
+                ep["base_opp"] = tw["opp_money"]
+                ep["base_win"] = tw["win"]
+            gain = sum(ep["final_money"] - ep["base_final"] for ep in episodes_out) / len(episodes_out)
+            print(f"   paired: mean gain vs champion plan on same worlds = {gain:+,.0f}")
+        else:
+            episodes_out = pool.map(rollout.run_episode, jobs)  # ordered: bin stats zip below
         snapshots.append(wpath)
         for ep, j in zip(episodes_out, jobs):
             o = j["opponent"]
@@ -489,6 +516,8 @@ def main():
     ap.add_argument("--prior-kl", type=float, default=0.0,
                     help="KL penalty toward the frozen BC prior (residual trust region)")
     ap.add_argument("--lr", type=float, default=None, help="policy/value learning rate (default LR)")
+    ap.add_argument("--paired", action="store_true",
+                    help="reward = outcome minus the champion plan's outcome on the identical world (twin episodes)")
     ap.add_argument("--plateau-cool", type=float, default=None,
                     help="LR multiplier per eval without improvement (1.0 = off; residual argmax evals stay flat by design)")
     ap.add_argument("--prior-pt", default=None, help="checkpoint to use as the frozen prior for --prior-kl (default: the resumed/BC net)")
@@ -503,8 +532,9 @@ def main():
         help="stop after this many evals without a profit improvement",
     )
     args = ap.parse_args()
-    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL
+    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED
     RESIDUAL = bool(args.residual)
+    PAIRED = bool(args.paired)
     if args.plateau_cool is not None:
         PLATEAU_COOL = args.plateau_cool
     if args.ent_coef is not None:
