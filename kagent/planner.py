@@ -236,12 +236,37 @@ CHAMP_HIRES = [5, 4, 4, 5, 4, 5, 7, 9, 9, 10,
                11, 11, 11, 11, 11, 11, 10, 10, 10, 8]
 
 
-def _champ_herd_targets(day):
-    cow = 2 if day < 3 else min(8, 2 + (day - 2))
+# Season-long KNOBS of the champion plan (the adaptive layer's parameters).
+# Defaults reproduce champ-h3; `memory.knobs` (per agent) overrides them —
+# set by the counterfactual-bandit collector or by the fitted BanditPolicy
+# once the shops are revealed.
+KNOB_DEFAULTS = {
+    "straw_target": CHAMP_STRAW_TARGET,   # standing strawberry tiles from day 10
+    "straw_early": CHAMP_STRAW_EARLY,     # before the day-10 melon money
+    "cows": 8, "sheep": 8, "geese": 0,    # herd caps (geese from day 6)
+    "wheat_engine": CHAMP_WHEAT_ENGINE,
+    "carrot_standing": 0,                 # standing carrot patch, days 6-26
+    "tomato_standing": 0,                 # standing tomato tiles, days 6-18
+    "hires_delta": 0,
+    "premium_scale": 1.0,                 # x on STRAWBERRY/MILK/WOOL sell floors
+    "carrot_day": CHAMP_CARROT_DAY,       # endgame: freed tiles -> carrots
+}
+
+
+def _knobs(memory):
+    k = dict(KNOB_DEFAULTS)
+    k.update(getattr(memory, "knobs", None) or {})
+    return k
+
+
+def _champ_herd_targets(day, knobs=None):
+    knobs = knobs or KNOB_DEFAULTS
+    cow = 2 if day < 3 else min(knobs["cows"], 2 + (day - 2))
     # Recorded pace: 4 sheep by day 8, 6 by day 10, 8 by day 12-14.
-    sheep = 2 if day < 7 else min(8, 2 + (day - 6))
+    sheep = 2 if day < 7 else min(knobs["sheep"], 2 + (day - 6))
+    geese = knobs["geese"] if 6 <= day <= 18 else 0
     return {
-        "GOOSE": 0,
+        "GOOSE": geese,
         "COW": cow if day <= 18 else 0,
         "SHEEP": sheep if day <= 20 else 0,
     }
@@ -264,7 +289,11 @@ def make_champion_plan(view, memory):
     empty_tiles = sum(1 for _ in me.empty_tiles())
 
     # --- Hiring: lean until the second quadrant, then ~11 ---------------------
-    schedule = CHAMP_HIRES[day] if day < len(CHAMP_HIRES) else 8
+    knobs = _knobs(memory)
+    # Knobs are decided at day 6 (shops revealed); before that the plan is
+    # the fixed champion opening (extra day-0 hires also push the market
+    # order list past its 10-order cap and drop the seed orders).
+    schedule = (CHAMP_HIRES[day] if day < len(CHAMP_HIRES) else 8) + (knobs["hires_delta"] if day >= 6 else 0)
     workload = sum(crops.values()) + 2 * my_animals + 10
     plan.hires_target = min(schedule, max(3, workload // 3))
     budget = max(150.0, me.money * 0.25)
@@ -286,8 +315,8 @@ def make_champion_plan(view, memory):
         # Full deficits, not gated on hour-0 cash: the market controller buys
         # animals before seeds the turn money lands (wool/milk arrive mid-day),
         # so the herd wins the intra-day cash race the way champions' does.
-        targets = _champ_herd_targets(day)
-        for kind in ("SHEEP", "COW"):  # wool lands first (day 6) and pays for land
+        targets = _champ_herd_targets(day, knobs)
+        for kind in ("SHEEP", "COW", "GOOSE"):  # wool lands first (day 6) and pays for land
             want = targets[kind] - herd.get(kind, 0) - view.shed.get(kind, 0)
             n = max(0, min(want, 4))
             if n > 0:
@@ -323,20 +352,27 @@ def make_champion_plan(view, memory):
             # Strawberries take freed tiles first (4 productions by 29), staged
             # so the herd is funded before the day-10 melon money: 18 by day
             # 9, then the full 33 — the recorded champion pace.
-            straw_target = CHAMP_STRAW_TARGET if day >= 10 else CHAMP_STRAW_EARLY
+            straw_target = knobs["straw_target"] if day >= 10 else min(knobs["straw_early"], knobs["straw_target"])
             quota["STRAWBERRY"] = max(0, straw_target - crops.get("STRAWBERRY", 0))
-        if day >= CHAMP_CARROT_DAY and day <= CARROT_LAST_PLANT_DAY:
-            quota["CARROT"] = min(20, free)
+        if knobs["carrot_standing"] and 6 <= day <= CARROT_LAST_PLANT_DAY:
+            quota["CARROT"] = max(0, knobs["carrot_standing"] - crops.get("CARROT", 0))
+        if knobs["tomato_standing"] and 6 <= day <= TOMATO_LAST_PLANT_DAY:
+            quota["TOMATO"] = max(0, knobs["tomato_standing"] - crops.get("TOMATO", 0))
+        if day >= knobs["carrot_day"] and day <= CARROT_LAST_PLANT_DAY:
+            quota["CARROT"] = max(quota.get("CARROT", 0), min(20, free))
         elif day > 1 and day <= WHEAT_LAST_PLANT_DAY:
             if day < 10:
                 wheat_target = 8
             else:
-                wheat_target = min(CHAMP_WHEAT_ENGINE, crops.get("WHEAT", 0) + free)
+                wheat_target = min(knobs["wheat_engine"], crops.get("WHEAT", 0) + free)
             quota["WHEAT"] = max(0, wheat_target - crops.get("WHEAT", 0))
     plan.plant_quota = {k: v for k, v in quota.items() if v > 0}
 
     plan.wheat_reserve = 0 if plan.liquidation and day >= 29 else my_animals + 2
     plan.sell_floors = _sell_floors(view)
+    if knobs["premium_scale"] != 1.0 and 6 <= day and view.step < 714:
+        for item in ("STRAWBERRY", "MILK", "WOOL"):
+            plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * knobs["premium_scale"]))
     return plan
 
 

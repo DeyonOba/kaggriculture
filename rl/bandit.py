@@ -59,6 +59,100 @@ HEAD_DAYS = {
 }
 
 
+# Season-long knob arms: (knob, value) deviations from planner.KNOB_DEFAULTS,
+# applied for the whole game; context = the day-6 state (shops revealed).
+KNOB_ARMS = [
+    ("straw_target", 21), ("straw_target", 27), ("straw_target", 40),
+    ("cows", 6), ("cows", 10),
+    ("sheep", 6), ("sheep", 10),
+    ("geese", 2), ("geese", 3),
+    ("wheat_engine", 24), ("wheat_engine", 40),
+    ("carrot_standing", 8), ("carrot_standing", 16),
+    ("tomato_standing", 6),
+    ("hires_delta", -2), ("hires_delta", 2),
+    ("premium_scale", 0.7), ("premium_scale", 1.3),
+    ("carrot_day", 18), ("carrot_day", 25),
+]
+KNOB_PRODUCT = {"straw_target": "STRAWBERRY", "cows": "MILK", "sheep": "WOOL", "geese": "EGG",
+                "wheat_engine": "WHEAT", "carrot_standing": "CARROT", "tomato_standing": "TOMATO"}
+KNOB_OUT = "rl/datasets/bandit/knob_samples.jsonl"
+
+
+def _knob_world_jobs(rng, worlds, k, bundles, live=None):
+    sessions = sorted(glob.glob(os.path.join(SESS_DIR, "session-*.json")))
+    train_sessions = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 != 0]
+    arms = [a for a in KNOB_ARMS if live is None or a in live]
+    jobs = []
+    for w in range(worlds):
+        roll = rng.random()
+        if roll < 0.6 and train_sessions:
+            path = rng.choice(train_sessions); script_side = rng.randrange(2)
+            opp = ("session", path, script_side); side = 1 - script_side; seed = 0
+        elif roll < 0.9 and bundles:
+            opp = ("bundle", rng.choice(bundles)); side = rng.randrange(2); seed = 300_000 + rng.randrange(10**6)
+        else:
+            opp = "heuristic"; side = rng.randrange(2); seed = 300_000 + rng.randrange(10**6)
+        base = {"weights_path": None, "seed": seed, "side": side, "opponent": opp,
+                "mode": "bc", "style": "spec", "world": w}
+        jobs.append(base)
+        for _ in range(k):
+            knob, val = rng.choice(arms)
+            jobs.append(dict(base, mode="knob", dev={knob: val}, arm=(knob, val)))
+    return jobs
+
+
+def _live_knob_arms(min_n=30):
+    if not os.path.exists(KNOB_OUT):
+        return None
+    by = defaultdict(list)
+    for line in open(KNOB_OUT):
+        if line.strip():
+            r = json.loads(line); by[(r["head"], r["offset"])].append(r["gain_margin"])
+    live = set()
+    for arm in KNOB_ARMS:
+        g = by.get(arm, [])
+        if len(g) >= min_n:
+            m, se, n = _stats(g)
+            if m + 2 * se < 0:
+                continue
+        live.add(arm)
+    return live
+
+
+def collect_knobs(args):
+    rng = random.Random(args.seed if args.seed is not None else int(time.time()))
+    bundles = tuple(b for b in (args.bundles or "").split(",") if b)
+    os.makedirs(os.path.dirname(KNOB_OUT), exist_ok=True)
+    total = 0
+    with Pool(args.procs) as pool, open(KNOB_OUT, "a") as f:
+        for batch in range(args.batches):
+            live = _live_knob_arms()
+            jobs = _knob_world_jobs(rng, args.worlds, args.k, bundles, live)
+            t0 = time.time()
+            outs = pool.map(rollout.run_episode, jobs)
+            twins = {j["world"]: o for j, o in zip(jobs, outs) if j["mode"] == "bc"}
+            gains = []
+            for j, o in zip(jobs, outs):
+                if j["mode"] != "knob":
+                    continue
+                tw = twins[j["world"]]; ex = o.get("extra", {})
+                if "dev_x" not in ex:
+                    continue
+                knob, val = j["arm"]
+                margin = o["final_money"] - o["opp_money"]; base_margin = tw["final_money"] - tw["opp_money"]
+                row = {"head": knob, "offset": val, "off_idx": [a for a in KNOB_ARMS if a[0] == knob].index((knob, val)),
+                       "day": rollout.KNOB_DAY, "applied": True, "noop": False,
+                       "gain_margin": margin - base_margin, "gain_money": o["final_money"] - tw["final_money"],
+                       "final": o["final_money"], "opp": o["opp_money"], "base_final": tw["final_money"], "base_opp": tw["opp_money"],
+                       "opponent": j["opponent"] if isinstance(j["opponent"], str) else list(j["opponent"]),
+                       "side": j["side"], "seed": j["seed"], "ctx": ex["dev_ctx"], "x": [round(v, 5) for v in ex["dev_x"]]}
+                f.write(json.dumps(row) + "\n"); gains.append(row["gain_margin"]); total += 1
+            f.flush()
+            live_n = len(live) if live is not None else len(KNOB_ARMS)
+            print(f"batch {batch + 1}/{args.batches}: {len(jobs)} games in {time.time() - t0:.0f}s, "
+                  f"{len(gains)} samples (total {total}), mean gain {sum(gains) / max(1, len(gains)):+,.0f}, live arms {live_n}", flush=True)
+
+
 def _zero_index(vals):
     if 0 in vals:
         return vals.index(0)
@@ -186,8 +280,11 @@ def collect(args):
                   f"{len(gains)} samples (total {total}), mean gain {mean:+,.0f}", flush=True)
 
 
+SRC = {"path": OUT}
+
+
 def _load():
-    return [json.loads(l) for l in open(OUT) if l.strip()]
+    return [json.loads(l) for l in open(SRC["path"]) if l.strip()]
 
 
 def _stats(vals):
@@ -227,7 +324,7 @@ def report(args):
     # context splits: demand for the head's product
     print("\nsplits by open consumers of the head's product (0 / 1-2 / 3+):")
     for (head, off), rs in sorted(by.items()):
-        prod = HEAD_PRODUCT.get(head)
+        prod = HEAD_PRODUCT.get(head) or KNOB_PRODUCT.get(head)
         if not prod or len(rs) < 12:
             continue
         parts = []
@@ -276,6 +373,7 @@ def fit(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["collect", "report", "fit"])
+    ap.add_argument("--knobs", action="store_true", help="season-long knob arms (KNOB_ARMS) instead of single-day offsets")
     ap.add_argument("--worlds", type=int, default=30, help="worlds per batch")
     ap.add_argument("--k", type=int, default=4, help="deviations per world")
     ap.add_argument("--batches", type=int, default=1)
@@ -286,6 +384,10 @@ def main():
     ap.add_argument("--ridge", type=float, default=1.0)
     ap.add_argument("--min-gain", type=float, default=1500.0)
     args = ap.parse_args()
+    if args.knobs:
+        SRC["path"] = KNOB_OUT
+        if args.cmd == "collect":
+            return collect_knobs(args)
     {"collect": collect, "report": report, "fit": fit}[args.cmd](args)
 
 

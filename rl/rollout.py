@@ -17,6 +17,7 @@ from kagent.policy import HeuristicPolicy
 from kagent import features
 
 _WEIGHTS_CACHE = {}
+KNOB_DAY = 6  # shops revealed on days 3 and 6
 
 
 def _load_layers(path):
@@ -139,6 +140,27 @@ def _residual():
 def _make_learner_agent(layers, temperature, rng, records, mode, style="react", dev=None, extra=None):
     mem = Memory()
     residual = _residual()
+    if mode == "knob":
+        # Counterfactual bandit over SEASON-LONG knobs: the champion plan
+        # with `dev` = {knob: value} overrides for the whole game; the state
+        # at KNOB_DAY (shops revealed) is the context.
+        mem.knobs = dict(dev or {})
+        pol = HeuristicPolicy()
+
+        def agent_fn(obs):
+            view = View(obs)
+            mem.observe(view)
+            if mem.day_plan is None or mem.day_plan_day != view.day:
+                if view.day == KNOB_DAY and extra is not None:
+                    extra["dev_x"] = features.encode(view, mem)
+                    extra["dev_ctx"] = features.context(view)
+                    extra["dev_applied"] = True
+                    extra["dev_noop"] = False
+                mem.day_plan = planner.make_day_plan(view, mem, speculative=True)
+                mem.day_plan_day = view.day
+            return pol.act(view, mem)
+
+        return agent_fn
     if mode == "deviate":
         # Counterfactual bandit: the champion plan every day except ONE
         # (day, head, offset) deviation; the state at that day is recorded so
