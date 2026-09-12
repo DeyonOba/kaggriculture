@@ -4,6 +4,15 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## knob bandit round 3 — 2026-09-12 · not shipped (plan constants exhausted)
+
+First job on free Kaggle compute (7.5 h, 5,400 paired samples, twin = champ-h5): the borderline
+round-2 arms re-measured — second-quadrant cash margin $1,500 +$375 ± 171, $800 +$150 ± 145;
+early strawberries 24 +$259 ± 294, 21 −$50 ± 257; opening melons 16 −$3,132 ± 1,366. Nothing
+clears the bar. Three rounds: +$3.5k, +$1.4k, ~$0 — the fixed plan's constants are tuned out.
+Next lever is *conditional* (day-6 shop draw) knobs from `tools/mine_knobs.py`, under
+verification.
+
 ## data + compute — 2026-09-12 · official daily episodes on free Kaggle compute
 
 - **Free-tier compute** (`tools/kaggle_job/`): any of our jobs runs as a private Kaggle script
