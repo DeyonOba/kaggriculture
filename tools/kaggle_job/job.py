@@ -7,7 +7,7 @@ Everything the job writes into OUT_DIR lands in the kernel's output, which
 `kaggle kernels output gideonoba/kaggriculture-job -p <dir>` fetches locally.
 
 Layout on Kaggle:
-  /kaggle/working/kaggriculture   the repo, restored from the code Dataset tarball
+  /tmp/kaggriculture               the repo, restored from the code Dataset (not published)
   /kaggle/input/kaggriculture-datasets/  our private Kaggle Dataset (sessions etc.)
 """
 
@@ -20,8 +20,8 @@ import tarfile
 import gzip
 import time
 
-WORK = "/kaggle/working"
-REPO = os.path.join(WORK, "kaggriculture")
+WORK = "/kaggle/working"            # = the kernel's OUTPUT; keep it small
+REPO = "/tmp/kaggriculture"         # restored repo + corpus live outside the output
 INPUT = "/kaggle/input"
 
 
