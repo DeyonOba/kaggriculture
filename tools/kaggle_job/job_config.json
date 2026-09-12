@@ -3,9 +3,8 @@
   "procs": 4,
   "budget_s": 39600,
   "steps": [
-    "ls rl/datasets/sessions | wc -l; ls arena/agents | tr '\\n' ' '",
-    "{python} -u rl/bandit.py collect --knobs --tag kaggle_smoke --worlds 4 --k 2 --batches 1 --procs {procs} --seed 101",
-    "{python} rl/bandit.py report --knobs --tag kaggle_smoke"
+    "{python} -u rl/bandit.py collect --knobs --tag h5_kaggle --arms 'land2_margin:1500,straw_early:24,melon_opening:16,land2_margin:800,straw_early:21' --worlds 30 --k 4 --batches 45 --procs {procs} --seed 501",
+    "{python} rl/bandit.py report --knobs --tag h5_kaggle"
   ],
   "collect": [
     "rl/datasets/bandit"

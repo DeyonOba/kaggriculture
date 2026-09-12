@@ -252,7 +252,7 @@ KNOB_DEFAULTS = {
     "hires_delta": 0,
     # champ-h4 (knob bandit vs champ-h3, 3,600 paired samples): premium sell
     # floors x0.7 +$1,949 +/- 157, endgame carrots from day 25 +$1,545 +/- 116.
-    "premium_scale": 0.7,                 # x on STRAWBERRY/MILK/WOOL sell floors
+    "premium_scale": 0.35,                # x on STRAWBERRY/MILK/WOOL sell floors (champ-h5: round-2 bandit)
     "carrot_day": 25,                     # endgame: freed tiles -> carrots
     # Widened set (round 2, twin = champ-h4); defaults reproduce champ-h4.
     "melon_opening": CHAMP_OPENING["MELON"],  # day-0 melon tiles
