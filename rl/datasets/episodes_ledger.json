@@ -1,0 +1,206 @@
+{
+  "done": {
+    "2026-09-11": {
+      "sessions_added": 657,
+      "when": "2026-09-12 08:42"
+    },
+    "2026-08-15": {
+      "sessions_added": 2033,
+      "when": "2026-09-12 08:58"
+    },
+    "2026-08-16": {
+      "sessions_added": 2033,
+      "when": "2026-09-12 08:58"
+    },
+    "2026-08-17": {
+      "sessions_added": 2033,
+      "when": "2026-09-12 08:58"
+    },
+    "2026-08-18": {
+      "sessions_added": 2090,
+      "when": "2026-09-12 09:10"
+    },
+    "2026-08-19": {
+      "sessions_added": 2090,
+      "when": "2026-09-12 09:10"
+    },
+    "2026-08-20": {
+      "sessions_added": 2090,
+      "when": "2026-09-12 09:10"
+    },
+    "2026-08-21": {
+      "sessions_added": 2074,
+      "when": "2026-09-12 09:23"
+    },
+    "2026-08-22": {
+      "sessions_added": 2074,
+      "when": "2026-09-12 09:23"
+    },
+    "2026-08-23": {
+      "sessions_added": 2074,
+      "when": "2026-09-12 09:23"
+    },
+    "2026-08-24": {
+      "sessions_added": 2050,
+      "when": "2026-09-12 09:35"
+    },
+    "2026-08-25": {
+      "sessions_added": 2050,
+      "when": "2026-09-12 09:35"
+    },
+    "2026-08-26": {
+      "sessions_added": 2050,
+      "when": "2026-09-12 09:35"
+    },
+    "2026-08-27": {
+      "sessions_added": 2002,
+      "when": "2026-09-12 09:48"
+    },
+    "2026-08-28": {
+      "sessions_added": 2002,
+      "when": "2026-09-12 09:48"
+    },
+    "2026-08-29": {
+      "sessions_added": 2002,
+      "when": "2026-09-12 09:48"
+    },
+    "2026-08-30": {
+      "sessions_added": 1960,
+      "when": "2026-09-12 10:00"
+    },
+    "2026-08-31": {
+      "sessions_added": 1960,
+      "when": "2026-09-12 10:00"
+    },
+    "2026-09-01": {
+      "sessions_added": 1960,
+      "when": "2026-09-12 10:00"
+    },
+    "2026-09-02": {
+      "sessions_added": 1964,
+      "when": "2026-09-12 10:10"
+    },
+    "2026-09-03": {
+      "sessions_added": 1964,
+      "when": "2026-09-12 10:10"
+    },
+    "2026-09-04": {
+      "sessions_added": 1964,
+      "when": "2026-09-12 10:10"
+    },
+    "2026-09-05": {
+      "sessions_added": 1989,
+      "when": "2026-09-12 10:22"
+    },
+    "2026-09-06": {
+      "sessions_added": 1989,
+      "when": "2026-09-12 10:22"
+    },
+    "2026-09-07": {
+      "sessions_added": 1989,
+      "when": "2026-09-12 10:22"
+    },
+    "2026-09-08": {
+      "sessions_added": 1982,
+      "when": "2026-09-12 10:35"
+    },
+    "2026-09-09": {
+      "sessions_added": 1982,
+      "when": "2026-09-12 10:35"
+    },
+    "2026-09-10": {
+      "sessions_added": 1982,
+      "when": "2026-09-12 10:35"
+    }
+  },
+  "runs": [
+    {
+      "dates": [
+        "2026-09-11"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-czpgimqi"
+    },
+    {
+      "dates": [
+        "2026-08-15",
+        "2026-08-16",
+        "2026-08-17"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-n1qxhzo1"
+    },
+    {
+      "dates": [
+        "2026-08-18",
+        "2026-08-19",
+        "2026-08-20"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-rak_nwp9"
+    },
+    {
+      "dates": [
+        "2026-08-21",
+        "2026-08-22",
+        "2026-08-23"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-0vpzcx3a"
+    },
+    {
+      "dates": [
+        "2026-08-24",
+        "2026-08-25",
+        "2026-08-26"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-mf_wbt0u"
+    },
+    {
+      "dates": [
+        "2026-08-27",
+        "2026-08-28",
+        "2026-08-29"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-r7erk3to"
+    },
+    {
+      "dates": [
+        "2026-08-30",
+        "2026-08-31",
+        "2026-09-01"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-gz00gi8y"
+    },
+    {
+      "dates": [
+        "2026-09-02",
+        "2026-09-03",
+        "2026-09-04"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-cehh2ot4"
+    },
+    {
+      "dates": [
+        "2026-09-05",
+        "2026-09-06",
+        "2026-09-07"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-q2nb69pt"
+    },
+    {
+      "dates": [
+        "2026-09-08",
+        "2026-09-09",
+        "2026-09-10"
+      ],
+      "status": "complete",
+      "output": "/var/folders/8s/jbkwg3mn46x9jjq4m1plt7x00000gn/T/epout-2cz0kwu_"
+    }
+  ]
+}

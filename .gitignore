@@ -24,5 +24,6 @@ rl/runs/
 rl/datasets/*
 !rl/datasets/README.md
 !rl/datasets/MANIFEST.json
+!rl/datasets/episodes_ledger.json
 *.pt
 nohup.out
