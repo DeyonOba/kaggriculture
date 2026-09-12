@@ -87,15 +87,40 @@ KNOB_PRODUCT = {"straw_target": "STRAWBERRY", "cows": "MILK", "sheep": "WOOL", "
 KNOB_OUT = "rl/datasets/bandit/knob_samples.jsonl"
 
 
+MIN_OPP_RATING = 0.0  # --min-rating: train only on worlds whose recorded opponent is rated at least this
+
+
+def _train_sessions():
+    """Training pool: sessions not held out (episode % 5 != 0) whose SCRIPT
+    side (the recorded opponent we face) is rated >= MIN_OPP_RATING. Returns
+    [(path, script_side)]; unrated sides are excluded when a floor is set."""
+    out = []
+    for p in sorted(glob.glob(os.path.join(SESS_DIR, "session-*.json"))):
+        if int(p.split("-")[-1][:-5]) % 5 == 0:
+            continue
+        if MIN_OPP_RATING <= 0:
+            out.append((p, None))
+            continue
+        try:
+            scores = json.load(open(p)).get("scores") or [None, None]
+        except Exception:
+            continue
+        for side in (0, 1):
+            if scores[side] is not None and scores[side] >= MIN_OPP_RATING:
+                out.append((p, side))
+    return out
+
+
 def _knob_world_jobs(rng, worlds, k, bundles, live=None):
-    sessions = sorted(glob.glob(os.path.join(SESS_DIR, "session-*.json")))
-    train_sessions = [p for p in sessions if int(p.split("-")[-1][:-5]) % 5 != 0]
+    train_sessions = _train_sessions()
     arms = [a for a in KNOB_ARMS if live is None or a in live]
     jobs = []
     for w in range(worlds):
         roll = rng.random()
         if roll < 0.6 and train_sessions:
-            path = rng.choice(train_sessions); script_side = rng.randrange(2)
+            path, script_side = rng.choice(train_sessions)
+            if script_side is None:
+                script_side = rng.randrange(2)
             opp = ("session", path, script_side); side = 1 - script_side; seed = 0
         elif roll < 0.9 and bundles:
             opp = ("bundle", rng.choice(bundles)); side = rng.randrange(2); seed = 300_000 + rng.randrange(10**6)
@@ -385,6 +410,8 @@ def main():
     ap.add_argument("cmd", choices=["collect", "report", "fit"])
     ap.add_argument("--knobs", action="store_true", help="season-long knob arms (KNOB_ARMS) instead of single-day offsets")
     ap.add_argument("--tag", default=None, help="knob sample file tag: rl/datasets/bandit/knob_<tag>.jsonl")
+    ap.add_argument("--min-rating", type=float, default=0.0,
+                    help="train only on session worlds whose recorded opponent is rated >= this (top games)")
     ap.add_argument("--arms", default=None,
                     help="focused collection: comma list knob:value (values parsed as numbers), replaces KNOB_ARMS")
     ap.add_argument("--worlds", type=int, default=30, help="worlds per batch")
@@ -397,7 +424,8 @@ def main():
     ap.add_argument("--ridge", type=float, default=1.0)
     ap.add_argument("--min-gain", type=float, default=1500.0)
     args = ap.parse_args()
-    global KNOB_OUT, KNOB_ARMS
+    global KNOB_OUT, KNOB_ARMS, MIN_OPP_RATING
+    MIN_OPP_RATING = args.min_rating
     if args.arms:
         parsed = []
         for spec in args.arms.split(","):
