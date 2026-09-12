@@ -35,10 +35,10 @@ TITLE = "Kaggriculture agent datasets"
 
 # artifact name -> (kind, source path relative to ROOT)
 ARTIFACTS = {
-    "sessions.tar.gz": ("tar", "sessions"),
-    # Kaggle Datasets auto-decompress single .gz files on mount but do not
-    # reliably expose tarballs: the sessions also ship as one JSONL (one
-    # session per line) which tools/kaggle_job/job.py splits back into files.
+    # Sessions ship as one JSONL (one session per line): Kaggle decompresses
+    # single .gz files on mount and unpacks tarballs under a folder named
+    # after them, so the JSONL is the reliable form; pull and the Kaggle job
+    # runner split it back into session-<id>.json files.
     "sessions.jsonl.gz": ("jsonl_dir", "sessions"),
     "field-samples.jsonl.gz": ("gz", "field/samples.jsonl"),
     "field-stats.jsonl.gz": ("gz", "field/stats.jsonl"),
