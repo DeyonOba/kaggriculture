@@ -1,0 +1,61 @@
+38968 seats, 36032 rated
+
+== medians by rating tier (ours = champ-h5 equivalents) ==
+knob                 ours      2500+  2000-2500  1000-2000      <1000
+melon_d1               12         12         12         12          5
+straw_d9               18         20         20         19         18
+straw_d13              33         34         37         38         29
+cows_d18                8          8          9          9          8
+sheep_d20               8          6          5          4          6
+geese_d18               0          0          0          0          0
+wheat_rate_10_24        -        6.1        6.1        5.7        4.5
+wheat_total             -        138        143        134        127
+carrot_total            -         13          9          6         20
+carrot_first_day       25         25         24         25         23
+tomato_total            0          0          0          0          0
+hires_d0_5            4.5        4.2        4.2        3.8        6.3
+hires_d10_25           11       11.2       11.4       11.2       11.6
+land1_day               6          6          6          6          6
+land2_day              10         11         11         11         10
+wool_sell_days          -         18         18         17         15
+milk_sell_days          -         20         20         20         19
+straw_sell_days         -         14         14         15         13
+
+== 16738 seats rated >= 2500.0: medians by DAY-6 demand context (consumers of the knob's product: 0 / 1 / 2) ==
+  straw_d9           STRAWBERRY    20 (n=4158) |    20 (n=8448) |    20 (n=4132)
+  straw_d13          STRAWBERRY    33 (n=4158) |    34 (n=8448) |    38 (n=4132)
+  cows_d18           MILK           7 (n=6604) |     9 (n=7821) |    10 (n=2313)
+  sheep_d20          WOOL          5 (n=12765) |    11 (n=3703) |     12 (n=270)
+  geese_d18          EGG            0 (n=9334) |     0 (n=6322) |     0 (n=1082)
+  carrot_total       CARROT        10 (n=9513) |    20 (n=6150) |    31 (n=1075)
+  tomato_total       TOMATO         0 (n=9553) |     0 (n=6264) |      0 (n=921)
+  wheat_rate_10_24   WHEAT       6.13 (n=2434) |  6.13 (n=7877) |  5.93 (n=6427)
+
+== within-context margin association (seats >= 2500.0): mean margin of seats ABOVE vs BELOW the context median setting ==
+knob               product    consumers@d6 ctx median  above-below margin      se   n(hi/lo)     z
+cows_d18           MILK                  0          7              -2,693     291 2891/3155   -9.3
+straw_d13          STRAWBERRY            0         33              -3,708     425 1740/1337   -8.7
+sheep_d20          WOOL                  1         11              +4,078     471 1340/1238    8.7
+cows_d18           MILK                  2         10              +4,534     603  900/737     7.5
+straw_d13          STRAWBERRY            2         38              +3,002     416 1297/1802    7.2
+wheat_rate_10_24   WHEAT                 2       5.93              -1,599     266 3201/3188   -6.0
+sheep_d20          WOOL                  0          5              -1,075     201 4632/5613   -5.3
+straw_d9           STRAWBERRY            2         20              +2,799     539 1239/1013    5.2
+wheat_rate_10_24   WHEAT                 1       6.13              -1,264     251 3783/3858   -5.0
+straw_d9           STRAWBERRY            1         20              +1,548     319 1908/2542    4.9
+straw_d9           STRAWBERRY            0         20              -3,025     628  378/1875   -4.8
+wheat_rate_10_24   WHEAT                 0       6.13              -2,009     526 1191/1092   -3.8
+carrot_total       CARROT                2         31              +3,166     921  448/515     3.4
+sheep_d20          WOOL                  2         12              +6,843   2,077  101/114     3.3
+straw_d13          STRAWBERRY            1         34                -456     242 3650/4102   -1.9
+carrot_total       CARROT                0         10                -407     220 4660/4649   -1.9
+cows_d18           MILK                  1          9                +423     258 2830/3452    1.6
+carrot_total       CARROT                1         20                -110     299 2858/2752   -0.4
+
+== opponent-strength conditioning (seats >= min rating): medians when opponent >= 2500 vs < 2000 ==
+  straw_d13      vs strong opp: 33   vs weak opp: 38
+  cows_d18       vs strong opp: 8   vs weak opp: 9
+  sheep_d20      vs strong opp: 6   vs weak opp: 5
+  geese_d18      vs strong opp: 0   vs weak opp: 0
+  wheat_total    vs strong opp: 154   vs weak opp: 132
+  carrot_total   vs strong opp: 25   vs weak opp: 7
