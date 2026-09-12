@@ -45,6 +45,11 @@ ARTIFACTS = {
     "field-seen.txt.gz": ("gz", "field/seen.txt"),
     "champions.jsonl.gz": ("gz", "champions.jsonl"),
     "decode-profiles.jsonl.gz": ("gz", "decode/profiles.jsonl"),
+    # Per-seat ratings for the official daily episodes (community crawl,
+    # georgymamarin/kaggriculture-episodes agents.csv): the ratings join for
+    # tools/extract_episodes.py.
+    "ratings-agents.csv.gz": ("gz", "ratings/agents.csv"),
+    "ratings-leaderboard.csv.gz": ("gz", "ratings/leaderboard.csv"),  # current team ratings (fallback join)
 }
 
 

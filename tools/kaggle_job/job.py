@@ -100,7 +100,8 @@ def setup(cfg):
     if os.path.isdir(DATA_IN):
         plain_map = {"field-samples.jsonl": "field/samples.jsonl", "field-stats.jsonl": "field/stats.jsonl",
                      "field-seen.txt": "field/seen.txt", "champions.jsonl": "champions.jsonl",
-                     "decode-profiles.jsonl": "decode/profiles.jsonl"}
+                     "decode-profiles.jsonl": "decode/profiles.jsonl", "ratings-agents.csv": "ratings/agents.csv",
+                     "ratings-leaderboard.csv": "ratings/leaderboard.csv"}
         for d, _, files in os.walk(DATA_IN):
             for name in files:
                 src = os.path.join(d, name)

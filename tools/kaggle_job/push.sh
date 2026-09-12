@@ -4,6 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 MSG="${1:-update}"
+CODE_ONLY="${2:-}"   # pass "code-only" to version the code dataset without (re)starting the job kernel
 STAGE=$(mktemp -d)
 mkdir -p "$STAGE/ds"
 # Code tarball: tracked files only (no .git, no datasets, no runs).
@@ -19,6 +20,7 @@ else
 fi
 echo "== waiting 90s for the new dataset version to process =="
 sleep 90
+if [ "$CODE_ONLY" = "code-only" ]; then echo "code-only: kernel not pushed"; exit 0; fi
 echo "== kernel push =="
 # Kaggle uploads only the script file: inject job_config.json into job.py.
 PUSHDIR="$STAGE/kernel"; mkdir -p "$PUSHDIR"
