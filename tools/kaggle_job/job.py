@@ -36,34 +36,64 @@ def sh(cmd, **kw):
     return subprocess.run(cmd, shell=True, check=True, **kw)
 
 
+def _listing(root, depth=2):
+    out = []
+    base = root.rstrip("/").count("/")
+    for d, dirs, files in os.walk(root):
+        if d.count("/") - base >= depth:
+            dirs[:] = []
+        out.append(f"{d}: {sorted(dirs)[:8]} {sorted(files)[:8]}")
+    return "\n".join(out[:30])
+
+
+def _find_dir(root, name):
+    for d, dirs, _ in os.walk(root):
+        if name in dirs:
+            return os.path.join(d, name)
+    return None
+
+
 def setup(cfg):
-    if not os.path.exists(REPO):
-        # The GitHub repo is private; the code arrives as a Dataset tarball.
-        tarball = os.path.join(CODE_IN, "kaggriculture-code.tar.gz")
+    print("code mount:\n" + _listing(CODE_IN), flush=True)
+    print("data mount:\n" + _listing(DATA_IN), flush=True)
+    if not os.path.exists(os.path.join(REPO, "kagent")):
+        # The GitHub repo is private; the code arrives as a Dataset. Kaggle
+        # may serve the uploaded tarball as-is or auto-extracted.
         os.makedirs(REPO, exist_ok=True)
-        with tarfile.open(tarball, "r:gz") as tf:
-            tf.extractall(REPO)
+        tarball = os.path.join(CODE_IN, "kaggriculture-code.tar.gz")
+        if os.path.exists(tarball):
+            with tarfile.open(tarball, "r:gz") as tf:
+                tf.extractall(REPO)
+        else:
+            src = os.path.dirname(_find_dir(CODE_IN, "kagent") or CODE_IN)
+            shutil.copytree(src, REPO, dirs_exist_ok=True)
         print("code restored:", sorted(os.listdir(REPO))[:12], flush=True)
     # Engine parity: the agent mirrors kaggle_environments 1.32.7 constants.
     sh(f"{sys.executable} -m pip install -q 'kaggle-environments=={cfg.get('engine', '1.32.7')}'")
     os.makedirs(os.path.join(REPO, "rl", "datasets"), exist_ok=True)
     # Restore the corpus from the Kaggle Dataset mount (tools/data.py layout).
+    ds_root = os.path.join(REPO, "rl", "datasets")
     if os.path.isdir(DATA_IN):
-        for name in os.listdir(DATA_IN):
-            src = os.path.join(DATA_IN, name)
-            if name.endswith(".tar.gz"):
-                with tarfile.open(src, "r:gz") as tf:
-                    tf.extractall(os.path.join(REPO, "rl", "datasets"))
-            elif name.endswith(".gz"):
-                rel = {"field-samples.jsonl.gz": "field/samples.jsonl", "field-stats.jsonl.gz": "field/stats.jsonl",
-                       "field-seen.txt.gz": "field/seen.txt", "champions.jsonl.gz": "champions.jsonl",
-                       "decode-profiles.jsonl.gz": "decode/profiles.jsonl"}.get(name)
-                if rel:
-                    dst = os.path.join(REPO, "rl", "datasets", rel)
+        gz_map = {"field-samples.jsonl.gz": "field/samples.jsonl", "field-stats.jsonl.gz": "field/stats.jsonl",
+                  "field-seen.txt.gz": "field/seen.txt", "champions.jsonl.gz": "champions.jsonl",
+                  "decode-profiles.jsonl.gz": "decode/profiles.jsonl"}
+        for d, _, files in os.walk(DATA_IN):
+            for name in files:
+                src = os.path.join(d, name)
+                if name == "sessions.tar.gz":
+                    with tarfile.open(src, "r:gz") as tf:
+                        tf.extractall(ds_root)
+                elif name in gz_map:
+                    dst = os.path.join(ds_root, gz_map[name])
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
                     with gzip.open(src, "rb") as fi, open(dst, "wb") as fo:
                         shutil.copyfileobj(fi, fo, 1 << 20)
-        n = len(os.listdir(os.path.join(REPO, "rl", "datasets", "sessions"))) if os.path.isdir(os.path.join(REPO, "rl", "datasets", "sessions")) else 0
+        # Auto-extracted layout: a `sessions` directory somewhere under the mount.
+        if not os.path.isdir(os.path.join(ds_root, "sessions")):
+            found = _find_dir(DATA_IN, "sessions")
+            if found:
+                shutil.copytree(found, os.path.join(ds_root, "sessions"), dirs_exist_ok=True)
+        n = len(os.listdir(os.path.join(ds_root, "sessions"))) if os.path.isdir(os.path.join(ds_root, "sessions")) else 0
         print(f"restored datasets: {n} sessions", flush=True)
     os.makedirs(OUT_DIR, exist_ok=True)
 
