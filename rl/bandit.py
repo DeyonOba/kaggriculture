@@ -111,27 +111,62 @@ def _train_sessions():
     return out
 
 
+def _arm_key(arm):
+    """Stable name for an arm; conditional arms carry their day-6 condition."""
+    knob, val = arm[0], arm[1]
+    if len(arm) > 2 and arm[2]:
+        c = arm[2]
+        op = f">={c['min']}" if "min" in c else f"<={c['max']}"
+        return f"{knob}|{c['product']}{op}", val
+    return knob, val
+
+
+def _day6_consumers(path):
+    """Consumers per product among the two shops open on day 6 (sessions
+    store shops in unlock order; shops unlock at the end of days 2 and 5)."""
+    from kagent.constants import SHOPS
+    shops = (json.load(open(path)).get("shops") or [])[:2]
+    return {p: sum(1 for s in shops if p in SHOPS.get(s, ())) for p in
+            ("STRAWBERRY", "MILK", "WOOL", "EGG", "CARROT", "TOMATO", "WHEAT")}
+
+
+def _cond_ok(cond, cons):
+    if not cond:
+        return True
+    v = cons.get(cond["product"], 0)
+    return v >= cond.get("min", -1) and v <= cond.get("max", 10**9)
+
+
 def _knob_world_jobs(rng, worlds, k, bundles, live=None):
     train_sessions = _train_sessions()
-    arms = [a for a in KNOB_ARMS if live is None or a in live]
+    arms = [a for a in KNOB_ARMS if live is None or _arm_key(a) in live]
+    conditional = any(len(a) > 2 and a[2] for a in arms)
+    cons_cache = {}
     jobs = []
     for w in range(worlds):
         roll = rng.random()
-        if roll < 0.6 and train_sessions:
+        if (roll < 0.6 or conditional) and train_sessions:
+            # Conditional arms need the day-6 shops in advance: sessions only.
             path, script_side = rng.choice(train_sessions)
             if script_side is None:
                 script_side = rng.randrange(2)
             opp = ("session", path, script_side); side = 1 - script_side; seed = 0
+            if path not in cons_cache:
+                cons_cache[path] = _day6_consumers(path)
+            cons = cons_cache[path]
         elif roll < 0.9 and bundles:
-            opp = ("bundle", rng.choice(bundles)); side = rng.randrange(2); seed = 300_000 + rng.randrange(10**6)
+            opp = ("bundle", rng.choice(bundles)); side = rng.randrange(2); seed = 300_000 + rng.randrange(10**6); cons = None
         else:
-            opp = "heuristic"; side = rng.randrange(2); seed = 300_000 + rng.randrange(10**6)
+            opp = "heuristic"; side = rng.randrange(2); seed = 300_000 + rng.randrange(10**6); cons = None
         base = {"weights_path": None, "seed": seed, "side": side, "opponent": opp,
                 "mode": "bc", "style": "spec", "world": w}
         jobs.append(base)
+        eligible = [a for a in arms if not (len(a) > 2 and a[2]) or (cons is not None and _cond_ok(a[2], cons))]
+        if not eligible:
+            continue
         for _ in range(k):
-            knob, val = rng.choice(arms)
-            jobs.append(dict(base, mode="knob", dev={knob: val}, arm=(knob, val)))
+            arm = rng.choice(eligible)
+            jobs.append(dict(base, mode="knob", dev={arm[0]: arm[1]}, arm=_arm_key(arm)))
     return jobs
 
 
@@ -144,12 +179,13 @@ def _live_knob_arms(min_n=30):
             r = json.loads(line); by[(r["head"], r["offset"])].append(r["gain_margin"])
     live = set()
     for arm in KNOB_ARMS:
-        g = by.get(arm, [])
+        key = _arm_key(arm)
+        g = by.get(key, [])
         if len(g) >= min_n:
             m, se, n = _stats(g)
             if m + 2 * se < 0:
                 continue
-        live.add(arm)
+        live.add(key)
     return live
 
 
@@ -174,7 +210,8 @@ def collect_knobs(args):
                     continue
                 knob, val = j["arm"]
                 margin = o["final_money"] - o["opp_money"]; base_margin = tw["final_money"] - tw["opp_money"]
-                row = {"head": knob, "offset": val, "off_idx": [a for a in KNOB_ARMS if a[0] == knob].index((knob, val)),
+                keys = [_arm_key(a) for a in KNOB_ARMS]
+                row = {"head": knob, "offset": val, "off_idx": keys.index((knob, val)) if (knob, val) in keys else 0,
                        "day": rollout.KNOB_DAY, "applied": True, "noop": False,
                        "gain_margin": margin - base_margin, "gain_money": o["final_money"] - tw["final_money"],
                        "final": o["final_money"], "opp": o["opp_money"], "base_final": tw["final_money"], "base_opp": tw["opp_money"],
@@ -429,9 +466,16 @@ def main():
     if args.arms:
         parsed = []
         for spec in args.arms.split(","):
+            cond = None
+            if "@" in spec:
+                spec, c = spec.split("@")
+                if ">=" in c:
+                    prod, k = c.split(">="); cond = {"product": prod, "min": int(k)}
+                else:
+                    prod, k = c.split("<="); cond = {"product": prod, "max": int(k)}
             knob, val = spec.split(":")
             val = float(val) if "." in val else int(val)
-            parsed.append((knob, val))
+            parsed.append((knob, val, cond))
         KNOB_ARMS = parsed
     if args.knobs:
         if args.tag:
