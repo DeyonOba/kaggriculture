@@ -1,0 +1,11 @@
+{
+  "engine": "1.32.7",
+  "procs": 4,
+  "budget_s": 39600,
+  "steps": [
+    "ls rl/datasets/sessions | wc -l",
+    "{python} -u rl/bandit.py collect --knobs --tag h5_top --min-rating 2500 --arms 'premium_scale:0.5,premium_scale:0.2,carrot_day:24,carrot_day:26,straw_target:36,straw_target:40,land2_margin:1500,straw_early:24,melon_opening:16,wheat_engine:40,cows:10,sheep:6,geese:2' --worlds 30 --k 4 --batches 45 --procs {procs} --seed 707",
+    "{python} rl/bandit.py report --knobs --tag h5_top"
+  ],
+  "collect": ["rl/datasets/bandit"]
+}
