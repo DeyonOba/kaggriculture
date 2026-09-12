@@ -1,68 +1,61 @@
 {
   "dataset": "gideonoba/kaggriculture-datasets",
   "artifacts": {
-    "sessions.tar.gz": {
-      "source": "sessions",
-      "count": 683,
-      "raw_bytes": 187652799,
-      "bytes": 12035617,
-      "sha256": "5ac27380072f42df90552ad129033788d2181089a8e7447063985491857d6f43"
-    },
     "sessions.jsonl.gz": {
       "source": "sessions",
-      "count": 683,
-      "raw_bytes": 187652799,
-      "bytes": 12797612,
-      "sha256": "9d1373f5673e26a41b3df4e8500dcf1bdc5b02b48843d79441da22fc650df367"
+      "count": 19484,
+      "raw_bytes": 5643565070,
+      "bytes": 386633431,
+      "sha256": "2e51fb6aabfc56863941f5534bb6c27a43ad75f55ad72b1c597a8098060e93e0"
     },
     "field-samples.jsonl.gz": {
       "source": "field/samples.jsonl",
       "count": 99660,
       "raw_bytes": 217797516,
       "bytes": 30778241,
-      "sha256": "30ecbc288b371bfd7b19aa789306680c1573d7edb8345c8dc2f354dacb69947f"
+      "sha256": "3c369996a6ca438938ab3697066089ed932c1e22579042930e35f832f2cd4c09"
     },
     "field-stats.jsonl.gz": {
       "source": "field/stats.jsonl",
       "count": 3344,
       "raw_bytes": 495508,
       "bytes": 97882,
-      "sha256": "e1ae39f10d64dd26bee77ce03e7e7fe18f478b1faf7a882d4dd8129b7c7d18af"
+      "sha256": "048d8feea90a3d690142bd20421fdf1e038a443e120e2359c4516c16c011314b"
     },
     "field-seen.txt.gz": {
       "source": "field/seen.txt",
       "count": 1674,
       "raw_bytes": 15869,
       "bytes": 6601,
-      "sha256": "2d982efeea75b124c24e66d18b07ea3fdb4b3d72f7d54909075a8023edd8c7f4"
+      "sha256": "d1737a7ff3c99b7a5c9968bc06b65fd86e0bbc98691420da61224d873665a1e7"
     },
     "champions.jsonl.gz": {
       "source": "champions.jsonl",
       "count": 8310,
       "raw_bytes": 17797724,
       "bytes": 2556215,
-      "sha256": "f454592e1a4b4c29763e117034d7589af2e289d4623332895aff11fb168200d5"
+      "sha256": "8387ad30250c07607e602415f5f925a90ee00df42239918d9c6756cbf6413e55"
     },
     "decode-profiles.jsonl.gz": {
       "source": "decode/profiles.jsonl",
       "count": 154,
       "raw_bytes": 2166223,
       "bytes": 226375,
-      "sha256": "4713063597af0d6a613a187a1a3fa206524157884e3c6f9285306800b2638f58"
+      "sha256": "f6fc1115f680ebc0783599073f0161af851042c9ed3088f8048f870a2cb3c8f5"
     },
     "ratings-agents.csv.gz": {
       "source": "ratings/agents.csv",
       "count": 268369,
       "raw_bytes": 14839829,
       "bytes": 5484821,
-      "sha256": "dcbb56b52eeb0f7ff97e4196f8f8cc34a7c341c24e151c52953cee34fdfa514a"
+      "sha256": "71bead6fe2c66df0c914ca050353e5eb220a455e9f6f0d4e595155fe03fed8cf"
     },
     "ratings-leaderboard.csv.gz": {
       "source": "ratings/leaderboard.csv",
       "count": 8576,
       "raw_bytes": 606440,
       "bytes": 269986,
-      "sha256": "b1ce152b772cc3bea71d530fd5e452c94946af050b3a295e7df7d7106259fba4"
+      "sha256": "7d39996e15e91f984de8ca8fa90c9a98db21a5a3356a322b7d4f8a980079c939"
     }
   }
 }
