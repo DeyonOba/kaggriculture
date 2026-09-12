@@ -27,17 +27,18 @@ INPUT = "/kaggle/input"
 
 
 def _discover(marker_file=None, marker_dir=None, exclude=()):
-    """Find the mounted Dataset containing a marker (mount slugs can differ
-    from the dataset id, and Kaggle may auto-extract uploaded archives)."""
+    """Return the directory that directly contains the marker — the dataset's
+    own root. Kaggle mounts all datasets under one shared
+    /kaggle/input/datasets/<owner>/<slug> tree (older images used
+    /kaggle/input/<slug>), so the top-level entry is NOT the dataset."""
     if not os.path.isdir(INPUT):
         return None
-    for top in sorted(os.listdir(INPUT)):
-        root = os.path.join(INPUT, top)
-        if root in exclude:
+    for d, dirs, files in os.walk(INPUT):
+        if any(d == e or d.startswith(e.rstrip("/") + "/") for e in exclude if e):
+            dirs[:] = []
             continue
-        for d, dirs, files in os.walk(root):
-            if (marker_file and marker_file in files) or (marker_dir and marker_dir in dirs):
-                return root
+        if (marker_file and marker_file in files) or (marker_dir and marker_dir in dirs):
+            return d
     return None
 
 

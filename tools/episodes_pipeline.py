@@ -121,8 +121,12 @@ def merge(out_dir):
                 s = json.loads(line)
                 dst = os.path.join(SESS_DIR, f"session-{s['episode']}.json")
                 if os.path.exists(dst):
-                    skipped += 1
-                    continue
+                    old = json.load(open(dst))
+                    old_rated = any(v is not None for v in (old.get("scores") or []))
+                    new_rated = any(v is not None for v in (s.get("scores") or []))
+                    if old_rated or not new_rated:
+                        skipped += 1
+                        continue  # keep the existing copy unless ours adds ratings
                 with open(dst, "w") as fo:
                     json.dump(s, fo)
                 added += 1
