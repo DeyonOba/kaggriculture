@@ -36,6 +36,10 @@ TITLE = "Kaggriculture agent datasets"
 # artifact name -> (kind, source path relative to ROOT)
 ARTIFACTS = {
     "sessions.tar.gz": ("tar", "sessions"),
+    # Kaggle Datasets auto-decompress single .gz files on mount but do not
+    # reliably expose tarballs: the sessions also ship as one JSONL (one
+    # session per line) which tools/kaggle_job/job.py splits back into files.
+    "sessions.jsonl.gz": ("jsonl_dir", "sessions"),
     "field-samples.jsonl.gz": ("gz", "field/samples.jsonl"),
     "field-stats.jsonl.gz": ("gz", "field/stats.jsonl"),
     "field-seen.txt.gz": ("gz", "field/seen.txt"),
@@ -72,6 +76,11 @@ def build(stage):
             with tarfile.open(out, "w:gz") as tf:
                 for p in sorted(glob.glob(os.path.join(src, "*.json"))):
                     tf.add(p, arcname=os.path.join(rel, os.path.basename(p)))
+        elif kind == "jsonl_dir":
+            with gzip.open(out, "wt", compresslevel=6) as fo:
+                for p in sorted(glob.glob(os.path.join(src, "*.json"))):
+                    with open(p) as fi:
+                        fo.write(fi.read().strip() + "\n")
         else:
             with open(src, "rb") as fi, gzip.open(out, "wb", compresslevel=6) as fo:
                 shutil.copyfileobj(fi, fo, 1 << 20)
@@ -99,10 +108,11 @@ def push(message):
         json.dump(manifest, f, indent=2)
     with open(os.path.join(stage, "dataset-metadata.json"), "w") as f:
         json.dump({"title": TITLE, "id": DATASET, "licenses": [{"name": "CC0-1.0"}]}, f)
-    exists = subprocess.run(
-        ["uv", "run", "kaggle", "datasets", "status", DATASET], capture_output=True, text=True
+    # (the status endpoint returns 403 with a legacy API key; use the listing)
+    listing = subprocess.run(
+        ["uv", "run", "kaggle", "datasets", "list", "--mine"], capture_output=True, text=True
     )
-    if exists.returncode == 0 and "not found" not in (exists.stdout + exists.stderr).lower():
+    if DATASET in listing.stdout:
         cmd = ["uv", "run", "kaggle", "datasets", "version", "-p", stage, "-m", message, "--dir-mode", "skip"]
     else:
         cmd = ["uv", "run", "kaggle", "datasets", "create", "-p", stage, "--dir-mode", "skip"]
@@ -133,6 +143,14 @@ def pull():
         if name.endswith(".tar.gz"):
             with tarfile.open(path, "r:gz") as tf:
                 tf.extractall(ROOT)
+        elif name == "sessions.jsonl.gz":
+            os.makedirs(dst, exist_ok=True)
+            with gzip.open(path, "rt") as fi:
+                for line in fi:
+                    if line.strip():
+                        ep = json.loads(line)["episode"]
+                        with open(os.path.join(dst, f"session-{ep}.json"), "w") as fo:
+                            fo.write(line.strip())
         else:
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             with gzip.open(path, "rb") as fi, open(dst, "wb") as fo:

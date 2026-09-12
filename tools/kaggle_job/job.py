@@ -11,6 +11,7 @@ Layout on Kaggle:
   /kaggle/input/kaggriculture-datasets/  our private Kaggle Dataset (sessions etc.)
 """
 
+import glob
 import json
 import os
 import shutil
@@ -41,7 +42,9 @@ def _discover(marker_file=None, marker_dir=None, exclude=()):
 
 
 CODE_IN = _discover(marker_dir="kagent") or "/kaggle/input/kaggriculture-code"
-DATA_IN = (_discover(marker_file="sessions.tar.gz", exclude=(CODE_IN,))
+DATA_IN = (_discover(marker_file="sessions.jsonl", exclude=(CODE_IN,))
+           or _discover(marker_file="sessions.jsonl.gz", exclude=(CODE_IN,))
+           or _discover(marker_file="sessions.tar.gz", exclude=(CODE_IN,))
            or _discover(marker_dir="sessions", exclude=(CODE_IN,))
            or "/kaggle/input/kaggriculture-datasets")
 OUT_DIR = os.path.join(WORK, "out")
@@ -95,26 +98,49 @@ def setup(cfg):
     # Restore the corpus from the Kaggle Dataset mount (tools/data.py layout).
     ds_root = os.path.join(REPO, "rl", "datasets")
     if os.path.isdir(DATA_IN):
-        gz_map = {"field-samples.jsonl.gz": "field/samples.jsonl", "field-stats.jsonl.gz": "field/stats.jsonl",
-                  "field-seen.txt.gz": "field/seen.txt", "champions.jsonl.gz": "champions.jsonl",
-                  "decode-profiles.jsonl.gz": "decode/profiles.jsonl"}
+        plain_map = {"field-samples.jsonl": "field/samples.jsonl", "field-stats.jsonl": "field/stats.jsonl",
+                     "field-seen.txt": "field/seen.txt", "champions.jsonl": "champions.jsonl",
+                     "decode-profiles.jsonl": "decode/profiles.jsonl"}
         for d, _, files in os.walk(DATA_IN):
             for name in files:
                 src = os.path.join(d, name)
                 if name == "sessions.tar.gz":
                     with tarfile.open(src, "r:gz") as tf:
                         tf.extractall(ds_root)
-                elif name in gz_map:
-                    dst = os.path.join(ds_root, gz_map[name])
+                    continue
+                base = name[:-3] if name.endswith(".gz") else name
+                if base in plain_map:
+                    dst = os.path.join(ds_root, plain_map[base])
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
-                    with gzip.open(src, "rb") as fi, open(dst, "wb") as fo:
+                    opener = gzip.open if name.endswith(".gz") else open
+                    with opener(src, "rb") as fi, open(dst, "wb") as fo:
                         shutil.copyfileobj(fi, fo, 1 << 20)
+        # Preferred: the sessions JSONL (Kaggle decompresses .gz on mount).
+        sess_dir = os.path.join(ds_root, "sessions")
+        for d, _, files in os.walk(DATA_IN):
+            for name in files:
+                if name in ("sessions.jsonl", "sessions.jsonl.gz"):
+                    os.makedirs(sess_dir, exist_ok=True)
+                    opener = gzip.open if name.endswith(".gz") else open
+                    with opener(os.path.join(d, name), "rt") as fi:
+                        for line in fi:
+                            if line.strip():
+                                ep = json.loads(line)["episode"]
+                                with open(os.path.join(sess_dir, f"session-{ep}.json"), "w") as fo:
+                                    fo.write(line.strip())
         # Auto-extracted layout: a `sessions` directory somewhere under the mount.
         if not os.path.isdir(os.path.join(ds_root, "sessions")):
             found = _find_dir(DATA_IN, "sessions")
             if found:
                 shutil.copytree(found, os.path.join(ds_root, "sessions"), dirs_exist_ok=True)
-        n = len(os.listdir(os.path.join(ds_root, "sessions"))) if os.path.isdir(os.path.join(ds_root, "sessions")) else 0
+        # Kaggle unpacks an uploaded tarball under a folder named after it:
+        # sessions/sessions/*.json -> flatten.
+        nested = os.path.join(ds_root, "sessions", "sessions")
+        if os.path.isdir(nested):
+            for f in os.listdir(nested):
+                shutil.move(os.path.join(nested, f), os.path.join(ds_root, "sessions", f))
+            os.rmdir(nested)
+        n = len(glob.glob(os.path.join(ds_root, "sessions", "session-*.json")))
         print(f"restored datasets: {n} sessions", flush=True)
     os.makedirs(OUT_DIR, exist_ok=True)
 
