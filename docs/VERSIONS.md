@@ -9,6 +9,27 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h6 — conditional cows rule (2026-09-12, submitted)
+
+champ-h5 plus one `KnobBanditPolicy` condition (`arena/agents/champ-h6/rules.json`):
+`{"knob": "cows", "value": 6, "max_consumers": {"MILK": 0}}` — evaluated at day 6 on
+`features.context(view)["consumers"]` (shops open by then), it caps the cow ramp at 6 for the
+season when nothing in town buys milk. Source: knob-level imitation mining
+(`tools/mine_knobs.py`; `docs/knob_mining_2026-09-12.txt`) over the 19,484-session corpus, then
+the conditional counterfactual bandit (`rl/bandit.py collect --knobs --arms 'cows:6@MILK<=0,...'
+--min-rating 2000`, worlds chosen so the day-6 shops satisfy the condition).
+
+Verification table (gain vs champ-h5, mean ± s.e., n): cows 6 @ MILK≤0 **+1,989 ± 551** (365);
+carrot_cap 30 @ CARROT≥1 +35 ± 11 (458); wheat_engine 24 −493 ± 246 (657); straw 27 @ STR≤0
+−706 ± 655 (150); cows 10 @ MILK≥2 −1,358 ± 605 (171); straw 38 @ STR≥2 −1,529 ± 645 (106);
+sheep 5 @ WOOL≤0 −1,703 ± 724 (137); sheep 11 @ WOOL≥1 −2,567 ± 549 (30); straw_early 12 @
+STR≤0 −3,156 ± 1,558 (138).
+
+Gates vs champ-h5: arena 30 games seeds 18000+ 18–10–2 ($79.3k vs $79.2k; equal means because
+the rule fires in ~40% of worlds); 24 paired champion worlds +$3,309 ± 1,867 (fired in 10;
++$7,942 there); held-out ladder (new pool) 0.67 / 0.67 / 0.42 / 0.17 / 0.08 / 0.00 vs champ-h5
+0.67 / 0.67 / 0.33 / 0.17 / 0.00 / 0.00.
+
 ## champ-h5 — premium floors ×0.35 (2026-09-11, submitted)
 
 champ-h4 with one rule changed: `premium_scale = 0.35` (KnobBanditPolicy `conditions` in

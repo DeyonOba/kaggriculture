@@ -4,6 +4,29 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## champ-h6 — 2026-09-12 · SUBMITTED · first conditional rule, from champion mining
+
+The adaptive layer's first *conditional* knob, found by imitation mining and verified by the
+counterfactual bandit.
+
+- **Mining** (`tools/mine_knobs.py`, 16,738 seats rated 2500+ from the new corpus): champions
+  set their herd and crops by the two shops open on day 6 — sheep 5 / 11 / 12 and cows 7 / 9 / 10
+  for 0 / 1 / 2 consumers of wool / milk, strawberries 33 / 34 / 38, carrots 10 / 20 / 31 — with
+  within-context margin z-scores of 5–9; geese 0 always; more wheat is worse in every context;
+  against 2500+ opponents they plant fewer strawberries and far more carrots.
+- **Verification** — conditional bandit arms applied only in worlds whose day-6 shops match
+  (twin champ-h5, opponents ≥ 2000, 2,212 samples): **cows 6 when no milk consumer is open:
+  +$1,989 ± 551** (n=365). The rest of the champion settings do **not** transfer to our
+  executor: sheep 11 with a yarn store −$2,567, sheep 5 without −$1,703, strawberries 38 with
+  two consumers −$1,529, cows 10 with two milk consumers −$1,358, early strawberries 12 −$3,156,
+  wheat engine 24 −$493, carrot cap 30 ≈ 0. Imitation tells us *where* to look; only the paired
+  measurement says what works on our farm.
+- **Gates vs champ-h5**: arena 18–10–2; 24 paired champion worlds +$3,309 ± 1,867 — the rule
+  fired in 10 of them and gained +$7,942 on average there; held-out ladder ≥ champ-h5 in every
+  bin. Note the ladder now runs on the new 19k-session held-out pool (much stronger recorded
+  opponents), so its absolute numbers reset: champ-h5 reads 0.67 / 0.67 / 0.33 / 0.17 / 0.00 /
+  0.00 there, champ-h6 0.67 / 0.67 / 0.42 / 0.17 / 0.08 / 0.00.
+
 ## knob bandit round 3 — 2026-09-12 · not shipped (plan constants exhausted)
 
 First job on free Kaggle compute (7.5 h, 5,400 paired samples, twin = champ-h5): the borderline
