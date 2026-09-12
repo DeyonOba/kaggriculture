@@ -11,11 +11,14 @@ git ls-files -z | tar --null -czf "$STAGE/ds/kaggriculture-code.tar.gz" -T -
 cat > "$STAGE/ds/dataset-metadata.json" <<META
 {"title": "kaggriculture-code", "id": "gideonoba/kaggriculture-code", "licenses": [{"name": "CC0-1.0"}]}
 META
-if uv run kaggle datasets status gideonoba/kaggriculture-code >/dev/null 2>&1; then
+# (the dataset status endpoint 403s with a legacy API key; use the listing)
+if uv run kaggle datasets list --mine 2>/dev/null | grep -q "gideonoba/kaggriculture-code"; then
   uv run kaggle datasets version -p "$STAGE/ds" -m "$MSG" --dir-mode skip
 else
   uv run kaggle datasets create -p "$STAGE/ds" --dir-mode skip
 fi
+echo "== waiting 90s for the new dataset version to process =="
+sleep 90
 echo "== kernel push =="
 # Kaggle uploads only the script file: inject job_config.json into job.py.
 PUSHDIR="$STAGE/kernel"; mkdir -p "$PUSHDIR"
