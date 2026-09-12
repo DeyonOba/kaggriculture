@@ -4,6 +4,27 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## data + compute — 2026-09-12 · official daily episodes on free Kaggle compute
+
+- **Free-tier compute** (`tools/kaggle_job/`): any of our jobs runs as a private Kaggle script
+  kernel (4 vCPU, 12 h). The private GitHub repo ships as a private Kaggle Dataset tarball
+  (`push.sh`, versioned per push; `code-only` mode leaves a running kernel alone); the corpus is
+  the `kaggriculture-datasets` Dataset; job steps are injected into the script at push time.
+  Verified: tests pass on Kaggle, bandit batches run at local per-core speed.
+- **Official daily episodes** (`kaggle/kaggriculture-episodes-index` → 44 daily datasets, ~21 GB
+  each, 936 GB total). `tools/episodes_pipeline.py` mounts 3 days at a time into its own kernel
+  (mounts cost no quota), `tools/extract_episodes.py` reduces each 32 MB replay to a ~20 KB
+  session (seed, aligned action scripts, finals, shops, teams, ratings) — 657 replays in 185 s;
+  fidelity EXACT — and only the compact output is merged, with a ledger for resumability.
+  Raw replays carry no ratings and the community crawl has zero overlap with them, so ratings
+  join from the leaderboard by team name.
+- **Result**: 28 days (2026-08-15 → 09-11, engine 1.32.7) → **18,801 sessions**, corpus now
+  **19,484**. The official datasets are top-heavy — seats by rating bin: <600: 482 · 600–1000:
+  205 · 1000–1500: 3,915 · 1500–2000: 5,752 · 2000–2500: 8,940 · **2500+: 16,738** (2,936
+  unrated) — i.e. the "train on top games" corpus; held-out (episode % 5 == 0) keeps ~7,900 seats
+  across all bins for the ladder. `rl/bandit.py --min-rating` selects training worlds by the
+  recorded opponent's rating.
+
 ## champ-h5 — 2026-09-11 · SUBMITTED · premium sell floors ×0.35 (knob bandit round 2)
 
 Round 2 of the knob bandit with **champ-h4 as the twin** (its knobs became the plan's defaults;
