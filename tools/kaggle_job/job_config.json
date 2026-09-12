@@ -3,9 +3,11 @@
   "procs": 4,
   "budget_s": 39600,
   "steps": [
-    "{python} -m pytest -q tests/",
+    "ls rl/datasets/sessions | wc -l; ls arena/agents | tr '\\n' ' '",
     "{python} -u rl/bandit.py collect --knobs --tag kaggle_smoke --worlds 4 --k 2 --batches 1 --procs {procs} --seed 101",
     "{python} rl/bandit.py report --knobs --tag kaggle_smoke"
   ],
-  "collect": ["rl/datasets/bandit"]
+  "collect": [
+    "rl/datasets/bandit"
+  ]
 }

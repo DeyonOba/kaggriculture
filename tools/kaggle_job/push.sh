@@ -7,7 +7,7 @@ MSG="${1:-update}"
 STAGE=$(mktemp -d)
 mkdir -p "$STAGE/ds"
 # Code tarball: tracked files only (no .git, no datasets, no runs).
-git ls-files -z | tar --null -czf "$STAGE/ds/kaggriculture-code.tar.gz" -T -
+COPYFILE_DISABLE=1 git ls-files -z | COPYFILE_DISABLE=1 tar --null -czf "$STAGE/ds/kaggriculture-code.tar.gz" -T -
 cat > "$STAGE/ds/dataset-metadata.json" <<META
 {"title": "kaggriculture-code", "id": "gideonoba/kaggriculture-code", "licenses": [{"name": "CC0-1.0"}]}
 META

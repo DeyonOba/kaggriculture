@@ -22,8 +22,28 @@ import time
 
 WORK = "/kaggle/working"
 REPO = os.path.join(WORK, "kaggriculture")
-CODE_IN = "/kaggle/input/kaggriculture-code"      # private Dataset: repo tarball (push.sh)
-DATA_IN = "/kaggle/input/kaggriculture-datasets"  # private Dataset: corpus (tools/data.py)
+INPUT = "/kaggle/input"
+
+
+def _discover(marker_file=None, marker_dir=None, exclude=()):
+    """Find the mounted Dataset containing a marker (mount slugs can differ
+    from the dataset id, and Kaggle may auto-extract uploaded archives)."""
+    if not os.path.isdir(INPUT):
+        return None
+    for top in sorted(os.listdir(INPUT)):
+        root = os.path.join(INPUT, top)
+        if root in exclude:
+            continue
+        for d, dirs, files in os.walk(root):
+            if (marker_file and marker_file in files) or (marker_dir and marker_dir in dirs):
+                return root
+    return None
+
+
+CODE_IN = _discover(marker_dir="kagent") or "/kaggle/input/kaggriculture-code"
+DATA_IN = (_discover(marker_file="sessions.tar.gz", exclude=(CODE_IN,))
+           or _discover(marker_dir="sessions", exclude=(CODE_IN,))
+           or "/kaggle/input/kaggriculture-datasets")
 OUT_DIR = os.path.join(WORK, "out")
 CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "job_config.json")
 # push.sh replaces this with the contents of job_config.json (Kaggle uploads
@@ -54,6 +74,7 @@ def _find_dir(root, name):
 
 
 def setup(cfg):
+    print("inputs:", sorted(os.listdir(INPUT)) if os.path.isdir(INPUT) else "none", flush=True)
     print("code mount:\n" + _listing(CODE_IN), flush=True)
     print("data mount:\n" + _listing(DATA_IN), flush=True)
     if not os.path.exists(os.path.join(REPO, "kagent")):
