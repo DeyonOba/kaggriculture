@@ -4,6 +4,19 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## top-games knob bandit — 2026-09-12 · not shipped (negative)
+
+Second free-compute job (10.7 h, 5,400 paired samples): the shipped and borderline knobs
+re-measured with `--min-rating 2500` — opponents drawn only from 2500+-rated recorded scripts on
+the new corpus, twin champ-h5. Nothing helps against the top of the field: premium ×0.2
++$75 ± 15, early strawberries 24 +$67 ± 379, second-quadrant margin $1,500 +$66 ± 233; premium
+×0.5 −$36; strawberries 36 −$178, 40 −$740; wheat engine 40 −$739; carrot day 24/26 −$854/−$818
+(25 stays optimal); opening melons 16 −$872; sheep 6 −$1,645; cows 10 −$1,873 (−$5,150 with no
+milk consumer); geese 2 −$3,484. Against strong opponents the remaining gains are not in plan
+constants; the next candidates are opponent-conditioned rules (mining: champions plant fewer
+strawberries and far more carrots against 2500+ opponents), which need the opponent's visible
+day-6/9 farm as the in-game condition.
+
 ## champ-h6 — 2026-09-12 · SUBMITTED · first conditional rule, from champion mining
 
 The adaptive layer's first *conditional* knob, found by imitation mining and verified by the
