@@ -70,7 +70,7 @@ class KnobBanditPolicy:
     arm clears `min_gain`, the plan is exactly champ-h3."""
 
     KNOB_DAY = 6
-    DECISION_DAYS = (6, 9, 12)  # rules may carry "day"; conditions may test consumers or price ratios
+    DECISION_DAYS = (6, 9, 12, 15)  # rules may carry "day"; conditions may test consumers or price ratios
 
     def __init__(self, rules, max_knobs=None):
         self.models = rules.get("models", [])

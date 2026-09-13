@@ -18,7 +18,7 @@ from kagent import features
 
 _WEIGHTS_CACHE = {}
 KNOB_DAY = 6  # shops revealed on days 3 and 6
-DECISION_DAYS = (6, 9, 12)  # contexts recorded for conditional arms
+DECISION_DAYS = (6, 9, 12, 15)  # contexts recorded for conditional arms
 
 
 def _load_layers(path):
