@@ -577,4 +577,5 @@ def context(view):
         "consumers": consumers, "price_ratio": price_ratio,
         "crops": crops, "herd": herd, "opp_crops": opp_crops, "opp_herd": opp_herd,
         "opp_money": round(view.opp.money), "shed_total": view.shed_total,
+        "opp_land": len(view.opp.unlocked_quadrants),
     }

@@ -112,12 +112,14 @@ def _train_sessions():
 
 
 def _arm_key(arm):
-    """Stable name for an arm; conditional arms carry their day-6 condition."""
+    """Stable name for an arm; conditional arms carry their condition and day."""
     knob, val = arm[0], arm[1]
     if len(arm) > 2 and arm[2]:
         c = arm[2]
         op = f">={c['min']}" if "min" in c else f"<={c['max']}"
-        return f"{knob}|{c['product']}{op}", val
+        subj = f"P_{c['price']}" if "price" in c else c["product"]
+        day = f"@d{c['day']}" if c.get("day", rollout.KNOB_DAY) != rollout.KNOB_DAY else ""
+        return f"{knob}|{subj}{op}{day}", val
     return knob, val
 
 
@@ -131,10 +133,26 @@ def _day6_consumers(path):
 
 
 def _cond_ok(cond, cons):
-    if not cond:
+    """Shop-consumer condition (day-6 draw known in advance)."""
+    if not cond or "price" in cond:
         return True
     v = cons.get(cond["product"], 0)
     return v >= cond.get("min", -1) and v <= cond.get("max", 10**9)
+
+
+def _cond_ok_ctx(cond, ctx):
+    """Any condition against a recorded context (features.context)."""
+    if not cond:
+        return True
+    if "price" in cond:
+        v = ctx["price_ratio"].get(cond["price"], 1.0)
+    else:
+        v = ctx["consumers"].get(cond["product"], 0)
+    return v >= cond.get("min", -1e9) and v <= cond.get("max", 1e9)
+
+
+def _arm_day(arm):
+    return int(arm[2].get("day", rollout.KNOB_DAY)) if len(arm) > 2 and arm[2] else rollout.KNOB_DAY
 
 
 def _knob_world_jobs(rng, worlds, k, bundles, live=None):
@@ -164,9 +182,8 @@ def _knob_world_jobs(rng, worlds, k, bundles, live=None):
         eligible = [a for a in arms if not (len(a) > 2 and a[2]) or (cons is not None and _cond_ok(a[2], cons))]
         if not eligible:
             continue
-        for _ in range(k):
-            arm = rng.choice(eligible)
-            jobs.append(dict(base, mode="knob", dev={arm[0]: arm[1]}, arm=_arm_key(arm)))
+        base["_eligible"] = eligible  # finalized after the twin runs (price conditions)
+        base["_k"] = k
     return jobs
 
 
@@ -197,14 +214,34 @@ def collect_knobs(args):
     with Pool(args.procs) as pool, open(KNOB_OUT, "a") as f:
         for batch in range(args.batches):
             live = _live_knob_arms()
-            jobs = _knob_world_jobs(rng, args.worlds, args.k, bundles, live)
+            twin_jobs = _knob_world_jobs(rng, args.worlds, args.k, bundles, live)
             t0 = time.time()
-            outs = pool.map(rollout.run_episode, jobs)
-            twins = {j["world"]: o for j, o in zip(jobs, outs) if j["mode"] == "bc"}
-            gains = []
-            for j, o in zip(jobs, outs):
-                if j["mode"] != "knob":
+            # Phase 1: twins. Their recorded contexts (days 6/9/12) decide which
+            # conditional arms a world is eligible for — the deviated game is
+            # identical to the twin up to the arm's decision day.
+            twin_outs = pool.map(rollout.run_episode, [{k_: v for k_, v in j.items() if not k_.startswith("_")} for j in twin_jobs])
+            twins = {j["world"]: o for j, o in zip(twin_jobs, twin_outs)}
+            dev_jobs = []
+            for j in twin_jobs:
+                ctxs = twins[j["world"]].get("extra", {}).get("ctx_days", {})
+                elig = []
+                for a in j["_eligible"]:
+                    cond = a[2] if len(a) > 2 else None
+                    d = _arm_day(a)
+                    ctx = ctxs.get(d) or ctxs.get(str(d))
+                    if not cond or (ctx is not None and _cond_ok_ctx(cond, ctx)):
+                        elig.append(a)
+                if not elig:
                     continue
+                base = {k_: v for k_, v in j.items() if not k_.startswith("_")}
+                for _ in range(j["_k"]):
+                    a = rng.choice(elig)
+                    dev = {a[0]: a[1], "_day": _arm_day(a)}
+                    dev_jobs.append(dict(base, mode="knob", dev=dev, arm=_arm_key(a)))
+            outs = pool.map(rollout.run_episode, dev_jobs) if dev_jobs else []
+            jobs = twin_jobs + dev_jobs
+            gains = []
+            for j, o in zip(dev_jobs, outs):
                 tw = twins[j["world"]]; ex = o.get("extra", {})
                 if "dev_x" not in ex:
                     continue
@@ -467,12 +504,17 @@ def main():
         parsed = []
         for spec in args.arms.split(","):
             cond = None
-            if "@" in spec:
-                spec, c = spec.split("@")
-                if ">=" in c:
-                    prod, k = c.split(">="); cond = {"product": prod, "min": int(k)}
-                else:
-                    prod, k = c.split("<="); cond = {"product": prod, "max": int(k)}
+            parts = spec.split("@")
+            spec = parts[0]
+            for c in parts[1:]:
+                if c.startswith("d") and c[1:].isdigit():
+                    cond = dict(cond or {}, day=int(c[1:]))
+                    continue
+                op = ">=" if ">=" in c else "<="
+                subj, k = c.split(op)
+                num = float(k) if "." in k else int(k)
+                cond = dict(cond or {}, **({"price": subj[2:]} if subj.startswith("P_") else {"product": subj}),
+                            **({"min": num} if op == ">=" else {"max": num}))
             knob, val = spec.split(":")
             val = float(val) if "." in val else int(val)
             parsed.append((knob, val, cond))

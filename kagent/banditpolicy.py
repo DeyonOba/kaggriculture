@@ -70,6 +70,7 @@ class KnobBanditPolicy:
     arm clears `min_gain`, the plan is exactly champ-h3."""
 
     KNOB_DAY = 6
+    DECISION_DAYS = (6, 9, 12)  # rules may carry "day"; conditions may test consumers or price ratios
 
     def __init__(self, rules, max_knobs=None):
         self.models = rules.get("models", [])
@@ -86,17 +87,27 @@ class KnobBanditPolicy:
         return total
 
     def make_plan(self, view, memory):
-        if view.day == self.KNOB_DAY and getattr(memory, "knobs_decided", False) is False:
-            chosen = {}
-            # Explicit, interpretable rules first: {"knob", "value",
-            # "min_consumers": {product: k}} evaluated on the day-6 context.
-            if self.conditions:
-                ctx = features.context(view)
-                for rule in self.conditions:
-                    ok = all(ctx["consumers"].get(p, 0) >= k for p, k in rule.get("min_consumers", {}).items())
-                    ok = ok and all(ctx["consumers"].get(p, 0) <= k for p, k in rule.get("max_consumers", {}).items())
-                    if ok:
-                        chosen[rule["knob"]] = rule["value"]
+        decided = getattr(memory, "knobs_decided", None)
+        if not isinstance(decided, set):
+            decided = set() if not decided else {self.KNOB_DAY}
+            memory.knobs_decided = decided
+        if view.day in self.DECISION_DAYS and view.day not in decided:
+            decided.add(view.day)
+            chosen = dict(getattr(memory, "knobs", None) or {})
+            # Explicit, interpretable rules: {"knob", "value", optional "day"
+            # (default 6), "min_consumers"/"max_consumers": {product: k},
+            # "max_price"/"min_price": {product: ratio-to-base}} evaluated on
+            # features.context at the rule's decision day.
+            ctx = features.context(view)
+            for rule in self.conditions:
+                if int(rule.get("day", self.KNOB_DAY)) != view.day:
+                    continue
+                ok = all(ctx["consumers"].get(p, 0) >= k for p, k in rule.get("min_consumers", {}).items())
+                ok = ok and all(ctx["consumers"].get(p, 0) <= k for p, k in rule.get("max_consumers", {}).items())
+                ok = ok and all(ctx["price_ratio"].get(p, 1.0) <= r for p, r in rule.get("max_price", {}).items())
+                ok = ok and all(ctx["price_ratio"].get(p, 1.0) >= r for p, r in rule.get("min_price", {}).items())
+                if ok:
+                    chosen[rule["knob"]] = rule["value"]
             scored = []
             if self.models:
                 x = features.encode(view, memory)
@@ -108,6 +119,5 @@ class KnobBanditPolicy:
                         continue
                     chosen[knob] = value
             memory.knobs = chosen
-            memory.knobs_decided = True
             self.last_decision = (view.day, chosen, [(round(g), k, v) for g, k, v in scored[:3]])
         return planner.make_day_plan(view, memory, speculative=True)
