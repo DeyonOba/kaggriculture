@@ -1,0 +1,12 @@
+{
+  "engine": "1.32.7",
+  "procs": 4,
+  "budget_s": 39600,
+  "steps": [
+    "{python} -u rl/bandit.py collect --knobs --tag cond2_kaggle --min-rating 2000 --arms 'carrot_standing:12@P_STRAWBERRY<=0.7@d12,wheat_engine:40@P_STRAWBERRY<=0.7@d12,premium_scale:0.2@P_STRAWBERRY<=0.6@d12,premium_scale:0.7@P_STRAWBERRY>=1.0@d12,sheep:10@P_WOOL>=1.0@d12,cows:10@P_MILK>=1.0@d12,wheat_engine:40@P_WHEAT>=1.1@d12,carrot_day:22@P_CARROT>=1.0@d12' --worlds 30 --k 4 --batches 40 --procs {procs} --seed 1202",
+    "{python} rl/bandit.py report --knobs --tag cond2_kaggle"
+  ],
+  "collect": [
+    "rl/datasets/bandit"
+  ]
+}
