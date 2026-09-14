@@ -22,10 +22,10 @@ Measurement machinery (`rl/bandit.py`, `rl/rollout.py`): conditional arms
 `P_PRODUCT>=r` / `<=r` (price ratio at decision day N); per batch the twins run first and their
 recorded contexts determine each world's eligible arms; the deviated game applies its knobs from
 day N (`dev["_day"]`). Results (gain vs champ-h5, mean ± s.e., n): sheep 10 @ P_WOOL≥1.0 @d12
-**+1,034 ± 151** (714, Kaggle) / +753 ± 224 (321, local); @d15 +801 ± 196 (162); wheat 40 @
+**+1,034 ± 151** (714, Kaggle) / +753 ± 224 (321, local); @d15 +532 ± 140 (595, final cond3); premium 0.2 @ P_MILK≤0.6 @d15 +56 ± 12 (483); wheat 40 @
 P_WHEAT≥1.1 +125 ± 64 (3,548); cows 10 @ P_MILK≥1.0 @d12 −567 ± 242 (429), @d15 −866 ± 343;
 carrot_day 22 @ P_CARROT≥1.0 −986 ± 317 (40); premium 0.7 @ P_STR≥1.0 −1,438 ± 294 (69);
-premium 0.2 @ P_MILK≤0.6 @d15 −3 ± 20; carrot_standing 12 @ P_MILK≤0.6 @d15 −1,099 ± 524.
+carrot_standing 12 @ P_MILK≤0.6 @d15 −1,099 ± 524.
 
 Gates vs champ-h6: arena 30 games seeds 19000+ 13–13–4; 24 paired champion worlds +$721 ± 416
 (fired in 5, +$3,460 there); held-out ladder (19k pool) 0.75 / 0.67 / 0.50 / 0.17 / 0.17 / 0.00.

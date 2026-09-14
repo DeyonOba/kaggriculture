@@ -18,7 +18,7 @@ wool is at or above base price (i.e. the opponent has not flooded it), raise the
   which conditional arms each world is eligible for (the deviated game is identical up to the
   decision day, so no games are wasted).
 - **Measurements**: Kaggle run (4,800 samples, twin champ-h5, opponents ≥ 2000) **+$1,034 ±
-  151** (n=714); local run +$753 ± 224 (n=321); the day-15 variant +$801 ± 196 (n=162). Other
+  151** (n=714); local run +$753 ± 224 (n=321); the day-15 variant +$532 ± 140 (n=595, final). Other
   price arms: wheat engine 40 when wheat ≥ 1.1× base +$125 ± 64 (real, negligible); cows 10 when
   milk ≥ base −$567 ± 242; endgame carrots from day 22 when carrots ≥ base −$986; *holding*
   premium stock when strawberries are scarce (×0.7) −$1,438 — the first-seller rule holds even
