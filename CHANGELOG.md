@@ -4,6 +4,65 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## tape-v2 — 2026-09-14 · SUBMITTED · +$20k/+$23k, the first SHIP verdict of the project
+
+A replay tape from episode 107599243 seat 0 (rating 3029, recorded $126,474) in our own corpus,
+with weed repair only. Gated against champ-h8 on **two independent fresh seed blocks**:
+
+| block | ahmed-v38 | tschinkel | boatlee | pooled |
+| --- | --- | --- | --- | --- |
+| 52000 | +$19,241 | +$30,515 | +$11,151 | **+$20,302 ± 2,946** (66/84) |
+| 63000 | +$19,219 | +$31,826 | +$19,186 | **+$23,410 ± 2,162** (75/84) |
+
+Positive against every opponent in both blocks. For scale, every heuristic change of the previous
+fortnight was worth between −$11k and +$2.4k, and champ-h8's shipped feed-buffer fix was +$2,376.
+
+### What made this one work where `tape-v1` reached only parity
+
+**Tapes cannot be spliced across lineages.** Switching from one tape to another at day 6 collapses
+the agent — $80k and $83k alone become $12k and $34k spliced — because the two farms have
+different tile layouts by then and every later action lands on the wrong square.
+
+**But 58 of our 301 tapes share byte-identical field actions over days 0–5**, all from rating-3029
+seats. Within that cluster splicing is **lossless**: A→B at step 144 reproduces B-alone to the
+dollar. That is the compatible set a selector needs, and it exists in our corpus without any
+curation.
+
+**Screening the cluster changed the estimate completely.** Over 12 worlds against two public
+agents (696 games):
+
+| | mean margin |
+| --- | --- |
+| random tape from the cluster | −$9,290 |
+| best fixed tape (129) | **+$2,449** |
+| per-world oracle | +$18,275 |
+
+Even a *random* member of this lineage beats champ-h8's ≈ −$30,000 margin by $20k. `tape-v1` was
+chosen from the whole library by recorded margin, which selects for having beaten a weak opponent;
+the lineage matters far more than the individual score.
+
+**The selector is not built yet and the headroom is large**: a perfect per-world choice among the
+58 is worth a further **+$15,826** over the best fixed tape. tape-v2 is the best *fixed* member,
+so the whole selection gain is still on the table.
+
+### Why tapes beat our executor, measured
+
+Worker-assignment structure of today's top-10 rated seats against ours:
+
+| | top 10 | champ-h8 |
+| --- | --- | --- |
+| actions per worker-day | **11.83** | 9.52 |
+| distinct tiles per worker-day | 5.84 | 5.58 |
+| spread of those tiles | 6.06 | 6.17 |
+| moves per worker-day | **9.16** | 12.35 |
+| specialisation | 0.78 | 0.80 |
+
+Our zone executor already reproduces their spatial structure — same tiles, same spread, same
+specialisation. They extract 2.03 actions per tile to our 1.71 while walking three steps less per
+worker-day. They chain work *and* stay on the urgent task, which a precomputed whole-day schedule
+can do and greedy per-turn assignment provably cannot: chaining greedily cost us $6,385 precisely
+because it delayed farm-wide urgent work.
+
 ## replay-tape architecture — 2026-09-14 · `tools/tape_agent.py`; parity, selector still to come
 
 First architecture change rather than a tuning round: follow a recorded 719-step action script
