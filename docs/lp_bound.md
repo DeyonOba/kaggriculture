@@ -248,9 +248,34 @@ for two reasons the trace of the variants makes plain:
    reallocation-of-fixed-capacity failure the demand book hit.
 
 So the LP's *diagnosis* survives (wheat is feed infrastructure, we under-produce it, and it costs us
-~$13k a game against ahmed) while its *prescription* is not reachable through this knob. The open
-follow-up is `feed_days`, which is what actually decides whether grown wheat is banked as feed or
-dumped — untested above 2, and a different hypothesis from this one.
+~$13k a game against ahmed) while its *prescription* is not reachable through this knob.
+
+## Gate: feed_days above 2 — REJECTED, and monotone (2026-09-15)
+
+The follow-up: `feed_days`, not `wheat_engine`, is what decides whether grown wheat is banked as feed
+or dumped. Same protocol, same 72 worlds:
+
+| variant | ahmed | tschinkel | boatlee | pooled |
+| --- | --- | --- | --- | --- |
+| `feed_days` 3 | −$10,417 | −$2,102 | −$1,518 | **−$4,679 ± 1,689** |
+| `feed_days` 4 | −$16,209 | −$15,766 | −$6,134 | **−$12,703 ± 1,846** |
+| `feed_days` 3 + `wheat_engine` 40 | −$9,882 | +$394 | +$294 | **−$3,065 ± 1,756** |
+
+Negative against every opponent, well outside 2 se, and **monotone**. With the known `feed_days` 1 at
+−$7.9k, the knob is now bracketed on both sides: **2 is the optimum, and it is a peak, not a plateau.**
+
+The trace says why, and it is the opposite of the intended mechanism: raising `feed_days` lifts the
+*buy* target (`target = feed_days × animals`) as well as the sell reserve, so `feed3` **bought more**
+wheat, not less — 225 → 255 units, net wheat position −$1,237 → −$1,599. The reserve can only protect
+a surplus we do not grow. At `feed_days` 4 the buffer is ~56 units in a 100-slot shed, which
+plausibly explains the cliff: feed crowds out produce and the overnight overflow is discarded.
+
+Combining with more wheat (`feed3w40`) recovers most of the loss but not to parity — it goes flat
+against two opponents and stays badly negative against the strongest.
+
+**Both halves of the LP's wheat prescription are now closed.** The diagnosis (we are a net wheat
+importer feeding the same herd, and it costs ~$13k a game against ahmed) is confirmed and unfixed;
+neither knob that could plausibly address it survives a gate.
 
 ## Caveats
 

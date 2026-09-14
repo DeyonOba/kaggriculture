@@ -72,7 +72,21 @@ reasons: (1) `wheat_target = min(wheat_engine, crops + free)` saturates on free 
 give the identical farm at 118/119 plantings and the LP's 154 is unreachable by this knob; (2) the
 extra wheat went to *sales* (174 → 226) not to displacing purchases (225 → 237), because
 `wheat_reserve` is only ~28 units at `feed_days` 2. Carrots fell 24 → 14 — pure reallocation, the
-demand-book failure again. Open follow-up, untested: `feed_days` above 2.
+demand-book failure again.
+
+### feed_days gate — REJECTED, and monotone
+
+| variant | ahmed | tschinkel | boatlee | pooled |
+| --- | --- | --- | --- | --- |
+| `feed_days` 3 | −$10,417 | −$2,102 | −$1,518 | **−$4,679 ± 1,689** |
+| `feed_days` 4 | −$16,209 | −$15,766 | −$6,134 | **−$12,703 ± 1,846** |
+| `feed_days` 3 + `wheat_engine` 40 | −$9,882 | +$394 | +$294 | **−$3,065 ± 1,756** |
+
+With the known `feed_days` 1 at −$7.9k the knob is bracketed both sides: **2 is a peak, not a
+plateau.** The mechanism is backwards from the intent — raising it lifts the *buy* target as well as
+the sell reserve, so `feed3` bought 225 → 255 units and its net wheat position got *worse*
+(−$1,237 → −$1,599). A reserve can only protect a surplus we do not grow. Both halves of the LP's
+wheat prescription are now closed; the diagnosis stands unfixed.
 
 ## tape-sel — 2026-09-14 · SUBMITTED · day-6 selector, +$5.3k/+$4.9k over tape-v2
 
