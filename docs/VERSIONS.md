@@ -9,6 +9,27 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h7 — price-reactive sheep rule (2026-09-14, submitted)
+
+champ-h6 plus `{"knob": "sheep", "value": 10, "day": 12, "min_price": {"WOOL": 1.0}}`
+(`arena/agents/champ-h7/rules.json`). `KnobBanditPolicy` now evaluates rules at decision days
+6 / 9 / 12 / 15 on `features.context(view)` (consumers and `price_ratio` = price / base) and
+accumulates chosen knobs on `memory.knobs`; the sheep ramp (`2 + (day − 6)`, capped) then runs
+to 10 instead of 8 from day 12 (sheep bought on days 12–14 give 4–5 productions each).
+
+Measurement machinery (`rl/bandit.py`, `rl/rollout.py`): conditional arms
+`knob:value@COND[@dN]` where COND is `PRODUCT>=k` / `PRODUCT<=k` (day-6 consumers) or
+`P_PRODUCT>=r` / `<=r` (price ratio at decision day N); per batch the twins run first and their
+recorded contexts determine each world's eligible arms; the deviated game applies its knobs from
+day N (`dev["_day"]`). Results (gain vs champ-h5, mean ± s.e., n): sheep 10 @ P_WOOL≥1.0 @d12
+**+1,034 ± 151** (714, Kaggle) / +753 ± 224 (321, local); @d15 +801 ± 196 (162); wheat 40 @
+P_WHEAT≥1.1 +125 ± 64 (3,548); cows 10 @ P_MILK≥1.0 @d12 −567 ± 242 (429), @d15 −866 ± 343;
+carrot_day 22 @ P_CARROT≥1.0 −986 ± 317 (40); premium 0.7 @ P_STR≥1.0 −1,438 ± 294 (69);
+premium 0.2 @ P_MILK≤0.6 @d15 −3 ± 20; carrot_standing 12 @ P_MILK≤0.6 @d15 −1,099 ± 524.
+
+Gates vs champ-h6: arena 30 games seeds 19000+ 13–13–4; 24 paired champion worlds +$721 ± 416
+(fired in 5, +$3,460 there); held-out ladder (19k pool) 0.75 / 0.67 / 0.50 / 0.17 / 0.17 / 0.00.
+
 ## champ-h6 — conditional cows rule (2026-09-12, submitted)
 
 champ-h5 plus one `KnobBanditPolicy` condition (`arena/agents/champ-h6/rules.json`):

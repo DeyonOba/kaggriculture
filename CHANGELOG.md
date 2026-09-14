@@ -4,6 +4,33 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## champ-h7 — 2026-09-14 · SUBMITTED · first price-reactive rule (sheep on wool scarcity)
+
+The adaptive layer's first rule that reads the **market** rather than the town: at day 12, if
+wool is at or above base price (i.e. the opponent has not flooded it), raise the sheep cap from
+8 to 10 for the season.
+
+- **How it was found**: the day-9 farm is not a usable proxy for opponent strength (everyone in
+  the top-heavy corpus plays the same opening: 20 vs 19 strawberry tiles for 2500+ vs <1500
+  players), so opponent pressure is read where it shows — prices. The bandit gained price
+  conditions with a decision day (`rl/bandit.py --arms 'sheep:10@P_WOOL>=1.0@d12'`) and
+  two-phase paired batches: the twin runs first and its recorded day-6/9/12/15 contexts decide
+  which conditional arms each world is eligible for (the deviated game is identical up to the
+  decision day, so no games are wasted).
+- **Measurements**: Kaggle run (4,800 samples, twin champ-h5, opponents ≥ 2000) **+$1,034 ±
+  151** (n=714); local run +$753 ± 224 (n=321); the day-15 variant +$801 ± 196 (n=162). Other
+  price arms: wheat engine 40 when wheat ≥ 1.1× base +$125 ± 64 (real, negligible); cows 10 when
+  milk ≥ base −$567 ± 242; endgame carrots from day 22 when carrots ≥ base −$986; *holding*
+  premium stock when strawberries are scarce (×0.7) −$1,438 — the first-seller rule holds even
+  in scarcity. Strawberry/milk-crash reallocations (carrots, wheat, dump) never fired at day 12
+  and rarely at day 15: the overnight drain keeps hour-0 prices above 0.7× base, so a crash
+  signature needs our own realized sale prices instead (open).
+- **Gates vs champ-h6**: arena 13–13–4 (both farms flood wool against a copy of ourselves, so the
+  rule rarely fires there); 24 paired champion worlds **+$721 ± 416**, fired in 5 with **+$3,460**
+  each; held-out ladder ≥ champ-h6 in every bin (0.75 / 0.67 / 0.50 / 0.17 / 0.17 / 0.00).
+- Mid-season herd *caps* are no-ops once the ramp has completed (cows 8 by day 8–10, sheep 8 by
+  day 12); only increases and crop/market knobs can act at day 12+.
+
 ## top-games knob bandit — 2026-09-12 · not shipped (negative)
 
 Second free-compute job (10.7 h, 5,400 paired samples): the shipped and borderline knobs
