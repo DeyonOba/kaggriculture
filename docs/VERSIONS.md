@@ -9,6 +9,32 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h8 — feed buffer no longer churned (2026-09-14, submitted)
+
+Same rules.json as champ-h7. One planner change (`kagent/planner.py`, both plan paths):
+
+```python
+plan.wheat_reserve = (0 if plan.liquidation and day >= 29
+                      else max(my_animals + 2, plan.feed_days * my_animals))
+```
+
+The sell path had reserved `my_animals + 2` while `kagent/market.py` bought back up to
+`plan.feed_days * animals`, so the difference was sold and re-bought every day. Wheat purchases
+per game fall from 459 units ($19,037) to 165 ($6,283).
+
+Gates: 37–13 vs champ-h7 on seeds 21000+ (p = 0.0009); 22–8 on seeds 19100+; vs the public
+agent pub-ahmed-v38 our mean rises $73,710 → $79,879 (still 0–24). Paired champion worlds
++$1,037 ± 3,325. Held-out ladder 0.67 / 0.58 / 0.25 / 0.17 / 0.17 / 0.17.
+
+New instruments in this round:
+- `tools/fetch_public_agents.py` — pulls competition notebooks that embed a runnable agent and
+  installs them under `arena/agents/pub-*` (gitignored; other people's code). This is a much
+  harsher benchmark than self-play: the strong ones are replay tapes of 2500+ players.
+- The head-to-head ledger script (session scratch `h2h3.py`) wraps the engine's `_commit_unit`,
+  `_do_hire` and `_do_buy_land` so every accepted unit is recorded with seat, item and realized
+  price. Requested quantities are useless — agents spam oversized SELL orders that the engine
+  fills only as far as the shed allows — and the ledger reconciles exactly with final money.
+
 ## champ-h7 — price-reactive sheep rule (2026-09-14, submitted)
 
 champ-h6 plus `{"knob": "sheep", "value": 10, "day": 12, "min_price": {"WOOL": 1.0}}`

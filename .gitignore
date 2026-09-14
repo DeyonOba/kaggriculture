@@ -12,6 +12,11 @@ wheels/
 # Arena outputs
 arena/results/
 
+# Public competition agents pulled from other people's notebooks (tools/fetch_public_agents.py)
+arena/agents/pub-*
+# Throwaway knob variants built by rl/export.py --freeze var-*
+arena/agents/var-*
+
 # Replay/debug artifacts
 kaggriculture.html
 player_*_obs.json

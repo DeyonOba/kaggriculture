@@ -214,7 +214,11 @@ def make_day_plan(view, memory, speculative=False):
             empty_by_kind[structure] = -need
 
     # --- Feed reserve -------------------------------------------------------
-    plan.wheat_reserve = 0 if plan.liquidation and day >= 29 else my_animals + 2
+    # Matches the buy-side target so the buffer is never sold and re-bought.
+    plan.wheat_reserve = (
+        0 if plan.liquidation and day >= 29
+        else max(my_animals + 2, plan.feed_days * my_animals)
+    )
 
     # --- Sell floors ---------------------------------------------------------
     plan.sell_floors = _sell_floors(view)
@@ -384,7 +388,16 @@ def make_champion_plan(view, memory):
             quota["WHEAT"] = max(0, wheat_target - crops.get("WHEAT", 0))
     plan.plant_quota = {k: v for k, v in quota.items() if v > 0}
 
-    plan.wheat_reserve = 0 if plan.liquidation and day >= 29 else my_animals + 2
+    # Never sell feed we are about to buy back. The sell path used to reserve
+    # `animals + 2` while the buy path topped the buffer up to
+    # `feed_days * animals`, so every day we sold the gap and re-bought it: a
+    # $19k round trip over a season (field ledger vs a 2500+ opponent: 488
+    # wheat sold at $44, 459 bought back at $41 average and rising, because
+    # BUY_PRODUCT quotes at inventory-1 and both farms drain the same pool).
+    plan.wheat_reserve = (
+        0 if plan.liquidation and day >= 29
+        else max(my_animals + 2, plan.feed_days * my_animals)
+    )
     plan.sell_floors = _sell_floors(view)
     if knobs["premium_scale"] != 1.0 and 6 <= day and view.step < 714:
         for item in ("STRAWBERRY", "MILK", "WOOL"):

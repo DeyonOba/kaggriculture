@@ -4,6 +4,82 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## champ-h8 — 2026-09-14 · SUBMITTED · stop churning the feed buffer
+
+One-line planner fix worth **+$2,376 a game**: the sell path reserved `animals + 2` wheat while
+the buy path topped the buffer up to `feed_days * animals`, so every day we sold the gap and
+bought it straight back. Over a season that was **459 units bought for $19,037** against 488
+sold for $21,290 — a round trip that also walked the wheat price against us twice, since
+`BUY_PRODUCT` quotes at inventory−1 and both farms drain the same pool. The reserve is now
+`max(animals + 2, feed_days * animals)`; purchases fall to 165 units.
+
+- **Gates**: 37–13 vs champ-h7 on fresh seeds 21000+ (sign test **p = 0.0009**, $82,315 vs
+  $79,940); 22–8 on the 19100 seeds; against a 2500+ public agent our mean rises $73,710 →
+  $79,879. Paired champion worlds +$1,037 ± 3,325 (not resolvable at n=24); held-out ladder
+  0.67 / 0.58 / 0.25 / 0.17 / 0.17 / **0.17** — the 2500+ bin is the first non-zero we have had,
+  the middle bins are down within noise.
+
+### How it was found: the public notebooks are replay tapes, and they beat us 0–30
+
+Reading the competition's public code (`tools/fetch_public_agents.py` installs them as arena
+opponents) changed the picture. Most highly-voted notebooks are **720-step replay tapes of
+2500+ ladder players** plus a thin online wrapper — boatlee's V16-RC5 is a majority vote over
+three recorded episodes with a one-turn "sell early" front-run, salemali7's "2900+" is a
+byte-identical fork of it, and the yhay81 / tschinkel "routers" pick between 5–13 tapes at
+144-turn boundaries using a fitted decision tree on public state. champ-h7 loses **0–30 to every
+one of them**, by $19k (boatlee) to $44k (ahmed-v38).
+
+An exact ledger (`_commit_unit` instrumented, so fills not requests) against ahmed-v38 shows the
+farms are nearly identical — same 33 strawberries, same ~57 tiles, same 3 quadrants, same ~11
+hands — and the whole $38k is revenue conversion and cost:
+
+| gap | us | them |
+| --- | --- | --- |
+| wheat bought | 459 units / $19,037 | 172 units / $6,028 |
+| milk | 131 units / $10,707 | 216 units / $19,002 |
+| fertilizer | 201 units / $10,590 | 351 units / $17,504 |
+| melon | $159/unit | $240/unit |
+| eggs | none | 76 units / $5,189 |
+| productive share of worker turns | 34.0% | 46.0% |
+
+### The market is a per-unit lockstep, and the price ladders invalidate part of the playbook
+
+`_process_market` walks both players' orders **one unit at a time**, quoting both the same
+pre-commit inventory price, so there is no first-seller premium *within* a unit — but every unit
+sold raises inventory and walks the price down. Selling capacity per product (from I0, before
+town drain) is wildly uneven:
+
+| product | base | 40 units | 100 units | 300 units |
+| --- | --- | --- | --- | --- |
+| melon | 250 | $9.8k @ $235 | $21.7k @ $152 | $26.6k @ $1 |
+| wool | 200 | $6.8k @ $112 | $8.0k @ $1 | $8.2k @ $1 |
+| milk | 160 | $4.8k @ $78 | $6.2k @ $1 | $6.4k @ $1 |
+| strawberry | 120 | $3.3k @ $45 | $3.8k @ $1 | $4.0k @ $1 |
+| egg | 50 | $1.8k @ $44 | $4.4k @ $42 | $12.6k @ $40 |
+| fertilizer | 100 | $3.8k @ $92 | $9.0k @ $80 | $21.0k @ $40 |
+
+Wool and milk — the products our herd targets are built around — are the two that collapse
+fastest, and in the traced game both farms had wool at **$1/unit from day 15**. Egg and
+fertilizer never collapse, which is why animals are worth more as fertilizer factories than for
+their headline product. Wool is consumed *only* by YARN_STORE, so with no yarn store its entire
+season capacity is ~$8k no matter how many sheep are bought.
+
+### Negative results from the same round
+
+- **Sell discipline is not the lever.** Sweeping `premium_scale` over 0.35 / 0.6 / 1.0 / 1.4
+  against ahmed-v38 (24 games each) gives $73.7k / $72.7k / $72.5k / $67.8k — flat to worse. The
+  shipped 0.35 is already right.
+- **`wheat_floor` 30 is a no-op**: both farms buy wheat constantly, so its price sits at $40–46
+  all game and a $30 floor never binds (results identical to 6 significant figures).
+- **Geese still lose**, −$3,845 vs baseline against ahmed-v38, despite eggs having the best
+  ladder in the game and a goose laying every day from day 4 for $300. This is an executor
+  problem, not an economics one, and it is the clearest open lead.
+- **Capping filler-task walking distance** (3 tiles, 1 after hour 16) was 19–11 vs the churn fix
+  (p = 0.20) but −$7.4k against ahmed-v38 — reverted. The diagnosis behind it still stands: our
+  hands spend **59.4% of turns moving vs their 42.2%**, need 1.25 moves per productive action vs
+  their 0.76, and in hours 17–23 we move 65% of the time while they move 40% and simply PASS.
+  Fixing that is worth ~700 actions a game and needs a better idea than a distance cap.
+
 ## champ-h7 — 2026-09-14 · SUBMITTED · first price-reactive rule (sheep on wool scarcity)
 
 The adaptive layer's first rule that reads the **market** rather than the town: at day 12, if
