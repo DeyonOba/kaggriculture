@@ -26,6 +26,12 @@ PLANT_LAST_HOUR = 21  # leave >= 2 turns to water the fresh plant
 DROP_THRESHOLD = 10   # mid-game inventory size that triggers a shed trip
 EARLY_DROP_THRESHOLD = 2  # days 0-9: every fertilizer unit is the day's cash
 MIN_ZONE_TILES = 5
+# Executor variant: rank a distant task by how far FORWARD it lies along the
+# zone's serpentine path instead of by Manhattan distance, so a hand sweeps its
+# zone in one direction. SWEEP_BACKSTEP is what stepping backwards is allowed to
+# cost, so a task one tile behind is not walked around the whole tour.
+SWEEP_ORDER = False
+SWEEP_BACKSTEP = 2
 SWEEP_DEADLINE_HOUR = 16  # from here survival tasks (dies tonight) jump the sweep
 HELP_RADIUS = 5           # cross-zone help only within this many steps
 
@@ -87,7 +93,11 @@ def zone_map(view):
     # zone EMPTY (75 tiles / 12 hands -> 11 zones), so one hand roamed the
     # whole farm every day.
     zone_of = {tile: i * n_zones // len(path) for i, tile in enumerate(path)}
-    return zone_of, n_zones
+    # Position of each tile along the serpentine, for the sweep executor: two
+    # consecutive indices are always physically adjacent, so a hand that always
+    # takes the next task FORWARD along the path walks one tile between actions.
+    order_of = {tile: i for i, tile in enumerate(path)}
+    return zone_of, n_zones, order_of
 
 
 def build_tasks(view, plan):
@@ -266,7 +276,7 @@ def assign(view, plan, tasks):
     actions = {}
     seeds_left = dict(view.seeds)
     shed_room = max(0, 100 - view.shed_total)
-    zone_of, n_zones = zone_map(view)
+    zone_of, n_zones, order_of = zone_map(view)
 
     final_push = view.step >= FINAL_STEP - 10
     aggressive = view.day >= 29 or final_push
@@ -468,7 +478,23 @@ def assign(view, plan, tasks):
             if max_dist is not None and d > max_dist:
                 continue
             urgent = 0 if (late and task.pri == P_SURVIVAL) else 1
-            score = (urgent, d, task.pri)
+            if SWEEP_ORDER and d > 0:
+                # Forward-only serpentine sweep: among tasks not under our feet,
+                # take the next one ALONG the path rather than the nearest in
+                # Manhattan terms. Nearest-task is a greedy nearest-neighbour
+                # tour, which zig-zags; sweeping the zone in one direction does
+                # every tile's work as it passes. Anything at d == 0 still wins
+                # outright, so same-tile chains (harvest -> plant -> water) are
+                # never broken.
+                ti = order_of.get((task.x, task.y))
+                hi_ = order_of.get((x, y))
+                if ti is not None and hi_ is not None:
+                    fwd = (ti - hi_) % max(1, len(order_of))
+                    score = (urgent, min(fwd, d + SWEEP_BACKSTEP), task.pri)
+                else:
+                    score = (urgent, d, task.pri)
+            else:
+                score = (urgent, d, task.pri)
             if best is None or score < best[0]:
                 best = (score, task)
         return best[1] if best else None
