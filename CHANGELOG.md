@@ -4,6 +4,72 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## tape-sel — 2026-09-14 · SUBMITTED · day-6 selector, +$5.3k/+$4.9k over tape-v2
+
+Two arms over the 58-tape cluster, chosen at step 144: **a yarn store among the first two shops**
+takes one continuation, anything else takes another. Gated against tape-v2 on two fresh blocks:
+
+| block | ahmed | tschinkel | boatlee | pooled |
+| --- | --- | --- | --- | --- |
+| 71000 | +$7,222 | +$1,599 | +$7,219 | **+$5,346 ± 1,335** (69/96) |
+| 84000 | +$2,906 | +$6,580 | +$5,219 | **+$4,902 ± 1,769** (60/96) |
+
+Cumulative against champ-h8 that is roughly +$25k to +$28k a game.
+
+**Why a yarn store is the signal.** YARN_STORE is the *only* consumer of wool in the game and it
+takes 12 units a day, so its presence at day 6 decides whether wool has any season-long demand at
+all. It is the single largest swing in the demand draw, which is also why the one conditional rule
+that ever survived on the heuristic lineage (champ-h7) was wool-conditioned.
+
+**Training panel** (`tools/tape_panel.py`, 2,320 games = 58 tapes × 2 opponents × 20 seeds,
+recording the full day-6 context with each outcome). Held out by seed parity:
+
+| | held-out margin |
+| --- | --- |
+| random tape from the cluster | −$6,128 |
+| best fixed tape chosen on train | +$6,325 |
+| tape-v2 (shipped) | +$9,266 |
+| per-world oracle | +$27,179 |
+
+Leave-one-world-out selector scores: yarn key **+$14,191**, milk-consumer key +$10,410, two-plus
+strawberry shops +$7,782, exact shop pair +$1,314, against +$229 for picking the best fixed tape
+the same way. The exact shop pair is *worse* than a coarse binary — 34 distinct pairs over 40
+worlds is too fine to estimate. Tape quality correlates +0.714 between the two halves of the
+panel, which is what makes any of this estimable.
+
+Caveat kept in view: the yarn arm was fitted on only 8 worlds out of 58 arms, and the key itself
+was chosen after trying four. Both fresh-block gates are the real evidence, not the panel.
+
+### How the source agents actually make tapes — measured, not assumed
+
+The 58 cluster seats are 58 distinct episodes, with **58 distinct seeds, 34 distinct day-6 shop
+pairs and 23 distinct opponents**, yet byte-identical field actions for days 0–5. The source agent
+is **open-loop**: it ignores shops, weeds, prices and opponent entirely for the first six days.
+Its later branching does not track the shop draw either — each day-7 branch spans 2–8 different
+shop pairs, and only 1 of 58 seats sits in a branch with a unique pair.
+
+So these are recordings, not derivations. The community method (stated openly in the public
+notebooks) is to reconstruct a tape from public replays by majority vote across several episodes
+of a strong submission; our library is built the same way from our own corpus. Nobody visible is
+computing a schedule from first principles, which is why "precompute our own" has no example to
+copy — and why a genuine state-conditioned selector adds something the recorded play never had.
+
+### Can we substitute our own schedule after the opening? No
+
+Tape opening then champ-h8's planner, mean margin vs pub-ahmed-v38 over 4 seeds:
+
+| | margin |
+| --- | --- |
+| champ-h8 alone | −$47,576 |
+| tape-v2 alone | −$11,601 |
+| tape → ours at day 6 | −$53,433 |
+| tape → ours at day 10 | −$46,333 |
+| tape → ours at day 14 | −$38,625 |
+
+Handing over is worse than either pure agent at day 6, and the later the handover the less the
+damage — our planner is worse than the tape at every point in the season, and it also inherits a
+farm it did not plan. The tape's value is season-long choreography, not a strong opening.
+
 ## tape-v2 — 2026-09-14 · SUBMITTED · +$20k/+$23k, the first SHIP verdict of the project
 
 A replay tape from episode 107599243 seat 0 (rating 3029, recorded $126,474) in our own corpus,
