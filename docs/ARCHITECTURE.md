@@ -177,6 +177,60 @@ routing policy we failed to copy, exactly as the pasture-distance correlate turn
 rather than a richer one, so a contextual bandit over it would be searching a space we have
 evidence is harmful.
 
+## Can anything replace profit as the gate? No — and this is now demonstrated
+
+`tools/metrics.py` scores candidate metrics the way the value head was refuted: how sharply does
+each separate a known-good agent from a known-bad one? A proxy is only useful if it beats final
+margin, otherwise it costs games rather than saving them.
+
+**Step 1 — champ-h8 vs champ-h2 (a genuinely worse agent), 28 games each:**
+
+| metric | good | bad | \|t\| |
+| --- | --- | --- | --- |
+| actions | 2,826 | 2,436 | **27.50** |
+| actions per turn | 0.409 | 0.355 | 25.92 |
+| moves | 4,015 | 4,403 | 23.12 |
+| **value per move** | 38.10 | 34.35 | **6.85** |
+| margin | −29,902 | −42,734 | 2.72 |
+| value produced (base prices) | 152,795 | 151,186 | 0.90 |
+
+Every efficiency metric separates far more sharply than margin, and `value_per_move` is both sharp
+and value-weighted — the obvious candidate.
+
+**Step 2 — the falsification test. Score the same metrics on a change we KNOW loses money** (the
+same-tile chaining variant, −$6,385 over 72 paired worlds):
+
+| metric | champ-h8 | the known-bad variant | verdict |
+| --- | --- | --- | --- |
+| value per move | 38.13 | **41.91** (\|t\| 5.64) | says the bad agent is BETTER |
+| actions | 2,831 | 3,101 (\|t\| 16.03) | says better |
+| moves | 4,010 | 3,665 (\|t\| 18.93) | says better |
+| margin | −30,524 | −31,079 (\|t\| 0.11) | correctly flat/negative |
+
+**Every proxy points the wrong way with high confidence.** They are precise measurements of
+something that is not money. The reason is structural: efficiency metrics describe how our farm
+works internally, while the money comes from selling into a *shared* market against an opponent,
+so an internal metric is blind to the only interaction that decides the game. Production volume
+(`value` at base prices) does not separate at all (|t| 0.35–0.90), so it is not even measuring
+output differences.
+
+**Conclusion: the only valid gate is paired final margin against external agents**, replicated on
+a fresh seed block. Everything cheaper has now been tried and shown to invert. That is expensive —
+about 70 games to resolve $3k — and it is the price of the problem.
+
+## Placement by touch frequency — tested, rejected
+
+Assign the ground nearest the spawn to the crops that demand the most visits. Touches per day of
+life: TOMATO 2.00 > STRAWBERRY 1.50 > CARROT 1.25 > WHEAT 1.20 > MELON 1.08. The planner had been
+round-robining crops across tiles (`wanted[i % len(wanted)]`), scattering every crop uniformly and
+ignoring touch entirely. Sorting the plant list by touch makes the nearest tiles take the
+high-touch crops.
+
+Mechanism confirmed: at day 14 strawberries moved 3.9 → 3.6 tiles from the shed and wheat 5.2 →
+5.6. Result: **−$3,415 ± 1,942** over 72 paired worlds. The gradient is real but small (33
+strawberry tiles × 1.5 touches × −0.3 against 25 wheat tiles × 1.2 × +0.4 is about −3 tile-steps a
+day) and it is swamped by whatever it disturbs.
+
 ## Tools added
 
 - `tools/flow_audit.py` — drain rate, both farms' supply rates, realized price, over/under-supply.
