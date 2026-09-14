@@ -129,6 +129,54 @@ thesis is refuted in this form. The leaders' pastures sitting 1.76 tiles from th
 holding 17 animals on a farm whose crop count is lower, rather than a deliberate layout policy we
 failed to copy.
 
+## Phase 1: widening the executor — the strongest mechanism yet, and it still loses
+
+The plan was to widen the executor's decision space before building any explore/exploit machinery,
+with a stated bar: **actions per tile visited must clear 1.75** (from 1.65, against the leaders'
+1.86), or stop and do not build Phase 2.
+
+**The diagnosis was the sharpest of the project.** Instrumenting every worker-turn against its own
+task list: **39.7% of all moves are a worker walking away from a tile that still had a task it
+could do** — 1,565 times a game. WATER 1,382, FEED 821, COLLECT_FERTILIZER 355 over two games.
+The cause is structural: the assignment passes filter by priority band, so a P_FILLER task under a
+worker's feet is invisible to the pass that is choosing a P_TEND task across the farm, and the
+worker leaves. At distance 0 a task costs one turn and yields one action, while walking costs the
+same turn and yields nothing, so this looked like free money.
+
+**The fix worked mechanically.** A same-tile chaining pass, run before the zone rounds, takes any
+unclaimed doable task underfoot:
+
+| | champ-h8 | chained |
+| --- | --- | --- |
+| walked away with work available | 3,130 (39.7% of moves) | **795 (10.9%)** |
+| productive actions (2 games) | 5,709 | **6,229 (+9%)** |
+| moves | 7,875 | **7,314 (−561)** |
+| actions per visit | 1.69 | 1.57 |
+
+**And it loses money at every threshold**, over 72 paired worlds each:
+
+| chain up to | pooled |
+| --- | --- |
+| P_TEND (valuable work only) | −$6,414 ± 2,512 |
+| P_GROW | −$9,047 ± 3,808 |
+| P_FILLER (everything) | −$6,385 ± 2,390 |
+
+**The finding.** Doing 9% more work and walking 7% less makes the agent poorer. Crucially the
+*restrictive* variant loses too: chaining only survival, harvest, animal and tend work — no filler
+at all — is −$6,414. So this is not "filler is worthless". Finishing local work delays the
+farm-wide urgent work by a turn each time, and in this game **breadth beats depth**: serving the
+most urgent task everywhere is worth more than finishing the tile you are standing on. The greedy
+priority-first ordering we have was right for a reason we had not articulated.
+
+It also kills the actions-per-visit metric as a target. It *fell* to 1.57 while total work rose,
+because more short visits is a perfectly good way to do more work. The leaders' 1.86 is most
+likely a by-product of their tile mix — an animal tile offers four actions in one place — not a
+routing policy we failed to copy, exactly as the pasture-distance correlate turned out to be.
+
+**Phase 2 is not built.** The stated bar was not met, and the widened space produced a worse agent
+rather than a richer one, so a contextual bandit over it would be searching a space we have
+evidence is harmful.
+
 ## Tools added
 
 - `tools/flow_audit.py` — drain rate, both farms' supply rates, realized price, over/under-supply.
