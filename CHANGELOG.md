@@ -4,6 +4,44 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## crew sprint and value-triggered shed trips — 2026-09-14 · both rejected, cause re-identified
+
+Built the day 10–11 crew sprint: `Task` gained a `sprint` flag, `build_tasks` tags one-shot tiles
+that are harvestable and die within 3 days once the block reaches 6 tiles, and `assign` gained a
+pass 0 where every free hand takes the nearest tagged task anywhere on the farm, zones resuming
+when the block is clear. **It made things worse and did not even clear the block faster** (day-11
+melons 7 and 5 remaining against the baseline's 6 and 6; finals $41k/$38k against $94k/$52k). The
+whole crew converging on melons starves the strawberry fertilize window, which is ages 9–15 —
+exactly days 10–15 — and that doubles strawberry production.
+
+**The instrumented day then overturned the diagnosis.** We already harvest the same number of
+melon tiles they do on day 10 (12 harvest actions against their 15). What differs is where the
+goods sit: our workers peak at **66 units carried on day 10 and 54 on day 11**, theirs at 63 then
+**23**. They deliver and sell; we hold. The market controller sizes sells on the *shed*, so
+produce in a worker's pocket is invisible to it and the cash lands days late.
+
+Cause: the shed trip triggers on a unit COUNT (`DROP_THRESHOLD = 10`). One melon harvest is 6
+units worth ~$1,400 — under the threshold — so the hand kept working with the day's cash in its
+pocket. Replacing the trigger with carried market value was gated at three levels and **all three
+lose**, monotonically:
+
+| carried value forcing a shed trip | pooled paired diff |
+| --- | --- |
+| $400 | −$4,007 ± 1,954 |
+| $600 | −$4,899 ± 1,847 |
+| $1,000 | −$4,254 ± 2,429 |
+
+Extra shed trips cost more in travel than the earlier cash is worth, which is consistent with the
+routing round: on a 10×10 board with the shed at the centre, every logistics trip is ~4 moves.
+Both changes reverted; the scheduler is unchanged.
+
+**What stands after this round.** The day-10 divergence is real and is about *delivery*, not
+harvesting or priority — but neither a labour sprint nor an earlier drop rule captures it,
+because both pay in travel what they gain in timing. The remaining lever is to make harvested
+produce sellable without a dedicated trip: sell from the tile the hand is standing on when it is
+shed-adjacent, or route the return leg of an existing task through the shed. That is a change to
+how logistics is *combined* with work, not a threshold.
+
 ## day 2–17 localised: the day-10 melon clear — 2026-09-14 · diagnosis kept, fix rejected
 
 Used the value head to ask *what*, not just *when*. `value_head.py diagnose` replaces one part of
