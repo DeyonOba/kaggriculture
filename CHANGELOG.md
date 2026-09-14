@@ -4,6 +4,43 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## opportunistic delivery — 2026-09-14 · rejected on replication (and a lesson about gate size)
+
+The last idea left in the day-10 delivery problem: stop paying for delivery. A hand already
+standing on a shed tile drops whatever it holds regardless of `DROP_THRESHOLD` — one action, zero
+travel — instead of walking off still carrying the day's cash.
+
+**The mechanism works exactly as designed.** Peak units carried on days 10–11 fell 66 → 55 and
+58 → 50, and day-11 cash rose $83 → $582 and $98 → $2,346.
+
+**The economics do not.** First gate, 48 paired worlds: **+$2,409 ± 2,370**, positive against all
+three opponents (+2,988 / +166 / +4,074), 31/48 better. That is `hold`, not `ship`, so it was
+replicated on 144 fresh paired worlds from a different seed block:
+
+| opponent | paired diff |
+| --- | --- |
+| pub-ahmed-v38 | +$104 ± 1,829 |
+| pub-tschinkel-psr | −$2,931 ± 2,054 |
+| pub-boatlee-v16 | +$844 ± 1,932 |
+| **pooled (144)** | **−$661 ± 1,121** |
+
+No effect. The first result was seed-specific noise, and the gate's two-standard-error rule is
+what stopped it shipping — worth recording, because a 48-world +$2,409 looks exactly like the
++$2,376 that made champ-h8 real.
+
+A **one-step detour** version (deliver when within 1 move of the shed) was **−$5,591 ± 3,311**,
+which completes the picture: free delivery is worth ~0, one move of travel is worth −$5.6k, and a
+carried-value trigger forcing full trips was −$4 to −$5k. Delivery timing is not a lever at any
+price, because the produce reaches the market within a day or two either way and the price ladder
+recovers overnight.
+
+**The day-10 divergence is now fully explored and closed.** Harvesting is not the gap (we match
+their harvest count), priority is not the gap (sprint failed), labour is not the gap (sprint and
+hires both failed), and delivery is not the gap (all three variants failed). What remains is that
+they simply have more cash *by* day 10 — their day-5 bank is $689 to our $382, before any melon —
+so the compounding starts earlier. That points back at days 0–5, the one window nothing in this
+project has ever touched, because the opening is the part we copied verbatim from champion replays.
+
 ## crew sprint and value-triggered shed trips — 2026-09-14 · both rejected, cause re-identified
 
 Built the day 10–11 crew sprint: `Task` gained a `sprint` flag, `build_tasks` tags one-shot tiles
