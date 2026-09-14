@@ -4,6 +4,45 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## day 2–17 localised: the day-10 melon clear — 2026-09-14 · diagnosis kept, fix rejected
+
+Used the value head to ask *what*, not just *when*. `value_head.py diagnose` replaces one part of
+our feature vector with the opponent's **inside a single day's model** and reports the
+win-probability uplift, so model disagreement cancels. Ten games vs `pub-ahmed-v38`, mean uplift
+if our side matched theirs over days 2–17:
+
+| if we matched theirs | mean | concentrated at |
+| --- | --- | --- |
+| money | **+0.099** | d11 +0.32, d16 +0.23, d17 +0.37 |
+| herd value | +0.030 | d3 +0.11, d4 +0.13 |
+| herd counts | +0.027 | d11 +0.10 |
+| wheat tiles | +0.025 | d11 +0.17, d12 +0.28 |
+| geese | +0.023 | steady +0.05…+0.08 from d11 |
+| crops (all) | +0.006 | — |
+| hands, quadrants, carrots, tomatoes | **0.000** | — |
+| melons | −0.020 | ours is better |
+
+**Farm composition is worth nothing.** Matching their tiles, herd, hands and quadrants exactly
+moves win probability by under 0.01, which independently explains why the demand book failed: we
+were rearranging the one thing that was never the problem. The deficit is *cash*, and the
+structural gaps that convert to cash are wheat throughput and geese.
+
+**The single largest divergence of the season is one event on day 10.** Day-by-day land use is
+near-identical, but at day 11 they hold **$17,253 to our $62**. Both farms carry 12 melons at
+yield 5 on day 10 (engine: watering tops a one-shot crop up from age 6, melons die at day 13).
+Our harvest rule only fires at yield 6, so each tile needs WATER *then* HARVEST the same day — 24
+serial actions — and we clear 6 tiles, dribbling the rest into days 11–13. They clear all 12
+during day 10. Dribbling also sells into a market we are ourselves crashing: **$159/unit against
+their $240**. That day-11 cash is what funds their wheat engine, and our wheat never recovers
+(13.8 tiles/day vs 17.4; 104 plantings vs 163; 290 harvests vs 489; 194 empty tile-days vs 141).
+
+**Fix attempted and rejected.** Harvesting one unit short (`yields >= max_yield - 1`) does clear
+the melons a day earlier, but gated paired over 48 worlds it is **−$973 ± 1,340** (−$4,818 against
+ahmed-v38). Ranking the ripening water at `P_HARVEST` so the water/harvest pair completes the same
+day did not clear day 10 either — the constraint is labour capacity on that one day, not priority.
+Both reverted. The correct fix concentrates the whole crew on the melon block for days 10–11,
+which the current zone executor cannot express.
+
 ## win-probability value head — 2026-09-14 · new instrument (`tools/value_head.py`)
 
 V(s) = P(this seat finishes with more money | s), fitted supervised on the recorded corpus, so a
