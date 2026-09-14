@@ -3,59 +3,59 @@
   "artifacts": {
     "sessions.jsonl.gz": {
       "source": "sessions",
-      "count": 19484,
-      "raw_bytes": 5643565070,
-      "bytes": 386633431,
-      "sha256": "2e51fb6aabfc56863941f5534bb6c27a43ad75f55ad72b1c597a8098060e93e0"
+      "count": 20793,
+      "raw_bytes": 5984250024,
+      "bytes": 412703075,
+      "sha256": "4a0ff89f45087f61aa05a6c98d685dfa9080ce06a6f715c259b97b94bd4d39ab"
     },
     "field-samples.jsonl.gz": {
       "source": "field/samples.jsonl",
       "count": 99660,
       "raw_bytes": 217797516,
       "bytes": 30778241,
-      "sha256": "3c369996a6ca438938ab3697066089ed932c1e22579042930e35f832f2cd4c09"
+      "sha256": "39ede2264adac31c41c4e091458ea87eb49ef0f3abcd0fe7a395d55043eb6d54"
     },
     "field-stats.jsonl.gz": {
       "source": "field/stats.jsonl",
       "count": 3344,
       "raw_bytes": 495508,
       "bytes": 97882,
-      "sha256": "048d8feea90a3d690142bd20421fdf1e038a443e120e2359c4516c16c011314b"
+      "sha256": "5e9a06ccf0e278ec5d284828cd104e1f5729f5ad77dd211f583a00db28e8c2bf"
     },
     "field-seen.txt.gz": {
       "source": "field/seen.txt",
       "count": 1674,
       "raw_bytes": 15869,
       "bytes": 6601,
-      "sha256": "d1737a7ff3c99b7a5c9968bc06b65fd86e0bbc98691420da61224d873665a1e7"
+      "sha256": "f594e878d9fa27ee890e028912baae0b74259f35613a1dca074aee3ad37a94ce"
     },
     "champions.jsonl.gz": {
       "source": "champions.jsonl",
       "count": 8310,
       "raw_bytes": 17797724,
       "bytes": 2556215,
-      "sha256": "8387ad30250c07607e602415f5f925a90ee00df42239918d9c6756cbf6413e55"
+      "sha256": "4642d95252a5e7bd743444b256395018904289c340183f149f1c73c60e37a9bb"
     },
     "decode-profiles.jsonl.gz": {
       "source": "decode/profiles.jsonl",
       "count": 154,
       "raw_bytes": 2166223,
       "bytes": 226375,
-      "sha256": "f6fc1115f680ebc0783599073f0161af851042c9ed3088f8048f870a2cb3c8f5"
+      "sha256": "4722da4a41deeb5fef8a8c4a49b202872c2d60401957e1b142f9738fbae03592"
     },
     "ratings-agents.csv.gz": {
       "source": "ratings/agents.csv",
       "count": 268369,
       "raw_bytes": 14839829,
       "bytes": 5484821,
-      "sha256": "71bead6fe2c66df0c914ca050353e5eb220a455e9f6f0d4e595155fe03fed8cf"
+      "sha256": "4e07661a47b2558bfef0cd3ed84996c7ad5fdb8d35671e53f76214bfd6b6edfa"
     },
     "ratings-leaderboard.csv.gz": {
       "source": "ratings/leaderboard.csv",
       "count": 8576,
       "raw_bytes": 606440,
       "bytes": 269986,
-      "sha256": "7d39996e15e91f984de8ca8fa90c9a98db21a5a3356a322b7d4f8a980079c939"
+      "sha256": "aa2db4570813e67ed50f52d89f315d46bc4b5b0862c4064ee464517b5875feea"
     }
   }
 }
