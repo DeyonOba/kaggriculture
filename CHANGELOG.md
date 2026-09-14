@@ -4,6 +4,35 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## days 0–5 opening — 2026-09-14 · rejected on replication; the opening is not the gap
+
+The one window never tested, because it was copied verbatim from champion replays. Traced every
+purchase, hire, plant and harvest for both seats over days 0–5 against `pub-ahmed-v38`.
+
+**Two real differences, one of them a genuine bug.** On day 0 we hire **3 hands to their 5** off
+the identical $3,000. The cause: `plan.hires_target` is gated by
+`workload = sum(crops) + 2 * animals + 10`, which counts the farm we *have* — bare ground on day 0
+— while the same turn plants 19 tiles and places 4 animals. So the gate reads 10, `10 // 3 = 3`,
+and caps a schedule that asks for 5. Adding the opening's own work to that count restores 5 hires.
+
+**It does not pay.** First gate, 72 paired worlds: +$381 ± 1,602 (+3,101 / +151 / −2,109) —
+`hold`. Replicated on 108 fresh paired worlds: **−$2,353 ± 1,470, negative against all three**
+(−2,316 / −3,016 / −1,726). Rejected and reverted. Two extra hands on day 0 cost more in wages and
+market-order slots than the extra planting returns. Gating `day <= 0`, `<= 1` and `<= 3` produced
+byte-identical agents, which confirms the gate only ever bound on day 0.
+
+**The second difference is not a gap at all.** They run a 2-day wheat rotation from day 2
+(harvest 3–4, replant 3–4, buy 3–4 seed daily) where we hold to the 4-day cycle. The engine says
+ours is right: wheat's water window opens at age 2, so an age-2 harvest yields ~2 units and an
+age-4 harvest ~4, i.e. **1.0 units per tile-day either way** — but the fast rotation pays double
+the seed and double the planting labour for it. Their 163 plantings to our 104 is a cost, not an
+edge.
+
+**Days 0–5 are therefore clean**, and with them the last untested window closes. Every lever this
+project can reach has now been measured: opening, crop mix, herd, land, hands, assignment rule,
+sell discipline, delivery, harvest timing. The $30–40k gap against a 2500+ agent is not in any
+single one of them.
+
 ## opportunistic delivery — 2026-09-14 · rejected on replication (and a lesson about gate size)
 
 The last idea left in the day-10 delivery problem: stop paying for delivery. A hand already
