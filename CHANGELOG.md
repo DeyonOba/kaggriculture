@@ -4,6 +4,50 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## joint plan search — 2026-09-14 · nothing found, and the value head is refuted as an objective
+
+`tools/plan_search.py`. Two claims tested; both fail, and the first fails cleanly enough to be
+worth keeping.
+
+**Claim 1: mid-season win probability is a cheaper objective than final money.** False. Separating
+the incumbent from a knob known to be bad (+4 hands) over 66 games a side:
+
+| metric | separation \|t\| |
+| --- | --- |
+| final margin | **6.53** |
+| V day 16 | 1.41 |
+| V day 14 | 0.25 |
+| V day 12 | 0.08 |
+
+The head predicts a *single game's* outcome well (r = +0.90 with margin at day 16, +0.38 with the
+win) but separates *agents* four times worse, because squashing into [0,1] compresses exactly the
+tails where between-agent signal lives. Across the 29 searched configurations mean V and final
+margin correlate **−0.26** — it is not merely weaker, it is anti-correlated as an objective. The
+value head remains what it has been useful as: a diagnostic that localised the season to days
+2–17 and the day-10 melon clear. It is not a training signal. The objective reverted to margin.
+
+**Claim 2: the gap is joint, so moving several knobs together finds what single levers missed.**
+Also false, at least within reach. 29 joint configurations over 8 knobs (cows, sheep, geese,
+strawberry target, wheat engine, standing carrots, premium scale, feed days), 24 games each
+against all three external agents:
+
+| | |
+| --- | --- |
+| incumbent | −$30,555 |
+| best found | −$29,974 (`premium_scale` 0.6 + `wheat_engine` 36) |
+| improvement | **+$581 = 0.16 se** |
+| spread across configs | $13,939 |
+| sd across configs | $3,823, against a per-config se of $3,550 |
+
+The landscape is **flat to within noise**: the between-config sd barely exceeds the measurement
+error of a single config, so essentially all apparent variation is sampling. Joint moves find no
+more than single moves did. What the search does reliably identify is how to *lose* — the worst
+three configurations (−$41k to −$44k) all set `feed_days: 1` or pair `geese: 4` with `cows: 10`,
+confirming the feed buffer and the goose/executor interaction as real, already-known cliffs.
+
+**Conclusion.** The knob space does not contain the answer, jointly or separately, and the value
+head cannot cheapen the search for one. champ-h8 stands.
+
 ## days 0–5 opening — 2026-09-14 · rejected on replication; the opening is not the gap
 
 The one window never tested, because it was copied verbatim from champion replays. Traced every
