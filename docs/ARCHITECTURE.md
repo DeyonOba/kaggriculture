@@ -91,6 +91,44 @@ planting. The version worth trying next places the herd and its feed route toget
 when every tile is still free, rather than reserving tiles later against a farm that is already
 committed.
 
+## Committing the herd and feed route on day 0 — tested and refuted
+
+Implemented as a **construction rule**, not a reservation: crops colonise outward from the farm
+edge, so the shed-adjacent centre is claimed last by plants and first by pastures. No tile is ever
+withheld, which is what made the earlier reservation cost $11,334.
+
+**The mechanism worked.** Tracked by day, pastures moved toward the shed and the farm carried
+*more* crop tiles, not fewer:
+
+| day | pastures, champ-h8 | pastures, outward | crop tiles, champ-h8 | crop tiles, outward |
+| --- | --- | --- | --- | --- |
+| 6 | 2.43 | **1.86** | 17 | 16 |
+| 12 | 2.40 | **2.13** | 38 | **49** |
+| 20 | 2.44 | **2.19** | 56 | **58** |
+
+(The season-average pasture distance barely moves, 2.31 → 2.30, because most animal-days are late.
+Reading only the average hides the effect entirely — worth remembering.)
+
+**And it loses $10,020 ± 2,948** over 72 paired worlds, at every cut-off day tested (12, 20, 29 —
+the last two are identical agents, since the herd stops growing well before day 20).
+
+**Why, arithmetically.** The near ground belongs to whichever tile class absorbs the most **visits
+in total**, and that is crops, despite each pasture being visited twice as often:
+
+| class | tiles | visits/tile/day | total daily visits |
+| --- | --- | --- | --- |
+| crops | 58 | 2 (water, harvest) | **116** |
+| pastures | 18 | 4 (feed, care, collect, harvest) | 72 |
+
+Moving 58 crop tiles +0.20 further to bring 18 pasture tiles −0.27 closer is a net **+3.8
+tile-steps of travel per day**. The trade is backwards.
+
+**So champ-h8's existing nearest-first planting is already the right layout**, and the work-density
+thesis is refuted in this form. The leaders' pastures sitting 1.76 tiles from the shed against our
+2.31 is a *correlate* of their play, not a cause of their advantage — most likely a by-product of
+holding 17 animals on a farm whose crop count is lower, rather than a deliberate layout policy we
+failed to copy.
+
 ## Tools added
 
 - `tools/flow_audit.py` — drain rate, both farms' supply rates, realized price, over/under-supply.
