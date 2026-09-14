@@ -202,7 +202,10 @@ def fit(args):
     print(f"{'day':>3} {'n_train':>8} {'acc':>6} {'logloss':>8} | {'base acc':>8} {'base ll':>8} {'gain':>6}")
     accs, lls, bacc, blls = [], [], [], []
     for d in range(N_DAYS):
-        tr = (day == d) & ~test
+        # Train on a +/-1 day window so adjacent days' models agree and the V
+        # trajectory is comparable across days; evaluate on day d alone.
+        w_lo, w_hi = (d - args.smooth), (d + args.smooth)
+        tr = (day >= w_lo) & (day <= w_hi) & ~test
         te = (day == d) & test
         if tr.sum() < 200 or te.sum() < 50:
             continue
@@ -318,18 +321,95 @@ def attribute(args):
               ", ".join(f"day {d}->{d+2} {v:+.3f}" for d, v in drops[:4]))
 
 
+GROUPS = {
+    "money": [("money_me", "money_op")],
+    "crops (all)": [(f"crop_me_{c}", f"crop_op_{c}") for c in CROP_LIST],
+    "herd (all)": [(f"herd_me_{a}", f"herd_op_{a}") for a in ANIMAL_LIST],
+    "hands": [("hands_me", "hands_op")],
+    "quadrants": [("quads_me", "quads_op")],
+    "crop value": [("crop_value_me", "crop_value_op")],
+    "herd value": [("herd_value_me", "herd_value_op")],
+}
+for _c in CROP_LIST:
+    GROUPS[f"  crop {_c.lower()}"] = [(f"crop_me_{_c}", f"crop_op_{_c}")]
+for _a in ANIMAL_LIST:
+    GROUPS[f"  herd {_a.lower()}"] = [(f"herd_me_{_a}", f"herd_op_{_a}")]
+
+IDX = {n: i for i, n in enumerate(NAMES)}
+
+
+def _v_from_x(model, x, day):
+    if day not in model:
+        day = max(k for k in model if k <= day)
+    mu, sd, w = model[day]
+    z = (np.asarray(x) - mu) / sd
+    return float(1.0 / (1.0 + np.exp(-np.clip(np.r_[1.0, z] @ w, -30, 30))))
+
+
+def diagnose(args):
+    """How much win probability would we gain on each day if one part of our
+    farm matched the opponent's? Counterfactual is evaluated inside a single
+    day's model, so it is immune to the day-to-day model disagreement that makes
+    raw dV noisy."""
+    from kaggle_environments import make
+    from arena.registry import resolve
+    model = _load_model()
+    a, b = resolve(args.a), resolve(args.b)
+    days = list(range(args.lo, args.hi + 1))
+    uplift = {g: np.zeros(len(days)) for g in GROUPS}
+    base_v = np.zeros(len(days))
+    n = 0
+    for k in range(args.n):
+        env = make("kaggriculture", configuration={"episodeSteps": 720, "seed": args.base_seed + k}, debug=False)
+        env.run([a, b])
+        n += 1
+        for j, d in enumerate(days):
+            i = d * 24
+            if i >= len(env.steps):
+                continue
+            obs = env.steps[i][0]["observation"]
+            x = features(obs, 0)
+            v0 = _v_from_x(model, x, d)
+            base_v[j] += v0
+            for g, pairs in GROUPS.items():
+                xc = list(x)
+                for me_n, op_n in pairs:
+                    xc[IDX[me_n]] = x[IDX[op_n]]
+                if g == "money":  # margin follows money
+                    xc[IDX["margin"]] = 0.0
+                    xc[IDX["log_margin"]] = 0.0
+                uplift[g][j] += _v_from_x(model, xc, d) - v0
+        print(f"  seed {args.base_seed+k} done", flush=True)
+
+    base_v /= n
+    print(f"\n{args.a} vs {args.b}, {n} games: win-probability gain if OUR side matched THEIRS\n")
+    hdr = "  ".join(f"d{d:<4}" for d in days)
+    print(f"{'group':<16} {hdr}  {'mean':>7}")
+    rows = []
+    for g, arr in uplift.items():
+        arr = arr / n
+        rows.append((float(arr.mean()), g, arr))
+    for m, g, arr in sorted(rows, key=lambda r: -r[0]):
+        cells = "  ".join(f"{v:>+5.2f}" for v in arr)
+        print(f"{g:<16} {cells}  {m:>+7.3f}")
+    print(f"\n{'our V level':<16} " + "  ".join(f"{v:>5.2f}" for v in base_v))
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["build", "fit", "attribute"])
+    ap.add_argument("cmd", choices=["build", "fit", "attribute", "diagnose"])
     ap.add_argument("--n", type=int, default=2500)
     ap.add_argument("--procs", type=int, default=6)
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--lam", type=float, default=5.0)
+    ap.add_argument("--smooth", type=int, default=1, help="+/- days pooled into each day's fit")
     ap.add_argument("--a", default="champ-h8")
     ap.add_argument("--b", default="pub-ahmed-v38")
     ap.add_argument("--base-seed", type=int, default=31000)
+    ap.add_argument("--lo", type=int, default=2)
+    ap.add_argument("--hi", type=int, default=17)
     args = ap.parse_args()
-    {"build": build, "fit": fit, "attribute": attribute}[args.cmd](args)
+    {"build": build, "fit": fit, "attribute": attribute, "diagnose": diagnose}[args.cmd](args)
 
 
 if __name__ == "__main__":
