@@ -4,6 +4,41 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## waste audit and pasture layout — 2026-09-14 · `tools/waste_audit.py`; layout rejected
+
+Audited the hypothesis that we pay for seed that never yields, and that the top agents plan a
+spatial layout we do not. Per game against `pub-ahmed-v38`:
+
+| | ours | theirs |
+| --- | --- | --- |
+| seeds bought / cost | 183 / $6,047 | 242 / $6,677 |
+| plantings | 175 | 242 |
+| harvests | 290 | 489 |
+| tiles dying to WEED | 41.0 | 19.0 |
+| DIG turns clearing them | 32 | 36 |
+| tiles stranded unharvested at the end | 2.7 | 0.0 |
+| mean shed-distance, crops / pastures | 4.39 / **2.31** | 4.60 / **1.76** |
+
+**The headline death number is not waste, and reads backwards.** Splitting deaths by cause: ours
+are strawberry 33.7, wheat 5.7, carrot 1.7. The engine sets `max_lifespan_step` on an ongoing crop
+*only after its final production* (`production_count == max_yield`), so a strawberry that dies of
+lifespan has delivered all four harvests — normal end of life. Our 33.7 means essentially all 33
+strawberries completed; their 19 means fourteen of theirs did not. On the crop that matters most
+we are **ahead**, and we spend fewer turns clearing weeds than they do (32 vs 36).
+
+**The genuine waste is small and specific**: 5.7 wheat plus 1.7 carrot dying before harvest, and
+7.0 drought deaths (a plant dies at `consecutive_unwatered >= 2`) against their 1.0 — about 7
+tiles and ~$200 of seed a game. Real, worth fixing, but not a $30k line item.
+
+**The layout observation is correct and acting on it loses badly.** Their pastures genuinely sit
+closer to the shed (1.76 vs 2.31), which matters because animal chores — FEED needs wheat carried
+from the shed, plus CARE and COLLECT_FERTILIZER — repeat daily for the season while a crop tile is
+visited a handful of times. Reserving the shed-adjacent empties for pastures moved ours to 2.05,
+so the mechanism works, and it was **−$11,334 ± 2,849** over 72 paired worlds (reserve caps 2, 4
+and 6 are identical because the reserve is bounded by the herd still to be bought). Those nearest
+tiles are the ones we plant *first*; holding them back delays planting more than the saved travel
+is worth. Reverted.
+
 ## joint plan search — 2026-09-14 · nothing found, and the value head is refuted as an objective
 
 `tools/plan_search.py`. Two claims tested; both fail, and the first fails cleanly enough to be
