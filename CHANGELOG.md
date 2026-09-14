@@ -4,6 +4,58 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## demand book and capacity — 2026-09-14 · not shipped (the agent is at a local optimum)
+
+Refreshed the corpus with the official episodes for 12–13 September (+1,309 sessions, 20,793
+total) and mined what the current top meta actually invests in. It sizes **every** product to the
+shops consuming it, read at day 6, where we conditioned only cows and sheep (medians, 1,857 seats
+rated 2900+ in yesterday's games, by consumer count 0 / 1 / 2):
+
+| investment | 0 | 1 | 2 | ours |
+| --- | --- | --- | --- | --- |
+| strawberries by day 13 | 21 | 29 | 35 | 33 fixed |
+| cows by day 18 | 6 | 9 | 12 | 6 or 8 |
+| sheep by day 20 | 5 | 12 | 18 | 8, or 10 on a rule |
+| geese by day 18 | 2 | 3 | 5 | 0 |
+| carrots, season total | 22 | 51 | 73 | ~43 |
+| tomatoes, season total | 4 | 9 | 14 | 0 |
+| wheat, season plantings | 139 | 148 | 156 | ~114 |
+
+Holding, from replaying those games with the market commit instrumented: they carry ~20
+strawberries and ~23 melons to midnight and release 40–65% of each product's revenue in the first
+six hours, after the overnight town drain lifts the price. Strawberry cleared at 1.19× base,
+wheat 1.44×, carrot 1.44×, tomato 1.29×; milk 0.63× and wool 0.75×. Run on champ-h8, **our
+realized prices match or beat theirs** (wool 0.91×, milk 0.79×, strawberry 0.96×) — the whole gap
+is volume: wheat $7.0k against their $27.6k, carrots $2.3k against $13.0k, tomato and egg zero
+against $6.7k and $9.4k.
+
+`planner._apply_demand_book` implements the table (flags `BOOK_HERD` / `BOOK_CROPS` /
+`BOOK_WHEAT`, all default off). **Every capacity and allocation change fails**, gated paired
+against three external agents with `tools/exec_gate.py` (48 paired worlds each):
+
+| change | pooled paired diff | verdict |
+| --- | --- | --- |
+| demand book, crops only | +$231 ± 3,186 | flat |
+| 4th quadrant (`CHAMP_LAND_BUYS` 2 → 3) | +$325 ± 2,318 | flat |
+| demand book, crops + 4th quadrant | −$5,955 ± 2,901 | reject |
+| demand book, herd only | −$6,637 ± 2,808 | reject |
+| demand book, all groups | −$6,909 ± 3,160 | reject |
+| +2 hands from day 6 | −$5,229 ± 2,085 | reject |
+| +4 hands from day 6 | −$19,344 ± 1,967 | reject |
+
+The crops book does exactly what it says — carrots 37 → 126 units, tomatoes 0 → 42 — but **wheat
+falls 181 → 100**: it reallocates a fixed capacity rather than adding volume. Land does not
+relieve it (25 more tiles, same hands, no gain) and neither does labour (hiring is strongly
+negative and monotone in the wrong direction, so we are at or past the optimum hand count).
+
+**Reading.** Production is bound jointly by labour throughput and tiles, and the top meta's
+targets only work on top of their throughput: they convert ~6,800 unit-turns into 3,391 productive
+actions where we get 2,818. Copying a stronger player's build order without their execution
+capacity spreads the same labour thinner. Combined with the routing round below — five assignment
+changes, all neutral or negative — the agent is at a local optimum in **every single-lever
+direction we can reach**: hands, land, crop mix, herd size, assignment rule, sell discipline.
+Closing the remaining $30–40k needs a jointly different plan, not another knob.
+
 ## worker routing — 2026-09-14 · not shipped (five negatives, and a methodology correction)
 
 Chased the measured labour gap (our hands 59.4% MOVE / 34.0% productive vs a 2500+ opponent's

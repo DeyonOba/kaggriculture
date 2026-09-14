@@ -5,6 +5,7 @@ from kagent.constants import (
     CROPS,
     LAND_ORDER,
     LAND_PRICES,
+    SHOPS,
     TURNS_PER_DAY,
 )
 from kagent import econ
@@ -268,8 +269,61 @@ KNOB_DEFAULTS = {
 }
 
 
-def _knobs(memory):
+# --- Demand book ------------------------------------------------------------
+# Production targets read off the shop draw, mined from 1,857 seats rated 2900+
+# in the 2026-09-12/13 official episodes (tools/mine_knobs.py report). The top
+# meta sizes EVERY product to the number of shops consuming it; we previously
+# conditioned only cows and sheep, and fixed the rest. Index is the number of
+# consumers of that product among the shops open on the decision day, capped at
+# two. Our realized prices already match theirs (wool 0.91 vs 0.71 of base, milk
+# 0.79 vs 0.57); the whole gap is volume, concentrated in the products whose
+# price ladders do not collapse.
+BOOK_HERD = False
+BOOK_CROPS = False
+BOOK_WHEAT = False
+DEMAND_BOOK = {
+    # product: (0 consumers, 1, 2)
+    "cows": (6, 9, 12),          # mined medians of cows held by day 18
+    "sheep": (5, 12, 18),        # by day 20
+    "geese": (2, 3, 5),          # by day 18
+    "straw_target": (21, 29, 35),  # standing strawberries by day 13
+    # Season totals mined were carrots 22/51/73 and tomatoes 4/9/14. Carrots are
+    # one-shot on a ~4-day cycle, so a season total spreads over ~5 rotations;
+    # tomatoes are ongoing, so the total IS the standing count.
+    "carrot_standing": (4, 10, 15),
+    "tomato_standing": (4, 9, 14),
+    "wheat_engine": (30, 32, 34),
+}
+BOOK_PRODUCT = {
+    "cows": "MILK", "sheep": "WOOL", "geese": "EGG", "straw_target": "STRAWBERRY",
+    "carrot_standing": "CARROT", "tomato_standing": "TOMATO", "wheat_engine": "WHEAT",
+}
+
+
+def _consumer_count(view, item):
+    """Shops open now that consume `item`, counting a single-product shop once."""
+    return sum(1 for s in view.unlocked_shops if item in SHOPS.get(s, ()))
+
+
+def _apply_demand_book(knobs, view):
+    groups = []
+    if BOOK_HERD:
+        groups += ["cows", "sheep", "geese"]
+    if BOOK_CROPS:
+        groups += ["straw_target", "carrot_standing", "tomato_standing"]
+    if BOOK_WHEAT:
+        groups += ["wheat_engine"]
+    for key in groups:
+        n = min(2, _consumer_count(view, BOOK_PRODUCT[key]))
+        knobs[key] = DEMAND_BOOK[key][n]
+    return knobs
+
+
+def _knobs(memory, view=None):
     k = dict(KNOB_DEFAULTS)
+    if view is not None and view.day >= 6 and (BOOK_HERD or BOOK_CROPS or BOOK_WHEAT):
+        _apply_demand_book(k, view)
+    # Explicit bandit rules still win over the book.
     k.update(getattr(memory, "knobs", None) or {})
     return k
 
@@ -291,7 +345,7 @@ def make_champion_plan(view, memory):
     plan = DayPlan()
     day = view.day
     me = view.me
-    knobs = _knobs(memory)
+    knobs = _knobs(memory, view)
     plan.liquidation = day >= knobs["liquidation_day"]
     plan.feed_days = knobs["feed_days"]
 
