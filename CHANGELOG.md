@@ -4,6 +4,41 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## win-probability value head — 2026-09-14 · new instrument (`tools/value_head.py`)
+
+V(s) = P(this seat finishes with more money | s), fitted supervised on the recorded corpus, so a
+game can be scored decision by decision instead of by final bank. Unlike a chess engine we need
+no self-play to calibrate: 3,000 replayed sessions give 180,000 labelled states (both seats,
+every day boundary), and the label is who actually won.
+
+- **Model**: one L2 logistic regression per day over 59 features — both farms' public state (tiles
+  by crop, herd, hands, quadrants, standing crop value), our own shed, market prices as a fraction
+  of base, and consumers per product. Held out on `episode % 5 == 0`.
+- **Accuracy 0.682 against a 0.633 margin-sign baseline; log-loss 0.5607 against 0.6632.** It is
+  well calibrated across the whole range: the 0.0–0.1 bucket wins 4.8% of the time, 0.4–0.5 wins
+  45.3%, 0.9–1.0 wins 96.6%. Accuracy by phase: 0.541 on day 1, 0.647 on day 10, 0.726 on day 20,
+  0.913 on day 29 — the season really is undecided early.
+- **The edge over the margin baseline peaks at days 10–13** (+0.147, +0.084, +0.110, +0.122),
+  exactly where the state predicts the outcome long before the bank does. On day 12 the strongest
+  signals are melon and strawberry tile counts, not money; only by day 20 does margin lead.
+
+**First finding, and it reframes where to spend effort.** Against `pub-ahmed-v38` our win
+probability decays from 0.50 to 0.053 by day 17 and 0.010 by day 19, and then does not move at
+all: days 20–29 contribute ±0.006 between them. The steepest two-day falls are day 15→17
+(−0.246), day 1→3 (−0.160), day 16→18 (−0.160) and day 7→9 (−0.154). So **the game against a
+2500+ agent is over by day 19**, and every endgame knob we have tuned — `liquidation_day` 27,
+`carrot_day` 25, endgame carrots, final-push selling — operates in a region that is already
+decided. The decisive window is days 2–17. Sanity check: against champ-h1, which we beat 8–8, the
+same trajectory rises to 0.999 instead.
+
+Caveat recorded in the tool's output: each day has its own model, so a single day's ΔV mixes real
+state change with disagreement between two fits (visible as the bounce at days 6 and 12, where the
+shop draw enters). The level trajectory is the robust read; per-day deltas are indicative only.
+
+    PYTHONPATH=. uv run python tools/value_head.py build --n 3000 --procs 6   # ~50 min
+    PYTHONPATH=. uv run python tools/value_head.py fit                        # writes rl/value_weights.json
+    PYTHONPATH=. uv run python tools/value_head.py attribute --a champ-h8 --b pub-ahmed-v38 --n 8
+
 ## demand book and capacity — 2026-09-14 · not shipped (the agent is at a local optimum)
 
 Refreshed the corpus with the official episodes for 12–13 September (+1,309 sessions, 20,793
