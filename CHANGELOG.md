@@ -4,6 +4,51 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## replay-tape architecture — 2026-09-14 · `tools/tape_agent.py`; parity, selector still to come
+
+First architecture change rather than a tuning round: follow a recorded 719-step action script
+from a 3000+ seat in our own corpus instead of running the hand-written planner.
+
+**Replay is exact.** A tape replayed in its own world against its own recorded opponent reproduces
+the recorded bank to the dollar (episode 107273702, $125,546). The corpus is faithful, so anything
+lost afterwards is transfer, not extraction.
+
+**Transfer is where the money goes, and it is idiosyncratic.** Screening 12 tapes over 4 seeds
+against two external agents, mean bank in foreign worlds against what the tape scored at home:
+
+| recorded | transfers to | rating |
+| --- | --- | --- |
+| $152,723 | **$91,697** (win 0.38) | 3028 |
+| $158,977 | $89,247 | 3016 |
+| $165,971 | $78,238 | 3029 |
+| $174,335 | $69,444 | 3016 |
+| $155,147 | **$32,799** | 3125 |
+
+Recorded score, margin and rating all fail to predict transfer — the $155k / 3125-rated tape is
+the worst of the set. Tapes must be screened empirically, and the two obvious ranking keys are
+traps: ranking by *margin* selects for having beaten a weak opponent.
+
+**Desync, diagnosed.** Weeds spawn at only 0.005 per empty tile per day, so spatial repair is
+nearly free but nearly worthless. The real failure is economic: the engine drops **every** PLANT
+of a crop whose requests exceed seeds in hand, so one unaffordable `BUY_SEED` voids a whole turn
+of planting, the tile stays empty, its harvest never happens, and the next purchase fails too.
+A transplanted tape showed 134 seeds unplanted, 8 structures empty, 2 animals placed, $35k against
+a recorded $116k. Two repairs tried: topping up the seed order is a no-op when cash is the binding
+constraint and −$11k when it fires; raising that cash by selling the shed is **−$8k to −$70k a
+seed**, because it dumps into a market the tape has already crashed. Both left in the tool, off.
+
+**Result: parity.** `arena/agents/tape-v1` (episode 108431672, rating 3028) gated over 84 paired
+worlds: +$5,476 vs ahmed-v38, +$2,246 vs tschinkel, −$9,588 vs boatlee, **pooled −$622 ± 3,688**.
+A transplanted 3028-rated script is worth about what our hand-tuned planner is worth — no more.
+Its win rate against opponents champ-h8 loses to 0-for-60 is 0.38, so the shape of its play is
+better; the level is not.
+
+**Reading.** Most of a tape's strength lived in its own world, and open-loop replay surrenders it.
+That is exactly why the public routers carry 5–13 tapes and switch on public state: the value is
+in *selection*, not in any one script. The library (301 tapes, day-6 shop pairs indexed, 62
+distinct) and the screening harness are built; the selector is the next step and now has a
+measured baseline to beat.
+
 ## waste audit and pasture layout — 2026-09-14 · `tools/waste_audit.py`; layout rejected
 
 Audited the hypothesis that we pay for seed that never yields, and that the top agents plan a
