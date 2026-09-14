@@ -204,6 +204,54 @@ Two things to check against the shipped agent rather than assume:
 Neither is a finding yet. Both are hypotheses the LP generated, and the gate for them is unchanged:
 paired margin against `pub-*` on a fresh seed block.
 
+## Gate: wheat volume — REJECTED (2026-09-14)
+
+The wheat hypothesis was gated first, because the trace behind it was the strongest. Variants built
+with `tools/make_knob_variant.py` from the frozen `champ-h8` bundle (one literal changed, one diff
+hunk), paired against three external agents on identical seed/swap keys, 24 worlds each:
+
+| variant | vs ahmed | vs tschinkel | vs boatlee | pooled |
+| --- | --- | --- | --- | --- |
+| `wheat_engine` 40 | −$1,111 | +$1,460 | +$1,557 | +$635 ± 735 (45/72) |
+| `wheat_engine` 48 | −$1,667 | +$168 | +$2,253 | +$251 ± 755 (36/72) |
+| `wheat_engine` 56 | −$1,736 | +$292 | +$2,243 | +$266 ± 757 (38/72) |
+
+All three are **negative against `pub-ahmed-v38`** — the strongest opponent and the one we lose most
+to — and the pooled mean is inside one standard error of zero. **Rejected.**
+
+### Why the trace looked so convincing and the gate still says no
+
+The trace that motivated this (3 games, champ-h8 vs ahmed) is real and still stands:
+
+| | champ-h8 | pub-ahmed |
+| --- | --- | --- |
+| wheat planted | 104 | 163 |
+| wheat sold | 174 @ $45 | 392 @ $44 |
+| wheat bought | **225** @ $40 | 163 @ $35 |
+| feed actions | 353 | 338 |
+| net wheat position | **−$1,237** | **+$11,708** |
+
+We feed the same size herd and are a net *importer* of wheat. But raising the knob does not fix it,
+for two reasons the trace of the variants makes plain:
+
+1. **The knob saturates.** `wheat_target = min(knobs["wheat_engine"], crops + free)` is capped by
+   free tiles, so 48 and 56 produce the same farm: 118.3 and 119.0 plantings. The effective range
+   tested was 104 → 119. **The LP's 154 was never actually reached**, and cannot be by this knob —
+   it needs tiles, which means the third quadrant or fewer strawberries, i.e. a joint change, and
+   the joint plan search over exactly these knobs already came back flat to noise.
+2. **The extra wheat went to sales, not to feed.** Plantings 104 → 119 moved wheat *sold* 174 → 226
+   while wheat *bought* stayed put at 225 → 237. The LP's mechanism — grow feed instead of importing
+   it — never engaged. `plan.wheat_reserve = max(animals + 2, feed_days × animals)` is ~28 units at
+   `feed_days` 2, so everything above 28 is sold and we buy back between harvests regardless of how
+   much we grow.
+3. Carrot plantings fell 24 → 14. The wheat tiles came straight out of carrots — the same
+   reallocation-of-fixed-capacity failure the demand book hit.
+
+So the LP's *diagnosis* survives (wheat is feed infrastructure, we under-produce it, and it costs us
+~$13k a game against ahmed) while its *prescription* is not reachable through this knob. The open
+follow-up is `feed_days`, which is what actually decides whether grown wheat is banked as feed or
+dumped — untested above 2, and a different hypothesis from this one.
+
 ## Caveats
 
 * `eff` is measured from *our* routing on *our* plan; a different plan has different movement. The

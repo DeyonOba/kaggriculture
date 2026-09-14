@@ -46,10 +46,33 @@ replay — wheat 154 (their median 148, ours 104), strawberries 29 (29), cows 5.
 and ~440 of the LP's ~703 wheat units are **animal feed**, not sales. Wheat is the infrastructure
 that lets the herd produce at all, not a sales crop.
 
-Hypotheses generated, none tested, all gated the usual way (paired vs `pub-*`, fresh seed block):
-wheat volume 104 → ~154; the `fert_price < 40` gate on wheat fertilizing may never fire while the
-LP wants 72 of 154 wheat tiles fertilized; geese are economically sound (the LP takes 5 with full
-care) and our $30k goose loss is an executor failure, not an economic one.
+Hypotheses generated: wheat volume 104 → ~154 (**gated and rejected**, below); the `fert_price < 40`
+gate on wheat fertilizing may never fire while the LP wants 72 of 154 wheat tiles fertilized; geese
+are economically sound (the LP takes 5 with full care) and our $30k goose loss is an executor
+failure, not an economic one.
+
+### Wheat volume gate — REJECTED
+
+`tools/make_knob_variant.py` clones a frozen bundle with extra constant knob rules patched into the
+baked-in `BANDIT_RULES` (editing `rules.json` does nothing — `rl/export.py --freeze` bakes it, and
+rebuilding from `kagent/` risks the head-value-semantics trap). One diff hunk per variant.
+
+| variant | ahmed | tschinkel | boatlee | pooled |
+| --- | --- | --- | --- | --- |
+| `wheat_engine` 40 | −$1,111 | +$1,460 | +$1,557 | +$635 ± 735 (45/72) |
+| `wheat_engine` 48 | −$1,667 | +$168 | +$2,253 | +$251 ± 755 (36/72) |
+| `wheat_engine` 56 | −$1,736 | +$292 | +$2,243 | +$266 ± 757 (38/72) |
+
+Negative against the strongest opponent in every case, pooled inside 1 se of zero.
+
+The LP's **diagnosis** survives: traced against ahmed we plant 104 wheat to their 163, feed the same
+herd (353 vs 338 feed actions), and are a net *importer* — sold 174 @ $45 against 225 bought @ $40,
+a net wheat position of **−$1,237 to their +$11,708**. The **prescription** does not, for two
+reasons: (1) `wheat_target = min(wheat_engine, crops + free)` saturates on free tiles, so 48 and 56
+give the identical farm at 118/119 plantings and the LP's 154 is unreachable by this knob; (2) the
+extra wheat went to *sales* (174 → 226) not to displacing purchases (225 → 237), because
+`wheat_reserve` is only ~28 units at `feed_days` 2. Carrots fell 24 → 14 — pure reallocation, the
+demand-book failure again. Open follow-up, untested: `feed_days` above 2.
 
 ## tape-sel — 2026-09-14 · SUBMITTED · day-6 selector, +$5.3k/+$4.9k over tape-v2
 
