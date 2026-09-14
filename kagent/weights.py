@@ -3,4 +3,4 @@
 WEIGHTS_DATA = None
 MPC_ENABLED = False
 CHAMPION_PLAN = True
-BANDIT_RULES = {'kind': 'knobs', 'min_gain': 1500, 'max_knobs': 5, 'models': [], 'conditions': [{'knob': 'premium_scale', 'value': 0.35}, {'knob': 'carrot_day', 'value': 25}, {'knob': 'cows', 'value': 6, 'max_consumers': {'MILK': 0}}, {'knob': 'sheep', 'value': 10, 'day': 12, 'min_price': {'WOOL': 1.0}}]}
+BANDIT_RULES = None

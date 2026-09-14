@@ -4,6 +4,47 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## worker routing — 2026-09-14 · not shipped (five negatives, and a methodology correction)
+
+Chased the measured labour gap (our hands 59.4% MOVE / 34.0% productive vs a 2500+ opponent's
+42.2% / 46.0%; 1.25 moves per productive action vs 0.76). **Nothing improved against a real
+opponent.** Movement was attributed per assignment pass first (`scheduler.MOVE_STATS`, 3 games):
+
+| pass | MOVE | action | move% | share of all movement |
+| --- | --- | --- | --- | --- |
+| zone (own zone, real work) | 7,260 | 6,388 | 53.2% | 61.2% |
+| idlehelp (cross-zone, r≤5) | 1,999 | 486 | 80.4% | 16.9% |
+| filler | 1,446 | 372 | 79.5% | 12.2% |
+| shuttle (shed trips) | 760 | 206 | 78.7% | 6.4% |
+| morning (zone provisioning) | 224 | 1,025 | 17.9% | 1.9% |
+
+The help and filler passes really do run at four moves per action — 29% of all movement for 10%
+of the actions — but every attempt to reclaim it lost money:
+
+| change | vs champ-h8 (twin) | paired vs pub-ahmed-v38, same worlds |
+| --- | --- | --- |
+| filler walk capped at 3 tiles (1 after hour 16) | 19–11 | **−$7,387 ± 3,126** |
+| CARE crash-pivot removed (always care) | 11–19 | −$544 ± 1,734 |
+| CARE threshold 0.35 → 0.15 of base | 14–16 | +$1,263 ± 1,631 |
+| idle hands pick by value per turn, `value/(d+1)` | 5–25 | **−$4,928 ± 2,702** |
+| zones split by work (occupied tiles weighted ×2/×3/×5) | 11–19 / 1–29 / 1–29 | not run |
+| `MIN_ZONE_TILES` 5 → 8 (9 zones, hands share) | **24–6, p=0.0014, +$4,481** | **−$4,490 ± 3,333** |
+
+Readings:
+- **The executor is at a local optimum.** Equal-area contiguous serpentine zones beat every
+  relaxation. Work-weighted zones fail because a zone with sparse occupancy becomes
+  geographically *larger*, so the hand walks further — the opposite of the intent. Value-per-turn
+  ranking fails because the far P_TEND/P_HARVEST action really is worth five turns of walking and
+  the nearby filler action really is worth almost nothing. Movement is the price of covering a
+  55–75 tile farm with 11 hands, not slack.
+- **The CARE gap is a symptom, not a cause.** We CARE 210 times to their 417 only because the
+  crash-pivot fires once wool and milk collapse — and at $1–50 a unit the extra product genuinely
+  does not repay the turns. Removing the pivot is worth nothing.
+- **Methodology: never gate an executor change on the twin arena.** `MIN_ZONE_TILES = 8` beat a
+  copy of ourselves 24–6 at p=0.0014 and was $4,490 *worse* against a real agent on the same
+  worlds. Two agents sharing one price ladder can trade wins that come entirely from sale timing
+  against each other. Executor changes must be gated paired against `arena/agents/pub-*`.
+
 ## champ-h8 — 2026-09-14 · SUBMITTED · stop churning the feed buffer
 
 One-line planner fix worth **+$2,376 a game**: the sell path reserved `animals + 2` wheat while
