@@ -267,13 +267,34 @@ def _job(task):
     return X, Y, MX, MY, MH
 
 
+def cluster_episodes(rating, tol=0.5):
+    """Episodes of one coherent tape cluster.
+
+    v1 cloned 120 DIFFERENT 3000+ seats and produced an incoherent policy: if
+    one champion plants melon in a state and another plants wheat, an
+    unconditional clone learns a blend that is neither, which is the classic
+    multimodality failure of behaviour cloning. The library's 58-tape rating
+    3029.3 cluster is ONE strategy by construction -- every tape in it has
+    byte-identical field actions for days 0-5 -- so cloning it removes that
+    averaging entirely.
+    """
+    from tools.tape_agent import _load_lib
+    return {t["episode"] for t in _load_lib() if abs(t["rating"] - rating) < tol}
+
+
 def build(args):
     import numpy as np
     files = sorted(glob.glob(os.path.join(SESS, "session-*.json")))
+    if args.cluster:
+        eps = cluster_episodes(args.cluster)
+        files = [f for f in files if int(f.split("-")[-1][:-5]) in eps]
+        print(f"cluster {args.cluster}: {len(eps)} tapes -> {len(files)} session "
+              f"files on disk", flush=True)
     # Held-out convention used everywhere else in this repo: episode % 5 == 0.
-    files = [f for f in files if int(f.split("-")[-1][:-5]) % 5 != 0] \
-        if not args.heldout else \
-        [f for f in files if int(f.split("-")[-1][:-5]) % 5 == 0]
+    if not args.cluster:
+        files = [f for f in files if int(f.split("-")[-1][:-5]) % 5 != 0] \
+            if not args.heldout else \
+            [f for f in files if int(f.split("-")[-1][:-5]) % 5 == 0]
     picked, seen = [], 0
     for f in files:
         try:
@@ -424,6 +445,9 @@ def main():
     ap.add_argument("--min-rating", type=float, default=3000)
     ap.add_argument("--procs", type=int, default=5)
     ap.add_argument("--heldout", action="store_true")
+    ap.add_argument("--cluster", type=float, default=None,
+                    help="clone ONE rating cluster (e.g. 3029.3) "
+                         "instead of any 3000+ seat")
     ap.add_argument("--epochs", type=int, default=12)
     ap.add_argument("--hidden", type=int, default=256)
     ap.add_argument("--lr", type=float, default=1e-3)
