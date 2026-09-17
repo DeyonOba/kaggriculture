@@ -16,6 +16,16 @@ cd "$(dirname "$0")/.."
 MSG="${1:?usage: tools/submit.sh \"message\" [agent-name]}"
 AGENT="${2:-}"
 
+# TESTS RUN FIRST, AND THIS ORDER IS LEAD-LINED.
+# tests/test_bundle.py and tests/test_rl_bundle.py both invoke
+# tools/build_submission.py, which OVERWRITES main.py with the kagent planner
+# bundle. With the tests after the copy, this script validated tape-sel and
+# then submitted the regenerated kagent bundle -- twice, scoring 799.8 and
+# 690.1 against tape-sel's true 1688.9. The pre-flight passed on a file that no
+# longer existed by submit time, which is worse than no pre-flight at all.
+echo "== tests (these regenerate main.py, so they must run BEFORE the copy) =="
+uv run pytest tests/ -q
+
 if [ -n "$AGENT" ]; then
   SRC="arena/agents/$AGENT/main.py"
   [ -f "$SRC" ] || { echo "no frozen bundle at $SRC"; exit 1; }
@@ -24,6 +34,7 @@ if [ -n "$AGENT" ]; then
 else
   echo "== build (kagent/ planner lineage) =="
   uv run python tools/build_submission.py
+  SRC="main.py"
 fi
 
 echo "== size (limit 100 MiB) =="
@@ -74,8 +85,19 @@ print("  isolation OK")
 sys.exit(subprocess.run([sys.executable, "-c", code], cwd=d).returncode)
 PY
 
-echo "== tests =="
-uv run pytest tests/ -q
+echo "== FINGERPRINT: main.py must still be the file we validated =="
+python3 - "$SRC" <<'PY'
+import hashlib, sys, os
+src = sys.argv[1]
+a = hashlib.sha256(open("main.py", "rb").read()).hexdigest()
+b = hashlib.sha256(open(src, "rb").read()).hexdigest()
+print(f"  main.py  {os.path.getsize('main.py'):>8,} bytes  sha256 {a[:16]}")
+print(f"  {src:<9}{os.path.getsize(src):>8,} bytes  sha256 {b[:16]}")
+if a != b:
+    print("  MISMATCH: something rewrote main.py after the copy. REFUSING.")
+    sys.exit(1)
+print("  match")
+PY
 
 echo "== quota (5/day, only the most recent 2 are ACTIVE) =="
 uv run kaggle competitions submissions kaggriculture 2>/dev/null | sed -n '3,4p' \
