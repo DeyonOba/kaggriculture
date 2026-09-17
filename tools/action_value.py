@@ -75,6 +75,8 @@ def blank(actions, turn, unit):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--world", type=int, default=0)
+    ap.add_argument("--worlds", type=int, default=1,
+                    help="replicate across N worlds and pool")
     ap.add_argument("--arm", type=int, default=129)
     ap.add_argument("--per-day", type=int, default=8)
     ap.add_argument("--procs", type=int, default=5)
@@ -87,11 +89,11 @@ def main():
     files = [f for f in sorted(glob.glob(os.path.join(
         REPO, "rl", "datasets", "sessions", "session-*.json")))
         if int(f.split("-")[-1][:-5]) in eps]
-    sess = json.load(open(files[args.world]))
-    seed, opp = sess["seed"], sess["actions"][1]
-    base = list(_load_lib()[args.arm]["actions"])
+    lib = _load_lib()
+    base = list(lib[args.arm]["actions"])
+    worlds = files[args.world:args.world + args.worlds]
 
-    # index every work action by day
+    # index every work action by day (same for every world: same arm)
     byday = collections.defaultdict(list)
     for t, turn in enumerate(base):
         acts = [turn.get("farmer")] + list(turn.get("hands") or [])
@@ -103,36 +105,55 @@ def main():
     rng = random.Random(args.seed)
     picks = []
     for d, lst in byday.items():
-        rng.shuffle(lst)
+        lst = list(lst); rng.shuffle(lst)
         picks += [(d, t, u) for t, u in lst[:args.per_day]]
-    print(f"world ep {sess['episode']}, arm cl-{args.arm}: "
-          f"{len(picks)} single-action deletions "
-          f"(~{len(picks)*1.09/args.procs/60:.0f} min)\n", flush=True)
-
-    with Pool(args.procs) as pool:
-        b = pool.map(_eval, [(base, seed, opp)])[0]
-        vals = pool.map(_eval, [(blank(base, t, u), seed, opp)
-                                for _, t, u in picks])
+    n_eval = (len(picks) + 1) * len(worlds)
+    print(f"{len(worlds)} worlds x {len(picks)} deletions = {n_eval} evaluations "
+          f"(~{n_eval*1.09/args.procs/60:.0f} min)\n", flush=True)
 
     per = collections.defaultdict(list)
-    for (d, t, u), v in zip(picks, vals):
-        if v is not None:
-            per[d].append(b - v)          # margin LOST by removing the action
+    with Pool(args.procs) as pool:
+        for wi, f in enumerate(worlds):
+            sess = json.load(open(f))
+            seed, opp = sess["seed"], sess["actions"][1]
+            b = pool.map(_eval, [(base, seed, opp)])[0]
+            if b is None:
+                continue
+            vals = pool.map(_eval, [(blank(base, t, u), seed, opp)
+                                    for _, t, u in picks])
+            for (d, t, u), v in zip(picks, vals):
+                if v is not None:
+                    per[d].append(b - v)
+            print(f"  world {wi+1}/{len(worlds)} ep {sess['episode']} "
+                  f"base {b:>+10,.0f}", flush=True)
 
     from tools.lp_bound import build_and_solve
     print("solving the LP for its labour dual...", flush=True)
     lp = build_and_solve(eff=0.414, shops=None)
     ld = lp["labour_duals"]
 
-    print(f"\nbase margin {b:>+,.0f}\n")
-    print(f"  {'day':>4}{'n':>4}{'REALISED $/action':>20}{'LP dual $/action':>19}")
+    print(f"\n  {'phase':<16}{'n':>6}{'REALISED $/action':>20}{'se':>10}{'LP dual':>10}{'ratio':>9}")
+    PH = [("opening 0-6",0,6),("contest 7-17",7,17),("consol 18-25",18,25),
+          ("endgame 26-29",26,29)]
     xs, ys = [], []
+    for name, lo, hi in PH:
+        vv = [v for d in range(lo,hi+1) for v in per.get(d,[])]
+        if not vv: continue
+        se = st.stdev(vv)/len(vv)**0.5 if len(vv)>1 else 0
+        lpm = st.mean(ld[lo:hi+1])
+        print(f"  {name:<16}{len(vv):>6}{st.mean(vv):>20,.0f}{se:>10,.0f}"
+              f"{lpm:>10,.1f}{st.mean(vv)/max(lpm,1e-9):>8.0f}x")
     for d in sorted(per):
-        if not per[d]:
-            continue
-        r = st.mean(per[d])
-        print(f"  {d:>4}{len(per[d]):>4}{r:>20,.1f}{ld[d]:>19,.1f}")
-        xs.append(ld[d]); ys.append(r)
+        if per[d]:
+            xs.append(ld[d]); ys.append(st.mean(per[d]))
+    early=[v for d in range(0,12) for v in per.get(d,[])]
+    late=[v for d in range(12,30) for v in per.get(d,[])]
+    if early and late:
+        ese=st.stdev(early)/len(early)**0.5; lse=st.stdev(late)/len(late)**0.5
+        print(f"\n  days 0-11   {st.mean(early):>+9,.0f} +/- {ese:,.0f}  (n={len(early)})")
+        print(f"  days 12-29  {st.mean(late):>+9,.0f} +/- {lse:,.0f}  (n={len(late)})")
+        diff=st.mean(early)-st.mean(late); dse=(ese**2+lse**2)**0.5
+        print(f"  difference  {diff:>+9,.0f} +/- {dse:,.0f}   z = {diff/dse if dse else 0:.2f}")
 
     ma, mb = st.mean(xs), st.mean(ys)
     va = sum((x - ma) ** 2 for x in xs); vb = sum((y - mb) ** 2 for y in ys)
