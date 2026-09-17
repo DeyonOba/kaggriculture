@@ -32,3 +32,6 @@ rl/datasets/*
 !rl/datasets/episodes_ledger.json
 *.pt
 nohup.out
+
+# Rendered HTML replays (~46 MB each, regenerate with tools/render_game.py)
+replay-*.html
