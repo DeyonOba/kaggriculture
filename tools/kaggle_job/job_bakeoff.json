@@ -1,0 +1,12 @@
+{
+  "engine": "1.32.7",
+  "procs": 4,
+  "budget_s": 39600,
+  "_why": "The local bake-off was null for all four methods, but at 396 games/method the winner-of-11 inflation was $4,130 against a $3,000 effect -- the instrument could not resolve it. Per-world sd is $34,749; paired against the base on the same world it is $17,168. Keeping the winner's curse under half the effect needs ~890 worlds per evaluation at 30 evaluations = ~27,000 games, which is an 11h kernel and not a local run. BO is the method sent: it was the only one that declined to chase a lucky evaluation locally, and it is the most sample-efficient at the ~30 evaluations this budget allows.",
+  "steps": [
+    "{python} -u tools/optimizer_bakeoff.py --method bo --paired --sigma 0.10 --per-bin 170 --budget 26000 --final 25 --procs {procs} --seed 11"
+  ],
+  "collect": [
+    "rl/bakeoff_runs"
+  ]
+}

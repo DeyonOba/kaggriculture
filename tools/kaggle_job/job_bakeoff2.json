@@ -1,0 +1,12 @@
+{
+  "engine": "1.32.7",
+  "procs": 4,
+  "budget_s": 39600,
+  "_why": "Second slug, run in parallel with job_bakeoff.json on a different KERNEL_ID. Kaggle's value here is breadth, not depth -- its 4 vCPU are slower per game than the local 6 cores, so two kernels on different seeds and a different method buy more than one longer run. hill with --paired and the MEASURED sigma=0.10 (sigma=0.25 costs -$18,944 paired, which is what broke the first local round). Different --seed so the search worlds differ from slug 1; a plan that wins on both is worth gating.",
+  "steps": [
+    "{python} -u tools/optimizer_bakeoff.py --method hill --paired --sigma 0.10 --per-bin 170 --budget 26000 --final 25 --procs {procs} --seed 23"
+  ],
+  "collect": [
+    "rl/bakeoff_runs"
+  ]
+}

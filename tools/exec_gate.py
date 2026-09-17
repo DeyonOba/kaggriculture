@@ -56,6 +56,32 @@ def scores(path, agent):
     return out
 
 
+def beats_opponent(path, agent):
+    """Did we BEAT the opponent? -> {(seed, swap): bool}
+
+    This is the quantity the leaderboard actually scores. The rating is
+    WIN-BASED, while the paired-margin criterion below compares us to our own
+    baseline -- and the two came apart badly: champ-h8 wins 3.5% of games
+    against the public agents on a mean margin of -$31,049, so a change worth
+    +$1,381/game moves the margin of a loss and flips almost no outcomes.
+    match-all gated +$1,381 +/- 641 over 360 games and took the head-to-head
+    win count from 5/144 to 4/144.
+    """
+    out = {}
+    for line in open(path):
+        row = json.loads(line)
+        if agent not in row["players"]:
+            continue
+        if row.get("statuses") and any(s != "DONE" for s in row["statuses"]):
+            continue
+        i = row["players"].index(agent)
+        mine, theirs = row["rewards"][i], row["rewards"][1 - i]
+        if mine is None or theirs is None:
+            continue
+        out[(row["seed"], row["swap"])] = mine > theirs
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cand", required=True, help="candidate agent name in arena/agents")
@@ -74,8 +100,10 @@ def main():
         sys.exit(f"missing opponents {missing}; run: uv run python tools/fetch_public_agents.py")
 
     pooled = []
+    wins = []
     print(f"{args.cand} vs {args.base}, paired on identical worlds against {len(opps)} external agents\n")
-    print(f"{'opponent':<22} {'n':>4} {'cand mean':>11} {'base mean':>11} {'paired diff':>13} {'se':>8} {'better':>8}")
+    print(f"{'opponent':<22} {'n':>4} {'cand mean':>11} {'base mean':>11} "
+          f"{'paired diff':>13} {'se':>8} {'better':>8} {'WINS vs opp':>16}")
     ok = True
     for opp in opps:
         cp = run(args.cand, opp, args.n, args.base_seed, args.procs)
@@ -85,6 +113,7 @@ def main():
             ok = False
             continue
         c, b = scores(cp, args.cand), scores(bp, args.base)
+        cwin, bwin = beats_opponent(cp, args.cand), beats_opponent(bp, args.base)
         keys = sorted(set(c) & set(b))
         if len(keys) < 2:
             print(f"{opp:<22} {len(keys):>4}  no overlap")
@@ -93,9 +122,13 @@ def main():
         d = [c[k] - b[k] for k in keys]
         se = st.stdev(d) / math.sqrt(len(d))
         pooled += d
+        cw = sum(cwin.get(k, False) for k in keys)
+        bw = sum(bwin.get(k, False) for k in keys)
+        wins.append((cw, bw, len(keys)))
         print(f"{opp:<22} {len(keys):>4} {st.mean(c[k] for k in keys):>11,.0f} "
               f"{st.mean(b[k] for k in keys):>11,.0f} {st.mean(d):>+13,.0f} {se:>8,.0f} "
-              f"{sum(x > 0 for x in d):>4}/{len(d):<3}")
+              f"{sum(x > 0 for x in d):>4}/{len(d):<3} "
+              f"{bw:>3}/{len(keys):<3} -> {cw:>3}/{len(keys):<3}")
         if st.mean(d) <= 0:
             ok = False
 
@@ -104,8 +137,19 @@ def main():
         m = st.mean(pooled)
         print(f"\n{'POOLED':<22} {len(pooled):>4} {'':>11} {'':>11} {m:>+13,.0f} {se:>8,.0f} "
               f"{sum(x > 0 for x in pooled):>4}/{len(pooled):<3}")
+        cw = sum(x[0] for x in wins); bw = sum(x[1] for x in wins)
+        nn = sum(x[2] for x in wins)
+        print(f"\n{'WIN RATE vs opponents':<22} {nn:>4} "
+              f"base {bw}/{nn} ({bw/nn*100:.1f}%)  ->  cand {cw}/{nn} "
+              f"({cw/nn*100:.1f}%)   {cw-bw:+d} games")
         verdict = "SHIP" if (ok and m > 2 * se) else ("hold" if m > 0 else "REJECT")
-        print(f"\nverdict: {verdict}  (needs positive against every opponent and pooled mean > 2 se)")
+        print(f"\nverdict (margin): {verdict}  "
+              f"(positive vs every opponent and pooled mean > 2 se)")
+        if cw <= bw:
+            print("WARNING: the margin verdict is NOT the leaderboard's metric. "
+                  "The rating is WIN-BASED and this change wins no more games "
+                  "than the base. champ-h8 wins 3.5% of games at a mean margin "
+                  "of -$31,049, so margin gains move the size of a LOSS.")
 
 
 if __name__ == "__main__":

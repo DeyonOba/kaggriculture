@@ -267,6 +267,9 @@ _BLOCKABLE = ("PLANT", "BUILD_COOP", "BUILD_PASTURE")
 _S = {{"delay": defaultdict(int), "day": -1}}
 
 
+__SE_BLOCK__
+__FREE_WORK_BLOCK__
+
 def agent(observation, configuration=None):
     obs = observation
     step = obs.get("step", 0)
@@ -295,10 +298,13 @@ def agent(observation, configuration=None):
             if isinstance(tile, dict) and tile.get("kind") == "WEED":
                 a = ["DIG"]
                 _S["delay"][i] += 1
+        __FREE_WORK_CALL__
         if i == 0:
             out["farmer"] = a
         else:
             out["hands"].append(a)
+    __SE_CALL__
+    __REORDER__
     return out
 '''
 
@@ -309,8 +315,23 @@ def export(args):
     lib = _load_lib()
     t = lib[args.rank]
     blob = _b64.b85encode(_z.compress(json.dumps(t["actions"]).encode(), 9)).decode()
+    # EXPORT_TMPL grew optional-layer placeholders (SE quadrant, free work,
+    # reorder) that only export_selector ever substituted, so every single-tape
+    # bundle written since then raised NameError on import. kaggle-environments
+    # swallows that and no-ops every turn, which scores exactly $3,000 -- the
+    # bundle compiles, looks valid, and is silently dead. Strip them all here,
+    # and always smoke-test an export against that number.
     code = EXPORT_TMPL.format(ep=t["episode"], seat=t["seat"], rating=t["rating"],
                               final=t["final"], blob=blob)
+    for placeholder in ("__SE_BLOCK__", "__SE_CALL__", "__FREE_WORK_BLOCK__",
+                        "__FREE_WORK_CALL__", "__REORDER__"):
+        code = code.replace(placeholder, "pass" if placeholder.endswith("CALL__")
+                            or placeholder == "__REORDER__" else "")
+    if "__" in code.replace("__name__", "").replace("__main__", ""):
+        import re as _re
+        left = sorted(set(_re.findall(r"__[A-Z_]+__", code)))
+        if left:
+            raise RuntimeError(f"unsubstituted placeholders remain: {left}")
     d = os.path.join("arena", "agents", args.name)
     os.makedirs(d, exist_ok=True)
     p = os.path.join(d, "main.py")
@@ -338,3 +359,324 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+_FREE_WORK_SRC = '''
+# --- Free-work layer ---------------------------------------------------------
+# Census of tape-sel3 (3 games): 7,093 unit-turns, of which only 21 are wasted
+# actions -- the tape is defect-free, so there is nothing to repair. The whole
+# safe budget is its 646 PASS turns, and 142 of those (22%) sit on a tile with
+# a doable task UNDERFOOT: 73 HARVEST, 31 WATER, 22 FEED, 5 CARE, 5 COLLECT.
+#
+# Substituting there is the least invasive deviation available: the tape's own
+# action was PASS (nothing), and the unit does not MOVE, so every later step of
+# the script still finds it exactly where the script expects. Contrast the SE
+# layer (walked units away, netted zero) and the sell-first layer (reordered
+# working behaviour, -$14k).
+#
+# PLANT is deliberately excluded even though 3.3/game are available: the engine
+# voids EVERY planting of a crop whose requests exceed seeds in hand, so one
+# extra PLANT can annihilate a whole turn of the tape's own planting.
+def _free_task(tiles, unit, day):
+    if not (isinstance(unit, (list, tuple)) and len(unit) >= 2):
+        return None
+    try:
+        t = tiles[unit[1]][unit[0]]
+    except Exception:
+        return None
+    if not isinstance(t, dict):
+        return None
+    kind = t.get("kind")
+    if kind == "PLANT":
+        first = _FIRST_YIELD.get(t.get("crop"), 99)
+        if t.get("yield_units", 0) > 0 and day - t.get("planted_day", day) >= first:
+            return ["HARVEST"]
+        if not t.get("watered_today"):
+            return ["WATER"]
+        return None
+    if kind == "WEED":
+        return ["DIG"]
+    if t.get("animal"):
+        if not t.get("fed_today"):
+            return ["FEED"]
+        if t.get("fertilizer_available"):
+            return ["COLLECT_FERTILIZER"]
+        if not t.get("cared_today"):
+            return ["CARE"]
+        if t.get("yield_units", 0) > 0:
+            return ["HARVEST"]
+    return None
+'''
+
+_REORDER_SRC = (
+    # Sell-before-buy. Not about truncation -- measured, the tape never exceeds
+    # the 10-order cap. Two other mechanisms: market orders are processed
+    # POSITIONALLY against the opponent's, so a SELL sitting behind our own
+    # spends executes after more of the opponent's supply has walked the ladder
+    # down; and a buy stops when money runs out, so realising cash first makes
+    # the later orders affordable. Measured on tape-sel3: 71 of 735 SELLs (9.7%)
+    # sit behind a spend, on 20 turns a game. Stable, so relative order within
+    # SELLs and within the rest is untouched.
+    'm = out["market"]\n'
+    '    if m:\n'
+    '        _s = [o for o in m if isinstance(o, list) and o and o[0] == "SELL"]\n'
+    '        if _s and len(_s) != len(m):\n'
+    '            out["market"] = _s + [o for o in m\n'
+    '                                  if not (isinstance(o, list) and o and o[0] == "SELL")]'
+)
+
+_SE_LAYER_SRC = '''
+# --- SE quadrant layer -------------------------------------------------------
+# Measured on tape-sel3: the tape buys two quadrants and leaves SE LOCKED all
+# game -- 25 tiles, a quarter of the board, idle -- while NW/NE are fully
+# occupied by day 12 and SW by day 22. It also leaves 636 unit-turns a game on
+# PASS (9.0%) and banks $22,006 by day 14 against SE's $4,000 price.
+#
+# This layer only ever spends slack: it overrides a unit whose TAPE action is
+# PASS, and appends market orders only when the tape left room under the
+# 10-order cap. The tape's own play is never displaced.
+_SE_DAY = __SE_DAY__
+_SE_CASH = __SE_CASH__
+_SE_CROP = "__SE_CROP__"
+_SE_SEED_COST = {"WHEAT": 10, "CARROT": 20, "TOMATO": 50, "STRAWBERRY": 100, "MELON": 80}
+_SE_RIPE = {"WHEAT": 2, "CARROT": 2, "TOMATO": 8, "STRAWBERRY": 10, "MELON": 10}
+
+
+def _se_step_toward(pos, tgt):
+    x, y = pos
+    tx, ty = tgt
+    if x != tx:
+        return "EAST" if tx > x else "WEST"
+    if y != ty:
+        return "SOUTH" if ty > y else "NORTH"
+    return None
+
+
+def _se_layer(obs, seat, out, day):
+    me = obs["farms"][seat]
+    tiles = me.get("tiles") or []
+    if len(tiles) < 10:
+        return
+    unlocked = set(me.get("unlocked_quadrants") or [])
+    money = me.get("money", 0)
+    orders = out["market"]
+
+    # 1. Buy the quadrant, once the farm is built out and cash is comfortable.
+    if "SE" not in unlocked:
+        if day >= _SE_DAY and money >= _SE_CASH and len(orders) < 10 and len(unlocked) >= 3:
+            orders.append(["BUY_LAND"])
+        return
+
+    # 2. Survey SE: empty tiles to plant, and our plants needing water/harvest.
+    empties, needs_water, ripe = [], [], []
+    for y in range(5, 10):
+        for x in range(5, 10):
+            t = tiles[y][x]
+            if t is None:
+                empties.append((x, y))
+            elif isinstance(t, dict) and t.get("kind") == "PLANT":
+                age = day - t.get("planted_day", day)
+                if t.get("yield_units", 0) > 0 and age >= _SE_RIPE.get(t.get("crop"), 99):
+                    ripe.append((x, y))
+                elif not t.get("watered_today"):
+                    needs_water.append((x, y))
+
+    # 3. Seeds: the engine voids EVERY planting of a crop whose requests exceed
+    #    seeds in hand, so never ask for more plants than we hold.
+    seeds = ((obs.get("private") or {}).get("seeds") or {}).get(_SE_CROP, 0)
+    cost = _SE_SEED_COST.get(_SE_CROP, 10)
+    if empties and seeds < len(empties) and len(orders) < 10:
+        want = min(len(empties) - seeds, max(1, int(money * 0.1 // cost)))
+        if want > 0 and money > cost * want:
+            orders.append(["BUY_SEED", _SE_CROP, want])
+
+    # 4. Spend only PASS units. Priority: harvest > water > plant.
+    units = [me.get("farmer")] + list(me.get("hands") or [])
+    acts = [out["farmer"]] + list(out["hands"])
+    budget = seeds
+    for i, unit in enumerate(units):
+        if i >= len(acts):
+            break
+        a = acts[i]
+        if not (isinstance(a, list) and a and a[0] == "PASS"):
+            continue
+        if not (isinstance(unit, (list, tuple)) and len(unit) >= 2):
+            continue
+        pos = (unit[0], unit[1])
+        tgt, job = None, None
+        if ripe:
+            tgt, job = min(ripe, key=lambda p: abs(p[0]-pos[0])+abs(p[1]-pos[1])), "HARVEST"
+        elif needs_water:
+            tgt, job = min(needs_water, key=lambda p: abs(p[0]-pos[0])+abs(p[1]-pos[1])), "WATER"
+        elif empties and budget > 0:
+            tgt, job = min(empties, key=lambda p: abs(p[0]-pos[0])+abs(p[1]-pos[1])), "PLANT"
+        if tgt is None:
+            continue
+        if pos == tgt:
+            if job == "PLANT":
+                if budget <= 0:
+                    continue
+                budget -= 1
+                empties.remove(tgt)
+                acts[i] = ["PLANT", _SE_CROP]
+            else:
+                (ripe if job == "HARVEST" else needs_water).remove(tgt)
+                acts[i] = [job]
+        else:
+            mv = _se_step_toward(pos, tgt)
+            if mv:
+                acts[i] = [mv]
+    out["farmer"] = acts[0]
+    out["hands"] = acts[1:]
+'''
+
+_SECOND_EXPR = {
+    "opp_sheep>=4": '_count_animal(obs["farms"][1 - seat], "SHEEP") >= 4',
+    "milk_consumer": ('sum(1 for s in shops if "MILK" in _SHOP_ITEMS.get(s, ())) >= 1'),
+}
+
+SEL_TMPL = '''"""Day-6 tape selector over the rating-3029 cluster: __NARMS__ arms.
+
+Every tape in the cluster has byte-identical FIELD actions for days 0-5 and its
+25 distinct day-0-5 market scripts are economically inert (the engine clamps
+requested SELL quantities to shed contents), so a step-144 splice is lossless --
+verified alone-vs-spliced across market-script groups, delta $0 every trial.
+That makes step 144 the one real decision point.
+
+Rule (fitted by tools/tape_selector.py, repeated 5-fold over WORLDS on a
+__NWORLDS__-world panel, shrinkage/top-k tuned in the same CV):
+
+__RULEDOC__
+
+Why the opponent's herd and not just the shop draw: WOOL has exactly one
+consumer, YARN_STORE, taking 12 units a day. Whether wool is worth chasing
+therefore depends both on whether that shop exists AND on whether the opponent
+is about to saturate it -- the shared-ladder term that dominates this game's
+economics. Keying on the shop alone (what tape-sel ships) sees half of that.
+"""
+import base64, json, zlib
+from collections import defaultdict
+
+_TAPES = __BLOBS__
+_DEFAULT = "__DEFAULT__"
+_BLOCKABLE = ("PLANT", "BUILD_COOP", "BUILD_PASTURE")
+_FIRST_YIELD = {"WHEAT": 2, "CARROT": 2, "TOMATO": 8, "STRAWBERRY": 10, "MELON": 10}
+_SHOP_ITEMS = {
+    "BAKERY": ("EGG", "WHEAT"), "PIZZA_SHOP": ("MILK", "TOMATO", "WHEAT"),
+    "BRUNCH_SPOT": ("EGG", "WHEAT", "STRAWBERRY"), "YARN_STORE": ("WOOL",),
+    "ICE_CREAM_SHOP": ("STRAWBERRY", "MILK", "WHEAT"), "PET_CAFE": ("CARROT",),
+    "SMOOTHIE_SHOP": ("STRAWBERRY", "MILK"),
+    "FARMERS_MARKET": ("WHEAT", "CARROT", "TOMATO", "STRAWBERRY"),
+}
+_S = {"delay": defaultdict(int), "day": -1, "pick": None}
+
+
+def _count_animal(farm, kind):
+    n = 0
+    for row in (farm.get("tiles") or []):
+        for t in row:
+            if isinstance(t, dict) and t.get("kind") in ("PASTURE", "COOP"):
+                a = t.get("animal")
+                a = a.get("type") if isinstance(a, dict) else a
+                if a == kind:
+                    n += 1
+    return n
+
+
+def _choose(obs, seat):
+    shops = (obs.get("town") or {}).get("unlocked_shops") or []
+    yarn = "YARN_STORE" in shops
+    second = __SECOND__
+    return _TAPES.get(str((yarn, second)), _TAPES[_DEFAULT])
+
+
+__SE_BLOCK__
+__FREE_WORK_BLOCK__
+
+def agent(observation, configuration=None):
+    obs = observation
+    step = obs.get("step", 0)
+    seat = int(obs.get("player", 0))
+    day = step // 24
+    if day != _S["day"]:
+        _S["delay"].clear()
+        _S["day"] = day
+    if step >= 144 and _S["pick"] is None:
+        _S["pick"] = _choose(obs, seat)
+    tape = _S["pick"] if _S["pick"] is not None else _TAPES[_DEFAULT]
+    me = obs["farms"][seat]
+    units = [me.get("farmer")] + list(me.get("hands") or [])
+    tiles = me.get("tiles") or []
+    base = tape[step] if 0 <= step < len(tape) else {}
+    out = {"farmer": ["PASS"], "hands": [], "market": list(base.get("market") or [])}
+    for i, unit in enumerate(units):
+        t = step - _S["delay"][i]
+        src = tape[t] if 0 <= t < len(tape) else {}
+        seq = [src.get("farmer") or ["PASS"]] + list(src.get("hands") or [])
+        a = seq[i] if i < len(seq) else ["PASS"]
+        if not isinstance(a, list) or not a:
+            a = ["PASS"]
+        if a[0] in _BLOCKABLE and isinstance(unit, (list, tuple)) and len(unit) >= 2:
+            try:
+                tile = tiles[unit[1]][unit[0]]
+            except Exception:
+                tile = None
+            if isinstance(tile, dict) and tile.get("kind") == "WEED":
+                a = ["DIG"]
+                _S["delay"][i] += 1
+        __FREE_WORK_CALL__
+        if i == 0:
+            out["farmer"] = a
+        else:
+            out["hands"].append(a)
+    __SE_CALL__
+    __REORDER__
+    return out
+'''
+
+
+def export_selector(name, rule, default_cell, n_worlds, second="opp_sheep>=4",
+                    lib=None, se=None, sell_first=False, free_work=False):
+    """Write a multi-arm day-6 selector bundle.
+
+    `rule` maps a cell label (as produced by tools/tape_selector.features) to a
+    library index. All arms share days 0-5, so the prefix is whichever tape the
+    default cell names -- the splice is lossless either way.
+    """
+    import base64 as _b64
+    import zlib as _z
+    lib = lib if lib is not None else _load_lib()
+    blobs, doc = [], []
+    for cell, idx in sorted(rule.items(), key=lambda kv: str(kv[0])):
+        t = lib[idx]
+        blob = _b64.b85encode(_z.compress(json.dumps(t["actions"]).encode(), 9)).decode()
+        blobs.append(f'    {json.dumps(str(cell))}: json.loads(zlib.decompress('
+                     f'base64.b85decode("{blob}")).decode()),')
+        doc.append(f"  (yarn, {second}) = {cell} -> tape {idx} "
+                   f"(ep {t['episode']} seat {t['seat']}, recorded ${t['final']:,.0f})")
+    code = (SEL_TMPL
+            .replace("__BLOBS__", "{\n" + "\n".join(blobs) + "\n}")
+            .replace("__DEFAULT__", str(default_cell))
+            .replace("__RULEDOC__", "\n".join(doc))
+            .replace("__NARMS__", str(len(set(rule.values()))))
+            .replace("__NWORLDS__", str(n_worlds))
+            .replace("__SECOND__", _SECOND_EXPR[second])
+            .replace("__SE_BLOCK__", "" if not se else _SE_LAYER_SRC
+                     .replace("__SE_DAY__", str(se.get("day", 12)))
+                     .replace("__SE_CASH__", str(se.get("cash", 12000)))
+                     .replace("__SE_CROP__", se.get("crop", "WHEAT")))
+            .replace("__SE_CALL__", "" if not se else "_se_layer(obs, seat, out, day)")
+            .replace("__REORDER__", _REORDER_SRC if sell_first else "")
+            .replace("__FREE_WORK_BLOCK__", _FREE_WORK_SRC if free_work else "")
+            .replace("__FREE_WORK_CALL__",
+                     'if a and a[0] == "PASS":\n'
+                     '            a = _free_task(tiles, unit, day) or a'
+                     if free_work else ""))
+    d = os.path.join("arena", "agents", name)
+    os.makedirs(d, exist_ok=True)
+    p = os.path.join(d, "main.py")
+    open(p, "w").write(code)
+    compile(code, p, "exec")
+    print(f"wrote {p} ({os.path.getsize(p)/1000:.0f} KB), "
+          f"{len(set(rule.values()))} distinct arms over {len(rule)} cells")
+    return p

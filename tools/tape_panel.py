@@ -72,22 +72,61 @@ def main():
     ap.add_argument("--seeds", type=int, default=20)
     ap.add_argument("--base-seed", type=int, default=90000)
     ap.add_argument("--procs", type=int, default=6)
+    ap.add_argument("--opps", default=",".join(OPPS))
+    ap.add_argument("--cluster", default="/tmp/cluster.json")
+    ap.add_argument("--out", default=OUT)
+    ap.add_argument("--prefix-tape", type=int, default=None,
+                    help="index of the tape whose days 0-5 every arm is spliced "
+                         "onto. The cluster is byte-identical in FIELD actions "
+                         "only -- its 58 tapes carry 25 distinct MARKET scripts "
+                         "over days 0-5, and market orders move money, plantings "
+                         "and hence the empty-tile count that the weed RNG "
+                         "consumes, which shifts the day-6 shop draw itself. So "
+                         "measuring a tape played from step 0 is NOT what a "
+                         "selector gets when it splices that tape in at 144. "
+                         "With this set, the panel measures the spliced agent.")
+    ap.add_argument("--append", action="store_true",
+                    help="keep existing rows and only run (tape, opp, seed) triples "
+                         "not already present -- the world count is what limits how "
+                         "fine a selector key can be fitted, so panels grow")
     args = ap.parse_args()
     lib = json.load(open("rl/datasets/tapes/library.json"))
-    cl = json.load(open("/tmp/cluster.json"))
-    jobs = [(i, lib[i]["actions"], o, args.base_seed + k)
-            for i in cl for o in OPPS for k in range(args.seeds)]
-    print(f"{len(cl)} tapes x {len(OPPS)} opponents x {args.seeds} seeds = {len(jobs)} games", flush=True)
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    cl = json.load(open(args.cluster))
+    opps = [o.strip() for o in args.opps.split(",") if o.strip()]
+    done = set()
+    if args.append and os.path.exists(args.out):
+        for line in open(args.out):
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            done.add((r["tape"], r["opp"], r["seed"]))
+    # WORLD-major: finish every tape on one world before starting the next.
+    # A selector can only use a world where ALL arms have played, so tape-major
+    # ordering leaves a killed run with a panel that is 100% useless until it is
+    # ~100% done. This way a partial run is a smaller but complete panel.
+    def arm(i):
+        a = lib[i]["actions"]
+        if args.prefix_tape is None:
+            return a
+        return lib[args.prefix_tape]["actions"][:144] + a[144:]
+
+    jobs = [(i, arm(i), o, args.base_seed + k)
+            for k in range(args.seeds) for o in opps for i in cl
+            if (i, os.path.basename(os.path.dirname(o)), args.base_seed + k) not in done]
+    print(f"{len(cl)} tapes x {len(opps)} opponents x {args.seeds} seeds; "
+          f"{len(done)} rows already present -> {len(jobs)} games to run", flush=True)
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     n = 0
-    with open(OUT, "w") as fh, Pool(args.procs) as p:
+    OUT_MODE = "a" if args.append else "w"
+    with open(args.out, OUT_MODE) as fh, Pool(args.procs) as p:
         for r in p.imap_unordered(_job, jobs, chunksize=4):
             if r:
                 fh.write(json.dumps(r) + "\n")
                 n += 1
                 if n % 200 == 0:
                     print(f"  {n}/{len(jobs)}", flush=True)
-    print(f"wrote {OUT}: {n} rows")
+    print(f"wrote {args.out}: {n} new rows ({len(done)+n} total)")
 
 
 if __name__ == "__main__":
