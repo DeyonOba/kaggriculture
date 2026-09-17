@@ -2,9 +2,9 @@
   "engine": "1.32.7",
   "procs": 4,
   "budget_s": 39600,
-  "_why": "Second slug, run in parallel with job_bakeoff.json on a different KERNEL_ID. Kaggle's value here is breadth, not depth -- its 4 vCPU are slower per game than the local 6 cores, so two kernels on different seeds and a different method buy more than one longer run. hill with --paired and the MEASURED sigma=0.10 (sigma=0.25 costs -$18,944 paired, which is what broke the first local round). Different --seed so the search worlds differ from slug 1; a plan that wins on both is worth gating.",
+  "_why": "RESIZED. The first attempt asked for 26,000 games at ~890 worlds/eval. Ladder session-replay costs ~9.5 CPU-s/game (measured locally: 631 games in 20 min at procs=5), so on Kaggle's 4 vCPU that is 18-29 h against an 11 h budget -- it could never finish, and optimizer_bakeoff only wrote its JSON when a METHOD completed, so a timeout would have yielded nothing. Now 12 evaluations at ~700 worlds = 9,250 games = ~8.0 h at 3.1 s/game, still under budget at 1.6x slower. Statistics still hold: paired sd $17,168 -> se $649 at 700 worlds, and the best-of-12 winner's curse is $1,447, which is 48% of the $3,000 effect (the rule is under half). Every evaluation is now appended to rl/bakeoff_runs/progress_<method>.jsonl as it happens, so even a kill leaves usable data.",
   "steps": [
-    "{python} -u tools/optimizer_bakeoff.py --method hill --paired --sigma 0.10 --per-bin 170 --budget 26000 --final 25 --procs {procs} --seed 23"
+    "{python} -u tools/optimizer_bakeoff.py --method hill --paired --sigma 0.10 --per-bin 130 --budget 8400 --final 25 --procs {procs} --seed 23"
   ],
   "collect": [
     "rl/bakeoff_runs"

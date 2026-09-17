@@ -124,8 +124,13 @@ class Fitness:
     is visible against a ~$40k per-game spread.
     """
 
-    def __init__(self, jobs, pool, ref=None):
+    def __init__(self, jobs, pool, ref=None, trail=None):
         self.jobs, self.pool, self.games = jobs, pool, 0
+        # Append every evaluation to a JSONL as it happens. Without this a run
+        # that is killed mid-search leaves NOTHING -- the per-method JSON is
+        # only written when a method finishes, and the first Kaggle attempt was
+        # sized 2-3x too long to ever get there.
+        self.trail = trail
         # `ref`: the base's per-world values on THESE worlds. When present the
         # fitness becomes a per-world PAIRED difference, which is the whole
         # ballgame. Per-world sd is $34,749, so an absolute mean over 36 worlds
@@ -149,6 +154,11 @@ class Fitness:
             mean = st.mean(d) if d else -1e18
         else:
             mean = st.mean(vals.values())
+        if self.trail:
+            with open(self.trail, "a") as f:
+                f.write(json.dumps({"games": self.games, "score": mean,
+                                    "win": win, "n": len(res),
+                                    "pt": [round(v, 4) for v in clamp(pt)]}) + "\n")
         return (mean, win, vals) if per else (mean, win)
 
 
@@ -408,7 +418,8 @@ def main():
 
         for name in names:
             rng = random.Random(args.seed + hash(name) % 1000)
-            fit = Fitness(list(search), pool, ref=sref)
+            fit = Fitness(list(search), pool, ref=sref,
+                          trail=os.path.join(runs, f"progress_{name}.jsonl"))
             t = time.time()
             res = METHODS[name](fit, args.budget, rng,
                                 lambda s: print("  " + s, flush=True))
