@@ -40,14 +40,24 @@ sys.exit(1 if bad else 0)
 PY
 
 echo "== isolation smoke: run from a FOREIGN cwd, repo off sys.path =="
-python3 - <<'PY'
+# uv run, not python3: sys.executable must be the venv interpreter that has
+# kaggle-environments, since the subprocess below inherits it.
+uv run python - <<'PY'
 import os, shutil, subprocess, sys, tempfile
 d = tempfile.mkdtemp()
 shutil.copy("main.py", os.path.join(d, "main.py"))
+repo = os.path.abspath(".")
 code = f'''
 import os, sys
 os.chdir({d!r})
-sys.path = [p for p in sys.path if "kaggriculture" not in p]
+# Strip the REPO ROOT so kagent/tools/arena are not importable -- but keep
+# site-packages, which lives under the repo at .venv/ and holds
+# kaggle-environments. Filtering on the string "kaggriculture" removes both.
+_repo = {repo!r}
+sys.path = [p for p in sys.path
+            if not (os.path.abspath(p) == _repo
+                    or (os.path.abspath(p).startswith(_repo + os.sep)
+                        and ".venv" not in p))]
 from kaggle_environments import make
 p = {os.path.join(d, "main.py")!r}
 env = make("kaggriculture", configuration={{"seed": 71000}}, debug=True)
