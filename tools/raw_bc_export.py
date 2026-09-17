@@ -84,10 +84,9 @@ def _legal(op, obs, seat, idx, ux, uy):
         dx, dy = {{"NORTH": (0, -1), "SOUTH": (0, 1),
                   "EAST": (1, 0), "WEST": (-1, 0)}}[o]
         x, y = ux + dx, uy + dy
-        if not (0 <= x < n and 0 <= y < n):
-            return False
-        d = tiles[y][x]
-        return d != "LOCKED"
+        # Movement onto LOCKED tiles IS allowed (kaggriculture.py:328); only
+        # TILE operations no-op there. Rejecting it penned the agent in.
+        return 0 <= x < n and 0 <= y < n
     if o == "WATER":
         return plant and not t.get("watered_today")
     if o == "HARVEST":

@@ -108,6 +108,84 @@ def key_of(a):
     return (op,) if (op,) in UA_INDEX else None
 
 
+# --- legality ----------------------------------------------------------------
+# ONE definition, used for the training mask AND embedded verbatim in the
+# export. It previously existed twice and the copies drifted: both wrongly
+# rejected MOVE onto a LOCKED tile, which the engine explicitly allows
+# (kaggriculture.py:328 -- only TILE ops no-op there). That single error penned
+# the agent in and cost 1.3 points of legal-set coverage.
+#
+# Measured on 55,173 champion unit-turns: the legal set averages 8.41 actions
+# (median 8, range 4-16) and contains the champion's actual move 99.10% of the
+# time. The residual are champion no-ops -- caring an already-cared animal and
+# the like -- which these guards correctly exclude.
+#
+# Note the structure this reveals: a unit can only act on the tile it STANDS on
+# (the engine does `fx, fy = pos[0], pos[1]` for every unit op), so the action
+# is the OP alone. There is no (source, destination) choice as in chess, and
+# the Maia-style "distribution over enumerated legal moves" is therefore a
+# MASKED SOFTMAX over this class set.
+
+def legal_set(obs, seat, idx, ux, uy):
+    farm = obs["farms"][seat]
+    tiles = farm["tiles"]
+    n = len(tiles)
+    t = tiles[uy][ux] if (0 <= uy < n and 0 <= ux < len(tiles[uy])) else None
+    t = t if isinstance(t, dict) else None
+    plant = t is not None and t.get("kind") == "PLANT"
+    animal = t is not None and "animal" in t
+    priv = obs.get("private") or {}
+    invs = priv.get("inventories") or []
+    inv = (invs[idx] if idx < len(invs) else {}) or {}
+    seeds = priv.get("seeds") or {}
+    near = min(abs(ux - a) + abs(uy - b) for a, b in SHED) <= 1
+    out = {("PASS",)}
+    for m, (dx, dy) in (("NORTH", (0, -1)), ("SOUTH", (0, 1)),
+                        ("EAST", (1, 0)), ("WEST", (-1, 0))):
+        x, y = ux + dx, uy + dy
+        if 0 <= x < n and 0 <= y < n:
+            out.add((m,))
+    if plant and not t.get("watered_today"):
+        out.add(("WATER",))
+    if t is not None and t.get("yield_units", 0) > 0:
+        out.add(("HARVEST",))
+    if animal and not t.get("fed_today") and float(inv.get("WHEAT", 0)) >= 1:
+        out.add(("FEED",))
+    if animal and not t.get("cared_today"):
+        out.add(("CARE",))
+    if animal and t.get("fertilizer_available"):
+        out.add(("COLLECT_FERTILIZER",))
+    if plant and float(inv.get("FERTILIZER", 0)) >= 1:
+        out.add(("FERTILIZE",))
+    if t is not None and not animal:
+        out.add(("DIG",))
+    if t is None:
+        out.add(("BUILD_COOP",))
+        out.add(("BUILD_PASTURE",))
+        for c in CROPS_L:
+            if float(seeds.get(c, 0)) >= 1:
+                out.add(("PLANT", c))
+    if t is not None:
+        for a, k in (("GOOSE", "COOP"), ("COW", "PASTURE"), ("SHEEP", "PASTURE")):
+            if t.get("kind") == k and float(inv.get(a, 0)) >= 1:
+                out.add(("PLACE", a))
+    if near:
+        out.add(("PICKUP", "WHEAT"))
+        out.add(("PICKUP", "FERTILIZER"))
+        for a in ANIMALS_L:
+            out.add(("PICKUP", a))
+        if sum(float(v) for v in inv.values()) > 0:
+            out.add(("DROP",))
+    return {a for a in out if a in UA_INDEX}
+
+
+def legal_mask(obs, seat, idx, ux, uy):
+    m = [0.0] * len(UNIT_ACTIONS)
+    for a in legal_set(obs, seat, idx, ux, uy):
+        m[UA_INDEX[a]] = 1.0
+    return m
+
+
 # --- features ----------------------------------------------------------------
 # Kept deliberately local: this policy decides ONE unit's action this turn, so
 # it sees its own tile, its four neighbours, what it carries, and a few farm
@@ -228,7 +306,7 @@ def _job(task):
                  make_script_agent(s["actions"][1])])
     except Exception:
         return None
-    X, Y, MX, MY, MH = [], [], [], [], []
+    X, Y, M, MX, MY, MH = [], [], [], [], [], []
     for t in range(1, len(env.steps)):
         # steps[t] is the state AFTER the action at steps[t]; the state an
         # action was chosen from is steps[t-1]. Verified 96.8% vs 34.0% on
@@ -249,6 +327,7 @@ def _job(task):
                     continue
                 X.append(feats(obs, seat, i, ux, uy))
                 Y.append(UA_INDEX[k])
+                M.append(legal_mask(obs, seat, i, ux, uy))
             # market: one sample per turn, from the farmer's viewpoint
             multi = [0.0] * len(MARKET_ACTIONS)
             hires = 0
@@ -264,7 +343,7 @@ def _job(task):
             MX.append(feats(obs, seat, 0, *units[0]))
             MY.append(multi)
             MH.append(min(hires, MAX_HIRE))
-    return X, Y, MX, MY, MH
+    return X, Y, M, MX, MY, MH
 
 
 def cluster_episodes(rating, tol=0.5):
@@ -308,13 +387,13 @@ def build(args):
         seen += 1
     print(f"scanned {seen + len(picked)} sessions -> {len(picked)} with a "
           f"{args.min_rating}+ seat", flush=True)
-    X, Y, MX, MY, MH = [], [], [], [], []
+    X, Y, M, MX, MY, MH = [], [], [], [], [], []
     with Pool(args.procs) as pool:
         for k, r in enumerate(pool.imap_unordered(
                 _job, [(f, args.min_rating) for f in picked])):
             if r:
-                X.extend(r[0]); Y.extend(r[1])
-                MX.extend(r[2]); MY.extend(r[3]); MH.extend(r[4])
+                X.extend(r[0]); Y.extend(r[1]); M.extend(r[2])
+                MX.extend(r[3]); MY.extend(r[4]); MH.extend(r[5])
             if (k + 1) % 10 == 0:
                 print(f"  {k+1}/{len(picked)} replayed, {len(X):,} unit / "
                       f"{len(MX):,} market samples", flush=True)
@@ -322,6 +401,7 @@ def build(args):
     out = os.path.join(DATA, "heldout.npz" if args.heldout else "train.npz")
     np.savez_compressed(out, X=np.array(X, dtype="float32"),
                         Y=np.array(Y, dtype="int64"),
+                        M=np.array(M, dtype="float32"),
                         MX=np.array(MX, dtype="float32"),
                         MY=np.array(MY, dtype="float32"),
                         MH=np.array(MH, dtype="int64"))
@@ -335,12 +415,14 @@ def fit(args):
     import numpy as np, torch, torch.nn as nn
     d = np.load(os.path.join(DATA, "train.npz"))
     X, Y = torch.tensor(d["X"]), torch.tensor(d["Y"])
+    M = torch.tensor(d["M"]) if "M" in d else torch.ones(len(X), len(UNIT_ACTIONS))
     n = len(X)
     g = torch.Generator().manual_seed(0)
     perm = torch.randperm(n, generator=g)
-    X, Y = X[perm], Y[perm]
+    X, Y, M = X[perm], Y[perm], M[perm]
     cut = int(n * 0.9)
-    Xtr, Ytr, Xva, Yva = X[:cut], Y[:cut], X[cut:], Y[cut:]
+    Xtr, Ytr, Mtr = X[:cut], Y[:cut], M[:cut]
+    Xva, Yva, Mva = X[cut:], Y[cut:], M[cut:]
     print(f"{n:,} samples, {X.shape[1]} features, {len(UNIT_ACTIONS)} classes")
 
     torch.manual_seed(0)
@@ -353,17 +435,30 @@ def fit(args):
         model.train()
         for i in range(0, cut, 1024):
             opt.zero_grad()
-            lf(model(Xtr[i:i+1024]), Ytr[i:i+1024]).backward()
+            lg = model(Xtr[i:i+1024])
+            if args.masked:
+                # Maia's shape for this game: score only the ~8.4 actions the
+                # engine would actually accept, so capacity goes to choosing
+                # among achievable moves instead of ruling out impossible ones.
+                lg = lg.masked_fill(Mtr[i:i+1024] < 0.5, -1e9)
+            lf(lg, Ytr[i:i+1024]).backward()
             opt.step()
         model.eval()
         with torch.no_grad():
-            acc = (model(Xva).argmax(1) == Yva).float().mean().item()
-        print(f"  epoch {ep+1:>2}  held-out accuracy {acc:.4f}", flush=True)
+            raw = model(Xva)
+            acc = (raw.argmax(1) == Yva).float().mean().item()
+            mac = (raw.masked_fill(Mva < 0.5, -1e9).argmax(1) == Yva).float().mean().item()
+        print(f"  epoch {ep+1:>2}  accuracy {acc:.4f}   masked-argmax {mac:.4f}",
+              flush=True)
 
     # Majority-class baseline: the number any classifier must beat to mean
     # anything at all.
     base = torch.bincount(Yva, minlength=len(UNIT_ACTIONS)).max().item() / len(Yva)
-    print(f"\n  majority-class baseline {base:.4f}   model {acc:.4f}")
+    rnd = (1.0 / Mva.sum(1).clamp(min=1)).mean().item()
+    print(f"\n  majority-class baseline {base:.4f}   random-over-legal {rnd:.4f}")
+    print(f"  unmasked argmax {acc:.4f}   MASKED argmax {mac:.4f}   "
+          f"(legal set mean {Mva.sum(1).mean().item():.2f})")
+    acc = mac
     with torch.no_grad():
         pred = model(Xva).argmax(1)
     print(f"\n  {'action':<26}{'support':>9}{'recall':>9}")
@@ -450,6 +545,8 @@ def main():
                          "instead of any 3000+ seat")
     ap.add_argument("--epochs", type=int, default=12)
     ap.add_argument("--hidden", type=int, default=256)
+    ap.add_argument("--masked", action="store_true",
+                    help="train the softmax over LEGAL actions only")
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--name", default="rawbc-v1")
     args = ap.parse_args()
