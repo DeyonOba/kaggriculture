@@ -162,6 +162,61 @@ If it says our mix is already optimal under the labour constraint, the entire
 market direction closes with a proof instead of three rejections — which is a
 better outcome than three more rejections.
 
+### M1 RESULT — the premise was wrong, and the answer is better than the question
+
+**My premise was wrong and I should have checked before proposing it.**
+`tools/lp_bound.py` already walks the engine's exact concave ladder — validated
+to **3.3%** against `econ.sell_marginal_prices` — and already carries a labour
+row, a tile row and a cash row. Its `cumulative_drain` also already gives melon
+1.0 unit/day all season, because melon is a town-centre product in no shop. The
+LP has encoded the "melon has no shop" structure since 2026-09-14; I
+rediscovered it today by reading `SHOPS`.
+
+What had **not** been read out is the dual. Competitive setting (`--mirror 4`),
+final bank $150,015:
+
+```
+labour: mean $13.0/action, max $32.0 (day 26), binds on 29/30 days
+tiles : mean $ 6.2/tile-day, max $28.0 (day 1), binds on 19/30 days
+```
+
+**Labour binds on 29 of 30 days.** That is the fixed-capacity story — the one
+explanation offered for every failure in this project — confirmed as a dual
+price rather than asserted.
+
+And then the number that matters. `j-tile` (same-tile-first) raised work
+actions per game from **2,791 → 3,057** and earned **+$465** on the 240-game
+ladder:
+
+| | $ per marginal worker-action |
+| --- | --- |
+| LP optimum (dual) | **$13.00** |
+| LP peak, day 26 | $32.00 |
+| **ours, realised** | **$1.75** |
+| shortfall | **7.4×** |
+
+**Our marginal action is worth a seventh of what an optimal planner's is.** The
+constraint is not how many actions we get — it is what the marginal one is
+spent on. That is the recorded "the planner emits filler" finding, now a
+number instead of an adjective, and it explains today's nulls as a class:
+geese, tomato, the crops book and twelve routing fixes all either *add* actions
+or *move* them, and none raises the value of the marginal one.
+
+*(A 4-seed arena run put those same 266 actions at +$6,078 = $22.85/action. Per-world
+sd is $34,749, so 4 seeds carries se ≈ $17,000 — that number is noise. The
+240-game ladder figure is the one to use.)*
+
+**Where the LP's plan differs from ours**, for the record: it buys land #1 on
+day 0 and #2 on day 9 (we buy day 5 and ~11); it runs COW 6.6 / SHEEP 4.8
+against our 8/8; and it wants **GOOSE 4.5** against our 0 — which we gated and
+lost by $9,080 across all six ladder bins. An LP optimum our executor cannot
+realise is itself the E2 co-adaptation claim, with a concrete instance.
+
+**So M1's real output is a redirection:** stop adding capacity and stop
+reshuffling the plan. The open question is *task valuation* — why the marginal
+task our scheduler picks is worth $1.75 when the LP says the marginal slot is
+worth $13.
+
 ### M2. Elasticity map from the archive we already have
 
 `tools/knob_archive.py` reads 30,272 paired counterfactual samples. That is
