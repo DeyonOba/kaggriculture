@@ -227,7 +227,8 @@ def growth_supply(farm, day, horizon, CROPS, ANIMALS):
     return out
 
 
-def forecast(obs, seat, horizon, layer, K, opp_shed=None, hist=None, hk=3):
+def forecast(obs, seat, horizon, layer, K, opp_shed=None, hist=None, hk=3,
+             opp_oracle=None):
     """Price path per product, days t..t+horizon, at ablation `layer` (0-4)."""
     SHOPS, TOWN, CROPS, ANIMALS = K["SHOPS"], K["TOWN"], K["CROPS"], K["ANIMALS"]
     PRODUCTS, market_price = K["PRODUCTS"], K["market_price"]
@@ -241,6 +242,11 @@ def forecast(obs, seat, horizon, layer, K, opp_shed=None, hist=None, hk=3):
         if layer >= 3 else None
     theirs = board_supply(obs["farms"][1 - seat], day, horizon, CROPS, ANIMALS) \
         if layer >= 4 else None
+    if opp_oracle is not None:
+        # PERFECT opponent supply: their ACTUAL market flow on each future day,
+        # replacing everything projected from their board. This is the ceiling
+        # on any opponent model -- board encoder, CNN, belief head, anything.
+        theirs = opp_oracle
     # Shed stock: already harvested, waiting to be sold. Ours is in
     # observation.private; theirs is the ONE hidden variable in the game, so
     # layer 6 is an ORACLE -- an upper bound on what a belief model could buy.
@@ -299,6 +305,40 @@ def _script(actions):
     return agent
 
 
+FLOW = {}
+
+
+def _patch_flow():
+    """Record every market commit by day and seat -- the TRUE supply flow."""
+    import kaggle_environments.envs.kaggriculture.kaggriculture as K
+    oi = getattr(K, "_pf_oi", None) or K._initialize
+    K._pf_oi = oi
+    oc = getattr(K, "_pf_oc", None) or K._commit_unit
+    K._pf_oc = oc
+    state = {"day": 0}
+
+    def init(st, env):
+        oi(st, env)
+        for i, s_ in enumerate(st):
+            s_.observation.private["_seat"] = i
+
+    def commit(op, item, price, farm, private, market, shed_capacity=100):
+        ok = oc(op, item, price, farm, private, market, shed_capacity)
+        if ok and op in ("SELL", "BUY_PRODUCT"):
+            seat = private.get("_seat", -1)
+            d = FLOW.setdefault(seat, {})
+            day = state["day"]
+            n = 1 if (op == "SELL" and price > 1) else (-1 if op == "BUY_PRODUCT" else 0)
+            if n:
+                d.setdefault(day, {})
+                d[day][item] = d[day].get(item, 0) + n
+        return ok
+
+    K._initialize = init
+    K._commit_unit = commit
+    return state
+
+
 def job(path):
     sys.path.insert(0, REPO)
     import tools.fast_env as fast_env
@@ -310,8 +350,15 @@ def job(path):
          "ANIMALS": ANIMALS, "PRODUCTS": PRODUCTS, "market_price": market_price}
 
     s = json.load(open(path))
+    FLOW.clear()
+    st_ref = _patch_flow()
     env = make("kaggriculture", configuration={"seed": s["seed"]}, debug=False)
-    env.run([_script(s["actions"][0]), _script(s["actions"][1])])
+    # step the env manually so we can stamp the current day onto each commit
+    env.reset(2)
+    a0, a1 = _script(s["actions"][0]), _script(s["actions"][1])
+    while not env.done:
+        st_ref["day"] = env.state[0].observation["step"] // 24
+        env.step([a0(env.state[0].observation), a1(env.state[1].observation)])
 
     dawn, dawn1 = {}, {}
     for st_ in env.steps:
@@ -326,6 +373,7 @@ def job(path):
     err = {L: {k: [] for k in HORIZONS} for L in LAYERS}
     for hk in HK:
         err[("t", hk)] = {k: [] for k in HORIZONS}
+    err["orc"] = {k: [] for k in HORIZONS}
     hist = []
     # per product, layer 4 only: (abs error, signed error, persistence error)
     byp = {p: {k: [0.0, 0.0, 0.0, 0] for k in HORIZONS} for p in PRODUCTS}
@@ -335,6 +383,12 @@ def job(path):
         truth = {p: [dawn[day + k]["market"]["prices"][p] for k in range(H + 1)]
                  for p in PRODUCTS}
         hist.append([dict(o["farms"][0]), dict(o["farms"][1])])
+        oracle = [{}] + [dict(FLOW.get(1, {}).get(day + j, {}))
+                         for j in range(1, H + 1)]
+        f = forecast(o, 0, H, 5, K, opp_oracle=oracle)
+        for k in HORIZONS:
+            for p in PRODUCTS:
+                err["orc"][k].append(abs(f[p][k] - truth[p][k]))
         for hk in HK:
             f = forecast(o, 0, H, 7, K, hist=hist, hk=hk)
             for k in HORIZONS:
@@ -354,7 +408,7 @@ def job(path):
                         c[2] += abs(truth[p][0] - truth[p][k])
                         c[3] += 1
     return {"episode": s["episode"],
-            "err": {(L if isinstance(L, int) else "t%d" % L[1]):
+            "err": {(L if isinstance(L, (int, str)) else "t%d" % L[1]):
                     {k: (sum(v), len(v)) for k, v in d.items()}
                     for L, d in err.items()},
             "byp": byp}
@@ -385,11 +439,12 @@ def main():
              4: "L4 + THEIR board", 5: "L5 + our shed",
              6: "L6 + their shed (ORACLE)",
              "t1": "L7 + trend, 1 day history", "t2": "L7 + trend, 2 days",
-             "t3": "L7 + trend, 3 days", "t5": "L7 + trend, 5 days"}
+             "t3": "L7 + trend, 3 days", "t5": "L7 + trend, 5 days",
+             "orc": "L8 PERFECT opponent supply"}
     print("mean absolute price error ($), pooled over all nine products\n")
     print(f"    {'layer':<30}" + "".join(f"{'k='+str(k):>9}" for k in HORIZONS))
     base = {}
-    for L in list(range(7)) + ["t1", "t2", "t3", "t5"]:
+    for L in list(range(7)) + ["t1", "t2", "t3", "t5", "orc"]:
         cells = []
         for k in HORIZONS:
             tot = sum(r["err"][L][k][0] for r in rows)
