@@ -7,6 +7,8 @@ MSG="${1:-update}"
 CODE_ONLY="${2:-}"   # pass "code-only" to version the code dataset without (re)starting the job kernel
 KERNEL_ID="${KERNEL_ID:-gideonoba/kaggriculture-job}"   # override to run on another kernel slug
 CONFIG="${CONFIG:-tools/kaggle_job/job_config.json}"      # override the job config file
+META="${META:-tools/kaggle_job/kernel-metadata.json}"      # override the kernel metadata
+                                                          # (dataset_sources, enable_gpu)
 SKIP_CODE="${SKIP_CODE:-}"                                # "1": push the kernel only (code dataset already current)
 STAGE=$(mktemp -d)
 mkdir -p "$STAGE/ds"
@@ -29,13 +31,13 @@ if [ "$CODE_ONLY" = "code-only" ]; then echo "code-only: kernel not pushed"; exi
 echo "== kernel push =="
 # Kaggle uploads only the script file: inject job_config.json into job.py.
 PUSHDIR="$STAGE/kernel"; mkdir -p "$PUSHDIR"
-CONFIG="$CONFIG" KERNEL_ID="$KERNEL_ID" python3 - "$PUSHDIR" <<'PY'
+CONFIG="$CONFIG" KERNEL_ID="$KERNEL_ID" META="$META" python3 - "$PUSHDIR" <<'PY'
 import json, sys, os
 d = sys.argv[1]
 cfg = json.dumps(json.load(open(os.environ.get("CONFIG", "tools/kaggle_job/job_config.json"))))
 src = open("tools/kaggle_job/job.py").read().replace("CONFIG_JSON = None", "CONFIG_JSON = " + repr(cfg))
 open(os.path.join(d, "job.py"), "w").write(src)
-meta = json.load(open("tools/kaggle_job/kernel-metadata.json"))
+meta = json.load(open(os.environ.get("META", "tools/kaggle_job/kernel-metadata.json")))
 kid = os.environ.get("KERNEL_ID", meta["id"]); meta["id"] = kid; meta["title"] = kid.split("/")[-1]
 json.dump(meta, open(os.path.join(d, "kernel-metadata.json"), "w"), indent=2)
 PY
