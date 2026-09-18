@@ -137,6 +137,57 @@ def board_supply(farm, day, horizon, CROPS, ANIMALS):
     return out
 
 
+def standing(farm, CROPS):
+    """Standing count per crop and per animal product on a board."""
+    c = {}
+    for row in farm["tiles"]:
+        for t in row:
+            if not isinstance(t, dict):
+                continue
+            if t.get("kind") == "PLANT":
+                c[t["crop"]] = c.get(t["crop"], 0) + 1
+            elif t.get("animal"):
+                c[t["animal"]] = c.get(t["animal"], 0) + 1
+    return c
+
+
+def trend_supply(farms_hist, day, horizon, CROPS, ANIMALS, k):
+    """Supply from tiles that will be ADDED, extrapolated from the last k days.
+
+    The Markov read holds the herd and crop mix fixed. Both farms build out --
+    ours goes from 3 to 33 standing strawberries between day 6 and day 13 --
+    so a fixed read under-predicts supply through every ramp. This is the
+    minimal temporal feature: d(standing)/dt over k days, carried forward.
+    """
+    out = [{} for _ in range(horizon + 1)]
+    if len(farms_hist) <= k:
+        return out
+    now, past = farms_hist[-1], farms_hist[-1 - k]
+    for farm_now, farm_past in zip(now, past):
+        a, b = standing(farm_now, CROPS), standing(farm_past, CROPS)
+        for key in set(a) | set(b):
+            rate = (a.get(key, 0) - b.get(key, 0)) / float(k)
+            if rate <= 0:
+                continue
+            if key in ANIMALS:
+                an = ANIMALS[key]
+                item = an["product"]
+                for j in range(1, horizon + 1):
+                    added = rate * j
+                    if j > an["first_yield_day"] and (j - an["first_yield_day"]) % an["interval"] == 0:
+                        out[j][item] = out[j].get(item, 0) + added
+            elif key in CROPS:
+                cd = CROPS[key]
+                for j in range(1, horizon + 1):
+                    if cd["ongoing"]:
+                        if j > cd["first_yield_day"] and (j - cd["first_yield_day"]) % cd["interval"] == 0:
+                            out[j][key] = out[j].get(key, 0) + rate
+                    elif j > cd["max_yield_day"]:
+                        if (j - cd["max_yield_day"]) % (cd["max_yield_day"] + 1) == 0:
+                            out[j][key] = out[j].get(key, 0) + rate * cd["max_yield"]
+    return out
+
+
 def growth_supply(farm, day, horizon, CROPS, ANIMALS):
     """Supply from tiles that are EMPTY NOW and will be planted.
 
@@ -176,7 +227,7 @@ def growth_supply(farm, day, horizon, CROPS, ANIMALS):
     return out
 
 
-def forecast(obs, seat, horizon, layer, K, opp_shed=None):
+def forecast(obs, seat, horizon, layer, K, opp_shed=None, hist=None, hk=3):
     """Price path per product, days t..t+horizon, at ablation `layer` (0-4)."""
     SHOPS, TOWN, CROPS, ANIMALS = K["SHOPS"], K["TOWN"], K["CROPS"], K["ANIMALS"]
     PRODUCTS, market_price = K["PRODUCTS"], K["market_price"]
@@ -193,6 +244,9 @@ def forecast(obs, seat, horizon, layer, K, opp_shed=None):
     # Shed stock: already harvested, waiting to be sold. Ours is in
     # observation.private; theirs is the ONE hidden variable in the game, so
     # layer 6 is an ORACLE -- an upper bound on what a belief model could buy.
+    trend = None
+    if layer >= 7 and hist:
+        trend = trend_supply(hist, day, horizon, CROPS, ANIMALS, hk)
     shed = {}
     if layer >= 5:
         for it, n in (obs.get("private", {}).get("shed", {}) or {}).items():
@@ -217,6 +271,8 @@ def forecast(obs, seat, horizon, layer, K, opp_shed=None):
                 d += mine[k].get(p, 0)
             if theirs is not None:
                 d += theirs[k].get(p, 0)
+            if trend is not None:
+                d += trend[k].get(p, 0)
             if k == 1 and shed:
                 # sheds clear over the next few days; release evenly over 3
                 d += shed.get(p, 0) / 3.0
@@ -265,7 +321,12 @@ def job(path):
             dawn1[o["step"] // 24] = st_[1].observation
 
     H = max(HORIZONS)
-    err = {L: {k: [] for k in HORIZONS} for L in range(7)}
+    LAYERS = [0, 1, 2, 3, 4, 5, 6]
+    HK = (1, 2, 3, 5)                 # history depths for the trend layer
+    err = {L: {k: [] for k in HORIZONS} for L in LAYERS}
+    for hk in HK:
+        err[("t", hk)] = {k: [] for k in HORIZONS}
+    hist = []
     # per product, layer 4 only: (abs error, signed error, persistence error)
     byp = {p: {k: [0.0, 0.0, 0.0, 0] for k in HORIZONS} for p in PRODUCTS}
     for day, o in sorted(dawn.items()):
@@ -273,7 +334,13 @@ def job(path):
             break
         truth = {p: [dawn[day + k]["market"]["prices"][p] for k in range(H + 1)]
                  for p in PRODUCTS}
-        for L in range(7):
+        hist.append([dict(o["farms"][0]), dict(o["farms"][1])])
+        for hk in HK:
+            f = forecast(o, 0, H, 7, K, hist=hist, hk=hk)
+            for k in HORIZONS:
+                for p in PRODUCTS:
+                    err[("t", hk)][k].append(abs(f[p][k] - truth[p][k]))
+        for L in LAYERS:
             f = forecast(o, 0, H, L, K,
                          opp_shed=dict(dawn1[day].get("private", {})
                                        .get("shed", {}) or {}))
@@ -287,7 +354,8 @@ def job(path):
                         c[2] += abs(truth[p][0] - truth[p][k])
                         c[3] += 1
     return {"episode": s["episode"],
-            "err": {L: {k: (sum(v), len(v)) for k, v in d.items()}
+            "err": {(L if isinstance(L, int) else "t%d" % L[1]):
+                    {k: (sum(v), len(v)) for k, v in d.items()}
                     for L, d in err.items()},
             "byp": byp}
 
@@ -315,11 +383,13 @@ def main():
     names = {0: "L0 persistence", 1: "L1 + known shops",
              2: "L2 + expected future draws", 3: "L3 + our board",
              4: "L4 + THEIR board", 5: "L5 + our shed",
-             6: "L6 + their shed (ORACLE)"}
+             6: "L6 + their shed (ORACLE)",
+             "t1": "L7 + trend, 1 day history", "t2": "L7 + trend, 2 days",
+             "t3": "L7 + trend, 3 days", "t5": "L7 + trend, 5 days"}
     print("mean absolute price error ($), pooled over all nine products\n")
     print(f"    {'layer':<30}" + "".join(f"{'k='+str(k):>9}" for k in HORIZONS))
     base = {}
-    for L in range(7):
+    for L in list(range(7)) + ["t1", "t2", "t3", "t5"]:
         cells = []
         for k in HORIZONS:
             tot = sum(r["err"][L][k][0] for r in rows)
