@@ -68,10 +68,38 @@ DECISION           rent(crop) = sell_revenue(crop, inv_at_harvest, block)
 CONSUMER           the existing planner's freed-tile choice
 ```
 
-No neural network anywhere. The one learned component that survived from v2 —
-the per-tile crop-death CNN (`tools/board_cnn.py`, PR-AUC 0.528 against a 1.6%
-base rate, 33.8× lift) — is not in this path; it predicts a different thing
-and has no consumer yet.
+**No neural network, but not "no learning".** Precisely what is and is not
+fitted in the shipped bundle:
+
+| component | fitted? | how |
+| --- | --- | --- |
+| `WEIGHTS_DATA` (neural planner) | **None** — dead path | `nnpolicy` never runs |
+| `MPC_ENABLED` | `False` | engine rollout, off |
+| forward market model | **no** | engine tables + exact `market_price` |
+| `_rent_pick` | **no** | argmax over 5 crops |
+| **`BANDIT_RULES`** | **YES — 4 fitted conditions** | paired knob bandit, 30,272 samples |
+
+`BANDIT_RULES` carries `premium_scale 0.35`, `carrot_day 25`,
+`cows 6 when no shop consumes MILK`, and `sheep 10 at day 12 when WOOL holds
+base`. Those are learned parameters — scalars with conditions rather than a
+network, fitted by a bandit on paired counterfactuals instead of by gradient
+descent. So the accurate statement is: **no gradient-trained component and no
+learned board representation in the decision path; four fitted scalars are.**
+
+They are also easy to miss: `rl/export.py` writes `BANDIT_RULES` into the
+frozen bundle's `weights` module, and it is invisible from `kagent/` source.
+Re-implementing two of them as `h-cows`/`h-sheep` produced exactly $0 on 270
+worlds with zero discordant worlds, because the agent already had them.
+
+The other learned artefact — the per-tile crop-death CNN (`tools/board_cnn.py`,
+PR-AUC 0.528 against a 1.6% base rate, 33.8× lift) — is built and works but is
+**not in this path** and has no consumer.
+
+**No learned board state, and none is needed.** The forward model reads both
+boards fresh every turn and carries nothing across turns. The engine's own
+memory — `consecutive_unwatered`, cumulative market inventory, `planted_day` —
+is all *in the observation*, so the state is Markov as presented and recurrence
+would have nothing to remember.
 
 ### The three engine rules that made the forecast work
 

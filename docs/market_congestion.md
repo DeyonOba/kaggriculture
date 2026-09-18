@@ -260,14 +260,17 @@ Base champ-h8 at −$3,094/game, win 86/270 = 0.319.
 All four null. `f-opp00` clears z=2 on money but moves **one world in 270** and
 $41 against ±45 points of rating noise — that is a measurement of nothing.
 
-`h-cows` returned **exactly zero on every one of 270 worlds**: the condition
-never fired. The archive's +$1,989 for `cows|MILK<=0 -> 6` came from a bandit
-that evaluated the condition on its own decision day, when fewer of the eight
-shop draws had been revealed; by the time the cow cap actually binds (day 10,
-`min(cows, 2 + (day-2))`), four or more draws have landed and P(no milk shop)
-has fallen to ~15% — and even then the cap does not bite. **A conditional arm's
-archive margin does not transfer unless the condition fires at the moment the
-knob binds.** Worth remembering before mining the archive for more of these.
+`h-cows` returned **exactly zero on every one of 270 worlds**, and the reason
+is not subtle: **the rule was already in the agent.** champ-h8's bundle carries
+`BANDIT_RULES` with, among its four fitted conditions,
+`{'knob': 'cows', 'value': 6, 'max_consumers': {'MILK': 0}}` and
+`{'knob': 'sheep', 'value': 10, 'day': 12, 'min_price': {'WOOL': 1.0}}` --
+the two archive arms re-implemented here. The patch was a duplicate of live
+behaviour, so it was a no-op by construction.
+
+**Check what the shipped bundle already contains before rebuilding an archive
+arm.** `BANDIT_RULES` is the register of fitted conditional knobs and it is not
+visible from `kagent/` source alone; it is exported into the frozen bundle.
 
 ## The honest limit
 
