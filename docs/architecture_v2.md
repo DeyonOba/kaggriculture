@@ -129,6 +129,40 @@ Every component above is measurable before the whole is built:
    pool — the same agent scored −$14,183 and −$3,094 on two differently-seeded
    held-out pools (3.9 se apart), which is what invalidated the Kaggle bake-off.
 
+## 5. Per-action marginal values DO NOT AGGREGATE (2026-09-18)
+
+The reallocation test, which §"honest prior" named as the deciding examination,
+came back as the most harmful result of the entire session:
+
+| shifted late -> early | money | z | win | McNemar p |
+| --- | --- | --- | --- | --- |
+| 14 slots | -$2,973 | -3.95 | 0.274 | 0.036 |
+| 28 slots | -$6,504 | -7.95 | 0.259 | 0.004 |
+| 38 slots | **-$15,915** | **-17.42** | **0.189** | 0.0000 |
+
+Monotone with dose and significant on win rate as well as money.
+
+The naive reading of the 13x gradient predicted a large GAIN: move capacity
+from days worth $103/action to days worth $1,317/action. It lost $15,915.
+
+The reason is that late days are where the crop is HARVESTED and LIQUIDATED --
+tape-sel issues 32 SELL orders on day 29 alone and ends with $0 unsold. Cut the
+hands that do that and the season's output never reaches the market. Late
+capacity is load-bearing as a BLOCK even though any single late action is cheap.
+
+Three measurements, all consistent, none of them derivable from the others:
+
+    delete one action early      -$1,317   costly
+    add hands early               ~$0      filler; useful work is saturated
+    move a block late -> early   -$15,915  late capacity is a threshold
+
+**Consequence, and it is the sharpest constraint on this design:** a model that
+predicts PER-ACTION value cannot be used to plan BLOCK changes, because the
+aggregation is non-linear in both directions. Such a head can rank two tasks
+competing for the same slot. It cannot answer "should there be more slots
+today and fewer next week" -- and that second question is where the only large
+effect we have measured lives.
+
 ## The honest prior
 
 Point 2 is the problem. The architecture's whole thesis is that better task
