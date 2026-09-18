@@ -125,3 +125,61 @@ def scalars(obs, seat=0):
 
 
 N_SCALAR = 6 + 9 * 2
+
+
+# ---------------------------------------------------------------------------
+# S1: both farms in ONE tensor.
+#
+# Everything above encodes a single farm. That was the deficit: the forward
+# market model's ablation (tools/price_forecast.py) prices the OPPONENT's
+# board at 36% of k=5 forecast error, and no model here has ever seen it.
+#
+# Layout, (N_PAIR, 10, 10):
+#     0 .. 23      our farm      (board_tensor, seat)
+#    24 .. 47      their farm    (board_tensor, 1 - seat)
+#    48 .. 47+S    globals, broadcast across every cell so a convolution can
+#                  see price and day at every pixel
+#
+# Their shed is deliberately absent: an ORACLE on it moved k=5 forecast error
+# 13.0 -> 12.8, so there is nothing there to encode.
+# ---------------------------------------------------------------------------
+
+N_PAIR = 2 * N_CH + N_SCALAR
+
+
+def board_pair(obs, seat=0):
+    """-> float32 (N_PAIR, n, n): our farm, their farm, broadcast globals."""
+    mine = board_tensor(obs, seat)
+    theirs = board_tensor(obs, 1 - seat)
+    n = mine.shape[-1]
+    g = scalars(obs, seat)
+    out = np.empty((N_PAIR, n, n), dtype="float32")
+    out[:N_CH] = mine
+    out[N_CH:2 * N_CH] = theirs
+    out[2 * N_CH:] = g[:, None, None]
+    return out
+
+
+def counts(obs, seat=0):
+    """Plain standing counts per farm -- the ridge baseline S2 must beat."""
+    v = []
+    for s in (seat, 1 - seat):
+        farm = obs["farms"][s]
+        c = dict.fromkeys(CROPS_L + ANIMALS_L, 0)
+        for row in farm["tiles"]:
+            for t in row:
+                if not isinstance(t, dict):
+                    continue
+                if t.get("kind") == "PLANT":
+                    c[t["crop"]] = c.get(t["crop"], 0) + 1
+                elif t.get("animal"):
+                    c[t["animal"]] = c.get(t["animal"], 0) + 1
+        v += [float(c[k]) for k in CROPS_L + ANIMALS_L]
+        v.append(min(float(farm.get("money", 0)), 60000) / 1000.0)
+        v.append(float(len(farm.get("unlocked_quadrants") or ["NW"])))
+    v.append(float(obs["day"]))
+    v.append(float(len((obs.get("town") or {}).get("unlocked_shops", []))))
+    return np.asarray(v, dtype="float32")
+
+
+N_COUNT = 2 * (len(CROPS_L) + len(ANIMALS_L) + 2) + 2
