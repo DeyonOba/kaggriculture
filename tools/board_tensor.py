@@ -183,3 +183,204 @@ def counts(obs, seat=0):
 
 
 N_COUNT = 2 * (len(CROPS_L) + len(ANIMALS_L) + 2) + 2
+
+
+# ---------------------------------------------------------------------------
+# v2 encoder. Five defects measured on the 8,000-sample dawn dataset:
+#
+#   1. EIGHT OF 72 CHANNELS WERE IDENTICALLY ZERO. watered_today, fed_today
+#      and cared_today are reset by the engine at midnight and we sample at
+#      midnight, so all six (both farms) carried nothing; so did the `hour`
+#      and hands-count scalars. Their information is not lost --
+#      consecutive_unwatered is the engine's integral of the same thing and
+#      survives the reset -- but the planes were dead weight.
+#   2. THE WORKFORCE WAS INVISIBLE. `_end_of_day` clears farm["hands"], and
+#      hiring resolves during hour 0, so a dawn observation holds ZERO hands
+#      (measured: hour 0 -> 0.00, hour 2 -> 8.10). ch22 merged farmer and
+#      hands, so it showed exactly one cell every sample.
+#   3. Farmer and hands were indistinguishable.
+#   4. Our OWN shed is legitimately visible and was unused, though the
+#      forecast ablation prices it at 13.3 -> 13.0.
+#   5. Dawn sampling cannot simply move: the planner decides at hour 0
+#      (HeuristicPolicy.act rebuilds the plan when day_plan_day != view.day),
+#      so mid-day states are ones the agent can never present. The fix is
+#      YESTERDAY's mid-day snapshot, which Memory can carry to today's hour 0.
+# ---------------------------------------------------------------------------
+
+DEAD = (7, 13, 14)                       # watered_today, fed_today, cared_today
+LIVE = [i for i in range(N_CH) if i not in DEAD]
+N_LIVE = len(LIVE)                       # 21
+MID_PLANES = 4                           # watered, fed, cared, hands (yesterday noon)
+PRODUCTS_L = ["WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON",
+              "EGG", "MILK", "WOOL", "FERTILIZER"]
+
+
+def _units(farm):
+    f = farm.get("farmer") or (0, 0)
+    return tuple(f), [tuple(h) for h in (farm.get("hands") or [])]
+
+
+def farm_planes(obs, seat):
+    """-> (N_LIVE + 1, n, n): live channels, with farmer and HANDS separated.
+
+    ch22 of the base encoder merged both; here it keeps the farmer and the
+    extra plane counts hands, so a convolution can tell a lone farmer from a
+    crew of eight standing on the same tiles.
+    """
+    base = board_tensor(obs, seat)
+    n = base.shape[-1]
+    out = np.zeros((N_LIVE + 1, n, n), dtype="float32")
+    out[:N_LIVE] = base[LIVE]
+    farm = obs["farms"][seat]
+    fx, fy = _units(farm)[0]
+    idx22 = LIVE.index(22)
+    out[idx22] = 0.0
+    if 0 <= fy < n and 0 <= fx < n:
+        out[idx22, fy, fx] = 1.0          # farmer only
+    for hx, hy in _units(farm)[1]:
+        if 0 <= hy < n and 0 <= hx < n:
+            out[N_LIVE, hy, hx] = min(out[N_LIVE, hy, hx] * 8 + 1, 8) / 8.0
+    return out
+
+
+def mid_planes(obs, seat):
+    """-> (MID_PLANES, n, n) from a MID-DAY observation: the layer midnight wipes."""
+    farm = obs["farms"][seat]
+    tiles = farm["tiles"]
+    n = len(tiles)
+    out = np.zeros((MID_PLANES, n, n), dtype="float32")
+    for y, row in enumerate(tiles):
+        for x, c in enumerate(row):
+            if not isinstance(c, dict):
+                continue
+            if c.get("kind") == "PLANT":
+                out[0, y, x] = 1.0 if c.get("watered_today") else 0.0
+            elif c.get("animal"):
+                out[1, y, x] = 1.0 if c.get("fed_today") else 0.0
+                out[2, y, x] = 1.0 if c.get("cared_today") else 0.0
+    for hx, hy in _units(farm)[1]:
+        if 0 <= hy < n and 0 <= hx < n:
+            out[3, hy, hx] = min(out[3, hy, hx] * 8 + 1, 8) / 8.0
+    return out
+
+
+def scalars2(obs, seat=0):
+    """Globals with the two dead entries dropped and OUR OWN shed added."""
+    v = list(scalars(obs, seat))
+    v = [x for i, x in enumerate(v) if i not in (1, 3)]      # hour, hands count
+    shed = (obs.get("private") or {}).get("shed") or {}
+    for p in PRODUCTS_L:
+        v.append(min(float(shed.get(p, 0)), 100.0) / 100.0)
+    return np.asarray(v, dtype="float32")
+
+
+N_SCALAR2 = (N_SCALAR - 2) + len(PRODUCTS_L)
+N_PAIR2 = 2 * (N_LIVE + 1) + 2 * MID_PLANES + N_SCALAR2
+
+
+def board_pair2(obs, seat=0, prev_mid=None):
+    """-> (N_PAIR2, n, n). prev_mid: yesterday's MID-DAY observation, or None."""
+    mine = farm_planes(obs, seat)
+    theirs = farm_planes(obs, 1 - seat)
+    n = mine.shape[-1]
+    out = np.zeros((N_PAIR2, n, n), dtype="float32")
+    k = N_LIVE + 1
+    out[:k] = mine
+    out[k:2 * k] = theirs
+    if prev_mid is not None:
+        out[2 * k:2 * k + MID_PLANES] = mid_planes(prev_mid, seat)
+        out[2 * k + MID_PLANES:2 * k + 2 * MID_PLANES] = mid_planes(prev_mid, 1 - seat)
+    out[2 * k + 2 * MID_PLANES:] = scalars2(obs, seat)[:, None, None]
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Superset encoder for ABLATION. Carries every channel any arm might want, so
+# one dataset build serves all arms and each arm is a pure channel slice --
+# no confound from differently-built datasets.
+#
+#   [0        : 24)   our farm, BASE 24 incl. the three reset-at-midnight planes
+#   [24       : 25)   our hands, split out from the merged occupancy plane
+#   [25       : 49)   their farm, BASE 24
+#   [49       : 50)   their hands
+#   [50       : 54)   our yesterday-MID-DAY planes   (watered, fed, cared, hands)
+#   [54       : 58)   their yesterday-mid-day planes
+#   [58       : 82)   globals, BASE 24 incl. the dead hour and hands-count
+#   [82       : 91)   our own shed, 9 products
+# ---------------------------------------------------------------------------
+
+F_OURS = (0, 24)
+F_OUR_HANDS = (24, 25)
+F_THEIRS = (25, 49)
+F_THEIR_HANDS = (49, 50)
+F_OUR_MID = (50, 54)
+F_THEIR_MID = (54, 58)
+F_GLOBAL = (58, 82)
+F_SHED = (82, 91)
+N_FULL = 91
+
+# indices of the structurally-dead planes inside a BASE 24-channel farm block
+DEAD_IN_FARM = (7, 13, 14)
+DEAD_IN_GLOBAL = (1, 3)          # hour, hands count
+
+
+def _hands_plane(farm, n):
+    out = np.zeros((1, n, n), dtype="float32")
+    for hx, hy in _units(farm)[1]:
+        if 0 <= hy < n and 0 <= hx < n:
+            out[0, hy, hx] = min(out[0, hy, hx] * 8 + 1, 8) / 8.0
+    return out
+
+
+def board_pair_full(obs, seat=0, prev_mid=None):
+    """-> (N_FULL, n, n). Every channel; arms are slices of this."""
+    n = len(obs["farms"][seat]["tiles"])
+    out = np.zeros((N_FULL, n, n), dtype="float32")
+    for base, hbase, s in ((F_OURS, F_OUR_HANDS, seat),
+                           (F_THEIRS, F_THEIR_HANDS, 1 - seat)):
+        b = board_tensor(obs, s)
+        # keep the merged occupancy plane as FARMER ONLY, hands get their own
+        farm = obs["farms"][s]
+        fx, fy = _units(farm)[0]
+        b[22] = 0.0
+        if 0 <= fy < n and 0 <= fx < n:
+            b[22, fy, fx] = 1.0
+        out[base[0]:base[1]] = b
+        out[hbase[0]:hbase[1]] = _hands_plane(farm, n)
+    if prev_mid is not None:
+        out[F_OUR_MID[0]:F_OUR_MID[1]] = mid_planes(prev_mid, seat)
+        out[F_THEIR_MID[0]:F_THEIR_MID[1]] = mid_planes(prev_mid, 1 - seat)
+    out[F_GLOBAL[0]:F_GLOBAL[1]] = scalars(obs, seat)[:, None, None]
+    shed = (obs.get("private") or {}).get("shed") or {}
+    out[F_SHED[0]:F_SHED[1]] = np.asarray(
+        [min(float(shed.get(p, 0)), 100.0) / 100.0 for p in PRODUCTS_L],
+        dtype="float32")[:, None, None]
+    return out
+
+
+def _farm_idx(base, drop_dead):
+    lo, hi = base
+    return [lo + i for i in range(hi - lo)
+            if not (drop_dead and i in DEAD_IN_FARM)]
+
+
+def arm_channels(name):
+    """Channel indices for one ablation arm."""
+    g_all = list(range(*F_GLOBAL))
+    g_live = [i for k, i in enumerate(g_all) if k not in DEAD_IN_GLOBAL]
+    ours_all, theirs_all = _farm_idx(F_OURS, False), _farm_idx(F_THEIRS, False)
+    ours_lv, theirs_lv = _farm_idx(F_OURS, True), _farm_idx(F_THEIRS, True)
+    hands = list(range(*F_OUR_HANDS)) + list(range(*F_THEIR_HANDS))
+    mid = list(range(*F_OUR_MID)) + list(range(*F_THEIR_MID))
+    shed = list(range(*F_SHED))
+    A = ours_all + theirs_all + g_all                       # 72, == v1
+    B = ours_lv + theirs_lv + g_live                        # 64, dead dropped
+    C = B + hands                                           # 66
+    D = C + mid                                             # 74
+    E = D + shed                                            # 83, == v2
+    return {"A_v1_72": A, "B_drop_dead_64": B, "C_hands_66": C,
+            "D_midday_74": D, "E_full_83": E, "F_shed_aux_83": E}[name]
+
+
+ARMS = ["A_v1_72", "B_drop_dead_64", "C_hands_66", "D_midday_74",
+        "E_full_83", "F_shed_aux_83"]

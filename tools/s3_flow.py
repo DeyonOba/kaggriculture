@@ -57,7 +57,7 @@ def job(path):
     import tools.fast_env as fast_env
     fast_env.install()
     from kaggle_environments import make
-    from tools.board_tensor import board_pair
+    from tools.board_tensor import board_pair_full
     import tools.price_forecast as pf
 
     s = json.load(open(path))
@@ -66,20 +66,26 @@ def job(path):
     env = make("kaggriculture", configuration={"seed": s["seed"]}, debug=False)
     env.reset(2)
     a0, a1 = pf._script(s["actions"][0]), pf._script(s["actions"][1])
-    dawn = {}
+    dawn, mid, oshed = {}, {}, {}
     while not env.done:
         o = env.state[0].observation
         ref["day"] = o["step"] // 24
         if o["step"] % 24 == 0:
             dawn[o["step"] // 24] = o
+            # their shed: hidden at play time, available here as an AUX LABEL
+            sh = (env.state[1].observation.get("private") or {}).get("shed") or {}
+            oshed[o["step"] // 24] = [float(sh.get(p, 0)) for p in PRODUCTS]
+        elif o["step"] % 24 == 12:
+            mid[o["step"] // 24] = o
         env.step([a0(o), a1(env.state[1].observation)])
 
     flow = pf.FLOW.get(1, {})
-    T, F, A, D = [], [], [], []
+    T, F, A, D, S = [], [], [], [], []
     for day in sorted(dawn):
         if day + H not in dawn:
             continue
-        T.append(board_pair(dawn[day], 0))
+        T.append(board_pair_full(dawn[day], 0, prev_mid=mid.get(day - 1)))
+        S.append(oshed.get(day, [0.0] * len(PRODUCTS)))
         f = np.zeros((H, len(PRODUCTS)), dtype="float32")
         for j in range(1, H + 1):
             d = flow.get(day + j, {})
@@ -93,7 +99,8 @@ def job(path):
         D.append(day)
     if not T:
         return None
-    return (np.stack(T), np.stack(F), np.stack(A), np.asarray(D))
+    return (np.stack(T), np.stack(F), np.stack(A), np.asarray(D),
+            np.asarray(S, dtype="float32"))
 
 
 def build(args):
@@ -104,8 +111,9 @@ def build(args):
     T = np.concatenate([o[0] for o in out])
     F = np.concatenate([o[1] for o in out])
     A = np.concatenate([o[2] for o in out])
+    S = np.concatenate([o[4] for o in out])
     G = np.concatenate([np.full(len(o[0]), i) for i, o in enumerate(out)])
-    np.savez_compressed(DATA, T=T, F=F, A=A, G=G)
+    np.savez_compressed(DATA, T=T, F=F, A=A, G=G, S=S)
     print(f"{len(T):,} samples from {len(out)} games   tensor {T.shape[1:]}   "
           f"flow {F.shape[1]} outputs ({H} days x {len(PRODUCTS)} products)   "
           f"-> {DATA} ({os.path.getsize(DATA)/1e6:.0f} MB)")
@@ -115,8 +123,9 @@ def train(args):
     from tools.boardnet import fit, predict, save
     d = np.load(DATA)
     T, F, A, G = d["T"], d["F"], d["A"], d["G"]
+    S = d["S"] if (args.shed_aux and "S" in d.files) else None
     print(f"{len(T):,} samples, {len(np.unique(G))} games\n")
-    net, stats, hist = fit(T, F, G, A=A, epochs=args.epochs, seed=args.seed,
+    net, stats, hist = fit(T, F, G, A=A, S=S, epochs=args.epochs, seed=args.seed,
                            width=args.width, blocks=args.blocks)
     save(MODEL, net, stats)
     print(f"    best val MSE {stats['val_mse']:.4f} after {len(hist)} epochs")
@@ -139,6 +148,62 @@ def train(args):
         print(f"      {p:<12}{r2:>7.3f}")
 
 
+def ablate(args):
+    """Every v2 change attributed, as pure channel slices of ONE dataset.
+
+    The dead-channel arm (A vs B) is the one asked for directly. Its outcome
+    is predictable -- a structurally-zero channel contributes zero to the conv
+    sum and gets zero gradient, so A and B can differ only through the shape of
+    the random init -- which is exactly why it doubles as the SEED-NOISE FLOOR
+    for reading every other arm.
+    """
+    from tools.board_tensor import ARMS, arm_channels
+    from tools.boardnet import fit, predict
+    d = np.load(DATA)
+    T, F, A, G = d["T"], d["F"], d["A"], d["G"]
+    S = d["S"] if "S" in d.files else None
+    n_p = len(PRODUCTS)
+    print(f"{len(T):,} samples, {len(np.unique(G))} games, superset "
+          f"{T.shape[1]} channels\n")
+    print(f"    {'arm':<18}{'ch':>4}{'seed':>6}{'val MSE':>10}"
+          f"{'held-out R2 on 10-day flow':>28}")
+    res = {}
+    for arm in ARMS:
+        cols = arm_channels(arm)
+        Ti = np.ascontiguousarray(T[:, cols])
+        for seed in args.seeds:
+            net, stats, hist = fit(Ti, F, G, A=A,
+                                   S=(S if arm.startswith("F_") else None),
+                                   epochs=args.epochs, seed=seed,
+                                   width=args.width, blocks=args.blocks,
+                                   verbose=False)
+            gids = np.unique(G)
+            rng = np.random.default_rng(seed)
+            rng.shuffle(gids)
+            va = np.isin(G, gids[:max(1, len(gids) // 5)])
+            P = predict(net, stats, Ti[va])
+            Yv = F[va]
+            r2s = []
+            for pi in range(n_p):
+                c = [j * n_p + pi for j in range(H)]
+                y, q = Yv[:, c].sum(1), P[:, c].sum(1)
+                r2s.append(1 - ((y - q) ** 2).sum()
+                           / max(1e-9, ((y - y.mean()) ** 2).sum()))
+            m = float(np.mean(r2s))
+            res.setdefault(arm, []).append(m)
+            print(f"    {arm:<18}{len(cols):>4}{seed:>6}{stats['val_mse']:>10.4f}"
+                  f"{m:>28.4f}", flush=True)
+    print(f"\n    {'arm':<18}{'mean R2':>10}{'spread':>9}{'vs A':>9}")
+    base = float(np.mean(res[ARMS[0]]))
+    for arm in ARMS:
+        v = res[arm]
+        print(f"    {arm:<18}{np.mean(v):>10.4f}{(max(v)-min(v)):>9.4f}"
+              f"{np.mean(v)-base:>+9.4f}")
+    noise = max(res[ARMS[0]]) - min(res[ARMS[0]])
+    print(f"\n    seed-noise floor from arm A: {noise:.4f}. Read any 'vs A'"
+          f" smaller than this as nothing.")
+
+
 def eval_job(spec):
     """Forecast MAE with board-projected / model / oracle opponent supply."""
     path, use_model = spec
@@ -150,7 +215,7 @@ def eval_job(spec):
         ANIMALS, CROPS, PRODUCTS as ENGP, SHOPS, TOWN_CENTER_PRODUCTS,
         market_price)
     import tools.price_forecast as pf
-    from tools.board_tensor import board_pair
+    from tools.board_tensor import board_pair2
     K = {"SHOPS": SHOPS, "TOWN": TOWN_CENTER_PRODUCTS, "CROPS": CROPS,
          "ANIMALS": ANIMALS, "PRODUCTS": ENGP, "market_price": market_price}
 
@@ -165,12 +230,14 @@ def eval_job(spec):
     env = make("kaggriculture", configuration={"seed": s["seed"]}, debug=False)
     env.reset(2)
     a0, a1 = pf._script(s["actions"][0]), pf._script(s["actions"][1])
-    dawn = {}
+    dawn, mid = {}, {}
     while not env.done:
         o = env.state[0].observation
         ref["day"] = o["step"] // 24
         if o["step"] % 24 == 0:
             dawn[o["step"] // 24] = o
+        elif o["step"] % 24 == 12:
+            mid[o["step"] // 24] = o
         env.step([a0(o), a1(env.state[1].observation)])
     flow = pf.FLOW.get(1, {})
 
@@ -185,7 +252,10 @@ def eval_job(spec):
         runs = {"board": None, "oracle": oracle}
         if net is not None:
             from tools.boardnet import predict
-            t = board_pair(dawn[day], 0)[None].astype("float32")
+            from tools.board_tensor import board_pair_full, arm_channels
+            t = board_pair_full(dawn[day], 0, prev_mid=mid.get(day - 1))
+            t = t[arm_channels(os.environ.get('ARM', 'E_full_83'))][None]
+            t = np.ascontiguousarray(t, dtype='float32')
             q = predict(net, stats, t)[0].reshape(H, n_p)
             runs["model"] = [{}] + [
                 {p: float(q[j - 1, pi]) for pi, p in enumerate(PRODUCTS)}
@@ -222,9 +292,24 @@ def evaluate(args):
     i = EVAL_K.index(5)
     b, mo, o = got["board"][i], got["model"][i], got["oracle"][i]
     frac = (b - mo) / max(1e-9, b - o)
+    # Bootstrap BY GAME. Days inside one game are nearly the same board, so a
+    # per-sample interval would be far too tight -- the honest unit is a game.
+    rng = np.random.default_rng(0)
+    fr = []
+    for _ in range(2000):
+        pick = rng.integers(0, len(rows), len(rows))
+        vals = {}
+        for m in ("board", "model", "oracle"):
+            tot = sum(rows[j][m][5][0] for j in pick)
+            n = sum(rows[j][m][5][1] for j in pick)
+            vals[m] = tot / max(1, n)
+        fr.append((vals["board"] - vals["model"])
+                  / max(1e-9, vals["board"] - vals["oracle"]))
+    lo, hi = np.percentile(fr, [2.5, 97.5])
     print(f"\n    at k=5 the model closes {100*frac:.0f}% of the "
           f"{b:.1f} -> {o:.1f} gap"
-          f"   -> {'PASS' if frac >= 0.5 else 'KILL (needs >= 50%)'}")
+          f"   [95% by-game CI {100*lo:.0f}-{100*hi:.0f}%]"
+          f"\n    -> {'PASS' if lo >= 0.5 else ('PASS (point est) but CI crosses the bar' if frac >= 0.5 else 'KILL (needs >= 50%)')}")
 
 
 def main():
@@ -232,6 +317,8 @@ def main():
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--train", action="store_true")
     ap.add_argument("--eval", action="store_true")
+    ap.add_argument("--ablate", action="store_true")
+    ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1])
     ap.add_argument("--n", type=int, default=400)
     ap.add_argument("--skip", type=int, default=400)
     ap.add_argument("--min-rating", type=float, default=2800.0)
@@ -240,11 +327,15 @@ def main():
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--width", type=int, default=64)
     ap.add_argument("--blocks", type=int, default=3)
+    ap.add_argument("--shed-aux", action="store_true",
+                    help="add the opponent-shed auxiliary head")
     args = ap.parse_args()
     if args.build:
         build(args)
     if args.train:
         train(args)
+    if args.ablate:
+        ablate(args)
     if args.eval:
         evaluate(args)
 

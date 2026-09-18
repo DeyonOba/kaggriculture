@@ -47,7 +47,7 @@ class _Res:
     pass
 
 
-def build(in_ch, n_out, width=64, blocks=3, aux=True):
+def build(in_ch, n_out, width=64, blocks=3, aux=True, n_shed=0):
     """-> nn.Module mapping (B, in_ch, 10, 10) to (flow (B,n_out), aux (B,1,10,10))."""
     import torch
     import torch.nn as nn
@@ -77,18 +77,27 @@ def build(in_ch, n_out, width=64, blocks=3, aux=True):
                 nn.Linear(2 * width, 256), nn.ReLU(), nn.Dropout(0.1),
                 nn.Linear(256, n_out))
             self.aux = nn.Conv2d(width, 1, 1) if aux else None
+            # Predicting the opponent's HIDDEN shed is not extra information --
+            # shed = harvested - sold and both terms are already on the board --
+            # so it cannot be a feature. As an AUXILIARY TASK it is a shaping
+            # signal: it forces the encoder to integrate harvests against
+            # sales. Feeding the true shed in is worth 1.5%; training against
+            # it is a different question, and this head answers it.
+            self.shed = nn.Linear(2 * width, n_shed) if n_shed else None
 
         def forward(self, x):
             h = self.blocks(self.stem(x))
             g = torch.cat([h.mean((2, 3)), h.amax((2, 3))], 1)
             a = self.aux(h) if self.aux is not None else None
-            return self.head(g), a
+            s = self.shed(g) if self.shed is not None else None
+            return self.head(g), a, s
 
     return BoardNet()
 
 
-def fit(T, Y, G, A=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
-        batch=256, val_frac=0.2, patience=8, seed=0, aux_w=0.3, verbose=True):
+def fit(T, Y, G, A=None, S=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
+        batch=256, val_frac=0.2, patience=8, seed=0, aux_w=0.3,
+        shed_w=0.3, verbose=True):
     """Train on games outside the validation split, early-stopped on it.
 
     Splitting BY GAME, not by sample: consecutive days of one game are nearly
@@ -110,13 +119,18 @@ def fit(T, Y, G, A=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
     mu, sd = Y[tr].mean(0), np.maximum(Y[tr].std(0), 1e-3)
     Yz = ((Y - mu) / sd).astype("float32")
 
-    net = build(T.shape[1], Y.shape[1], width, blocks, aux=A is not None)
+    smu = S[tr].mean(0) if S is not None else None
+    ssd = np.maximum(S[tr].std(0), 1e-3) if S is not None else None
+    net = build(T.shape[1], Y.shape[1], width, blocks, aux=A is not None,
+                n_shed=(S.shape[1] if S is not None else 0))
     opt = torch.optim.Adam(net.parameters(), lr=lr)
     sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5,
                                                        patience=3)
     Xtr, Ytr = torch.from_numpy(T[tr]), torch.from_numpy(Yz[tr])
     Xva, Yva = torch.from_numpy(T[va]), torch.from_numpy(Yz[va])
     Atr = torch.from_numpy(A[tr]) if A is not None else None
+    Str = torch.from_numpy(((S[tr] - smu) / ssd).astype("float32")) \
+        if S is not None else None
 
     best, best_state, bad, hist = float("inf"), None, 0, []
     n = len(Xtr)
@@ -126,11 +140,13 @@ def fit(T, Y, G, A=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
         for i in range(0, n, batch):
             b = perm[i:i + batch]
             opt.zero_grad()
-            out, a = net(Xtr[b])
+            out, a, sh = net(Xtr[b])
             loss = nn.functional.mse_loss(out, Ytr[b])
             if Atr is not None:
                 loss = loss + aux_w * nn.functional.binary_cross_entropy_with_logits(
                     a.squeeze(1), Atr[b])
+            if Str is not None:
+                loss = loss + shed_w * nn.functional.mse_loss(sh, Str[b])
             loss.backward()
             opt.step()
         net.eval()
@@ -177,8 +193,9 @@ def load(path):
     import torch
     d = np.load(path)
     in_ch, n_out, width, blocks = [int(x) for x in d["__meta"]]
-    net = build(in_ch, n_out, width, blocks, aux=any(
-        k.startswith("aux.") for k in d.files))
+    n_shed = next((d[k].shape[0] for k in d.files if k == "shed.bias"), 0)
+    net = build(in_ch, n_out, width, blocks,
+                aux=any(k.startswith("aux.") for k in d.files), n_shed=n_shed)
     sd = {k: torch.from_numpy(d[k]) for k in d.files if not k.startswith("__")}
     net.load_state_dict(sd)
     net.eval()
