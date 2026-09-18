@@ -121,15 +121,21 @@ def build(args):
 
 def train(args):
     from tools.boardnet import fit, predict, save
+    from tools.board_tensor import arm_channels
     d = np.load(DATA)
     T, F, A, G = d["T"], d["F"], d["A"], d["G"]
+    if args.arm:
+        cols = arm_channels(args.arm)
+        T = np.ascontiguousarray(T[:, cols])
+        print(f"arm {args.arm}: {len(cols)} of {d['T'].shape[1]} channels")
     S = d["S"] if (args.shed_aux and "S" in d.files) else None
     print(f"{len(T):,} samples, {len(np.unique(G))} games\n")
     net, stats, hist = fit(T, F, G, A=A, S=S, epochs=args.epochs, seed=args.seed,
                            width=args.width, blocks=args.blocks)
-    save(MODEL, net, stats)
+    out = args.out or MODEL
+    save(out, net, stats)
     print(f"    best val MSE {stats['val_mse']:.4f} after {len(hist)} epochs")
-    print(f"    -> {MODEL} ({os.path.getsize(MODEL)/1e6:.1f} MB)")
+    print(f"    -> {out} ({os.path.getsize(out)/1e6:.1f} MB)")
 
     # held-out R2 per product, summed over the H days (what the forecast uses)
     gids = np.unique(G)
@@ -319,6 +325,8 @@ def main():
     ap.add_argument("--eval", action="store_true")
     ap.add_argument("--ablate", action="store_true")
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1])
+    ap.add_argument("--arm", default="")
+    ap.add_argument("--out", default="")
     ap.add_argument("--n", type=int, default=400)
     ap.add_argument("--skip", type=int, default=400)
     ap.add_argument("--min-rating", type=float, default=2800.0)
