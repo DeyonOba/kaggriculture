@@ -314,15 +314,46 @@ def ablate(args):
             res.setdefault(arm, []).append(m)
             print(f"    {arm:<18}{len(cols):>4}{seed:>6}{stats['val_mse']:>10.4f}"
                   f"{m:>28.4f}", flush=True)
-    print(f"\n    {'arm':<18}{'mean R2':>10}{'spread':>9}{'vs A':>9}")
-    base = float(np.mean(res[ARMS[0]]))
+    # PAIRED, because the design is paired and reading it unpaired both
+    # overstates and erases real effects.
+    #
+    # fit() takes `seed` and the eval split is default_rng(seed) over the same
+    # game ids, so arm X seed s and arm Y seed s are scored on the IDENTICAL
+    # held-out games. The seed effect is large and SHARED -- one seed drags
+    # every arm down together -- so differencing within a seed cancels it. On
+    # the capacity run the per-arm sd was 0.0107 while the sd of the
+    # difference was 0.0044, 2.4x tighter, and the old unpaired "spread"
+    # floor of 0.0198 would have killed a +0.0187 effect at p = 0.0001.
+    #
+    # Baseline is the LAST arm requested, not ARMS[0]: arms are supersets of
+    # one another, and every new arm here is a superset of E rather than of
+    # the v1 tensor, so comparing to ARMS[0] flatters anything that merely
+    # rediscovers what E already had.
+    ref = args.base if args.base in res else ARMS[0]
+    nseed = len(args.seeds)
+    print(f"\n    baseline = {ref}   PAIRED over {nseed} seed"
+          f"{'s' if nseed > 1 else ''}")
+    print(f"\n    {'arm':<18}{'mean R2':>10}{'sd/seed':>9}"
+          f"{'vs base':>10}{'se':>9}{'t':>8}")
+    b = np.asarray(res[ref], dtype=float)
     for arm in ARMS:
-        v = res[arm]
-        print(f"    {arm:<18}{np.mean(v):>10.4f}{(max(v)-min(v)):>9.4f}"
-              f"{np.mean(v)-base:>+9.4f}")
-    noise = max(res[ARMS[0]]) - min(res[ARMS[0]])
-    print(f"\n    seed-noise floor from arm A: {noise:.4f}. Read any 'vs A'"
-          f" smaller than this as nothing.")
+        v = np.asarray(res[arm], dtype=float)
+        sd = v.std(ddof=1) if len(v) > 1 else float("nan")
+        d = v - b
+        if arm == ref or len(d) < 2:
+            print(f"    {arm:<18}{v.mean():>10.4f}{sd:>9.4f}"
+                  f"{d.mean():>+10.4f}{'':>9}{'':>8}")
+            continue
+        se = d.std(ddof=1) / np.sqrt(len(d))
+        t = d.mean() / se if se > 0 else float("inf")
+        print(f"    {arm:<18}{v.mean():>10.4f}{sd:>9.4f}"
+              f"{d.mean():>+10.4f}{se:>9.4f}{t:>+8.2f}")
+    if nseed < 3:
+        print(f"\n    {nseed} seeds gives no usable se. Re-run with "
+              f"--seeds 0 1 2 3 4 5 before believing any of it.")
+    else:
+        print(f"\n    |t| > ~2.6 is p < 0.05 at {nseed-1} df. The unpaired "
+              f"spread column is FYI only -- judge on se and t.")
 
 
 def eval_job(spec):
@@ -443,6 +474,9 @@ def main():
     ap.add_argument("--arm", default="")
     ap.add_argument("--out", default="",
                     help="model destination for --train")
+    ap.add_argument("--base", default="E_full_83",
+                    help="baseline arm for the paired comparison; arms are\n"
+                         "supersets, so this must be the one they extend")
     ap.add_argument("--arms", nargs="+", default=[],
                     help="subset of arms for --ablate; the reference arm is\n"
                          "always kept for the baseline and noise floor")
