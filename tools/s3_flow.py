@@ -217,7 +217,7 @@ def build(args):
 def train(args):
     from tools.boardnet import fit, predict, save
     from tools.board_tensor import arm_channels
-    d = np.load(DATA)
+    d = np.load(args.data or DATA)
     T, F, A, G = d["T"], d["F"], d["A"], d["G"]
     if args.arm:
         cols = arm_channels(args.arm)
@@ -260,7 +260,7 @@ def ablate(args):
     """
     from tools.board_tensor import ARMS, arm_channels
     from tools.boardnet import fit, predict
-    d = np.load(DATA)
+    d = np.load(args.data or DATA)
     T, F, A, G = d["T"], d["F"], d["A"], d["G"]
     S = d["S"] if "S" in d.files else None
     n_p = len(PRODUCTS)
@@ -431,6 +431,8 @@ def main():
     ap.add_argument("--arm", default="")
     ap.add_argument("--out", default="",
                     help="model destination for --train")
+    ap.add_argument("--data", default="",
+                    help="dataset to READ for --train/--ablate")
     ap.add_argument("--data-out", default="",
                     help="dataset destination for --build; kept separate from --out so\n"
                          "--build --train cannot write both to one path")
