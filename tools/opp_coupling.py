@@ -40,6 +40,16 @@ INDEX = os.path.join(REPO, "rl/datasets/session_index.json")
 TRACE = {}
 
 
+def load_index():
+    """The session index is GENERATED, not tracked, so it is absent on a
+    fresh Kaggle kernel and every tool that opened it directly died with
+    FileNotFoundError. Build it instead of dying."""
+    if os.path.exists(INDEX):
+        return json.load(open(INDEX))
+    print("no session index; building it ...", flush=True)
+    return build_index()
+
+
 def build_index():
     """episode -> {seed, finals, scores, path} for every recorded session.
 

@@ -39,6 +39,13 @@ CAP = 15                 # right-censoring horizon, in days
 
 
 
+
+def _load_index():
+    """See tools/opp_coupling.load_index -- the index is generated, not
+    tracked, so it does not exist on a fresh Kaggle kernel."""
+    from tools.opp_coupling import load_index
+    return load_index()
+
 def _rating_ok(v, floor):
     """Sessions from the DAILY DUMPS carry finals but no scores, so a strict
     `scores is not None` filter discards every harvested game. Accept them
@@ -103,7 +110,7 @@ def main():
     args = ap.parse_args()
 
     import random
-    idx = json.load(open(INDEX))
+    idx = _load_index()
     paths = [v["path"] for v in idx.values()
              if _rating_ok(v, args.min_rating)]
     random.Random(args.seed).shuffle(paths)

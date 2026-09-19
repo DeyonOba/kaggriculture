@@ -35,6 +35,13 @@ PRODUCTS = ["WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON",
             "EGG", "MILK", "WOOL", "FERTILIZER"]
 
 
+
+def _load_index():
+    """See tools/opp_coupling.load_index -- the index is generated, not
+    tracked, so it does not exist on a fresh Kaggle kernel."""
+    from tools.opp_coupling import load_index
+    return load_index()
+
 def job(path):
     sys.path.insert(0, REPO)
     import tools.fast_env as fast_env
@@ -119,7 +126,7 @@ def main():
     args = ap.parse_args()
 
     import random
-    idx = json.load(open(INDEX))
+    idx = _load_index()
     paths = [v["path"] for v in idx.values()
              if v["scores"] and all(x is not None for x in v["scores"])]
     random.Random(args.seed).shuffle(paths)
