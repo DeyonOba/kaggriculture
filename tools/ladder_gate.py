@@ -49,10 +49,30 @@ def evaluate(agent, jobs, pool):
 
 
 def load_or_run(agent, jobs, pool, tag):
+    """Cached results are reused ONLY if they cover the current world list.
+
+    The cache key is (agent, n, seed), which does not encode the CORPUS. The
+    session index grows as we harvest, so ladder_jobs(45, seed=0) returned a
+    different 270 worlds in September than it does now -- and the old code
+    loaded the stale file anyway. The gate then intersected the two key sets
+    and reported a number computed on whatever happened to overlap: for the
+    melon arms that was 119 of 270 worlds, with the base's win rate printed
+    over all 270 and the candidate's over the 119. Re-running one side and
+    not the other is exactly how that happens, so validate instead.
+    """
     f = os.path.join(CACHE, f"ladder_{agent}_{tag}.json")
+    # evaluate() keys by (episode, 1 - side); jobs carry (path, side) and the
+    # files are named session-<episode>.json, so derive the same key here
+    # rather than opening 270 sessions.
+    want = {(int(os.path.basename(pth).split("-")[1].split(".")[0]), 1 - side)
+            for pth, side in jobs}
     if os.path.exists(f):
-        return {tuple(json.loads(k)): tuple(v)
-                for k, v in json.load(open(f)).items()}
+        got = {tuple(json.loads(k)): tuple(v)
+               for k, v in json.load(open(f)).items()}
+        if want.issubset(got):
+            return {k: got[k] for k in want}
+        print(f"    cache for {agent} covers {len(want & set(got))}/{len(want)} "
+              f"of the current worlds -- recomputing", flush=True)
     out = evaluate(agent, jobs, pool)
     os.makedirs(CACHE, exist_ok=True)
     json.dump({json.dumps(list(k)): list(v) for k, v in out.items()}, open(f, "w"))
@@ -88,7 +108,8 @@ def main():
         print(f"  {args.base:<14} {st.mean(v for v, _ in base.values()):>+10,.0f}/game"
               f"   win {bw}/{len(base)} = {bw/len(base):.3f}\n")
         print(f"  {'candidate':<14}{'money':>12}{'se':>8}{'z':>7}"
-              f"{'win':>12}{'b-only':>8}{'c-only':>8}{'McNemar p':>11}")
+              f"{'win':>12}{'b-only':>8}{'c-only':>8}{'McNemar p':>11}"
+              f"{'worlds':>7}{'base win':>9}")
         for cand in args.cand:
             c = load_or_run(cand, jobs, pool, tag)
             ks = sorted(set(base) & set(c))
@@ -101,8 +122,10 @@ def main():
             bo = sum(1 for k in ks if base[k][1] and not c[k][1])
             co = sum(1 for k in ks if c[k][1] and not base[k][1])
             cw = sum(1 for k in ks if c[k][1])
+            bwk = sum(1 for k in ks if base[k][1])
             print(f"  {cand:<14}{m:>+12,.0f}{se:>8,.0f}{m/se if se else 0:>7.2f}"
-                  f"{cw/len(ks):>12.3f}{bo:>8}{co:>8}{mcnemar(bo, co):>11.4f}")
+                  f"{cw/len(ks):>12.3f}{bo:>8}{co:>8}{mcnemar(bo, co):>11.4f}"
+                  f"{len(ks):>7}{bwk/len(ks):>9.3f}")
     print("\n  money is a PAIRED per-world difference (paired sd ~$17k vs "
           "$35k unpaired).\n  win is McNemar on discordant worlds only -- most "
           "worlds are decided the\n  same way by both agents and carry no "
