@@ -1,0 +1,132 @@
+# The metric hierarchy: what to measure at each level, and what good and bad look like
+
+2026-09-19. The aim, stated by the user and adopted as the organising frame:
+
+> improve every sub-section metric of the farm — **win-rate** > **profit-margin
+> difference** > better (**sell timing, ordering, investment, risk management**:
+> buying land / livestock / crops, demand-supply ratio) > better (**farming and
+> routing**). Find a relationship that moves win-rate and minimises the profit
+> margin when we lose. Each sub-section needs concrete metrics indicating both
+> bad and good, so we can discover better metrics that are transferable.
+
+The discipline that makes this work, learned the hard way this week: **a metric
+is only worth optimising if a ceiling measurement says the thing it measures
+carries money, and if moving it has been shown to move the level above.**
+Several metrics below are already known to be decoupled, and those are marked.
+
+---
+
+## L0 — WIN RATE (the only thing the leaderboard scores)
+
+Rating is win-based. Everything below is instrumental.
+
+| | value |
+| --- | --- |
+| **metric** | paired win rate vs a base on identical worlds, McNemar on discordant worlds only |
+| **good** | z > 2 over ≥1,000 worlds |
+| **bad** | money z > 4 with win z < 1 — the signature failure of this project |
+| **instrument** | `tools/ladder_gate.py`, three independent seed blocks |
+| **known** | `r-net2k` z = 3.44 / 1,131 worlds is the only arm to clear it |
+
+**Trap, measured:** money and wins decouple. `r-mrg100` was +$2,605 at z = 5.2
+on money and z = 1.15 on wins across one pool, z = 2.17 across another. Win
+rate needs ~1,000 worlds before it means anything.
+
+## L1 — MARGIN AGAINST THE OPPONENT, not absolute money
+
+A win is `our_money > their_money`. Optimising *our* money can leave the margin
+untouched if it also helps them — and the rent rule plausibly does exactly
+that, since planting into uncrowded markets stops us crashing prices they also
+sell into.
+
+| | value |
+| --- | --- |
+| **metric** | mean paired `(us − them)` per world, and its sign distribution |
+| **good** | margin rises while our absolute money is flat — that is pure denial |
+| **bad** | absolute money rises with margin flat — we lifted both boats |
+| **instrument** | `tools/round_robin.py` (head-to-head), `tools/opp_coupling.py` |
+| **known** | the opponent costs us **$52,652/game** through `market["inventory"]`, the ONLY shared state |
+
+**Trap, measured:** denial is symmetric. Both seats reach a price trough
+holding the same stock (strawberry 23.0 vs 21.5), so suppressing a recovery
+costs us what it costs them: **−$46/game, 0/120 games flipped**. Denial needs
+*manufactured* asymmetry — deliberately hold less of what you intend to crash.
+Untested.
+
+## L2 — SELL TIMING
+
+| | value |
+| --- | --- |
+| **metric** | realised $/unit ÷ base price, per product |
+| **good** | ratio > 1 on uncrashable products; selling before the glut day on crashable ones |
+| **bad** | realised ratio below the recorded band for that product |
+| **ceiling** | the floor binds on **2.5%** of sizing calls; milk + wool withhold **47 units a season** |
+| **verdict** | **essentially closed.** `premium_scale` has 4,270 bandit samples; opponent-stock floors gated +$41 on 1 discordant world |
+
+Glut day per product is the one live sub-metric: **fertilizer d2, wool d7,
+melon/milk d11, strawberry d23, and wheat/carrot/tomato/egg never**. Predictable
+(melon R² 0.986) but the boolean gate on it cost **−$2,590**.
+
+## L3 — ORDERING (market-order slot allocation)
+
+| | value |
+| --- | --- |
+| **metric** | orders suppressed per game by the 10-slot cap, and their value |
+| **good** | zero suppression, or suppression only of low-value orders |
+| **bad** | SELL suppressed while HIRE fills slots |
+| **measured** | **21 saturated turns/game, 46.8 SELLs suppressed, $29,009 at then-current prices**; HIRE issues 268 orders vs SELL's 171 |
+| **caveat** | end-of-bell stranding is only **$55/seat**, so this is a DELAY not a loss; the real cost is price drift over the delay |
+| **status** | **LIVE.** Global hire caps gated −$7,234/−$39,678, but preferring SELL over HIRE *only on saturated turns* is untested |
+
+## L4 — INVESTMENT (land, livestock, crops)
+
+| | value |
+| --- | --- |
+| **metric** | $/tile-day realised per crop, and herd size vs shop-draw demand |
+| **good** | volume moves with the draw — top players swing wool 131→534 units as drain goes 1→25/day |
+| **bad** | constant output regardless of demand — **ours is flat at 236 strawberries across a sixfold demand range** |
+| **ceiling** | hiring is nearly free: 11 hands = $232/day, a season ~$6,960 against a $95k bank |
+| **verdict** | single-knob moves all refuted; the whole-vector LP move gated **−$31,728, z −22.5**; forward-model hiring **null** |
+
+## L5 — RISK: the demand/supply ratio
+
+| | value |
+| --- | --- |
+| **metric** | projected inventory vs I0 at each product's harvest day |
+| **good** | planting only into products whose price at *their* harvest day is above base |
+| **bad** | producing into a pool already past I0 |
+| **exogenous** | the shop draw: 8 uniform draws every 3 days. **P(no wool shop) = 34.4%** |
+| **known** | the market is an EXACT identity — 36/36 products, zero error. Nothing to learn, only to compute |
+| **verdict** | this is what the rent rule consumes, and it is the one thing that paid |
+
+## L6 — FARMING AND ROUTING (the executor)
+
+| | value |
+| --- | --- |
+| **metric** | moves per work action; pickup per feed; work actions per seat |
+| **good** | moves/work → 0.91 (the 3000-band); pickup/feed → 0.52–0.63 |
+| **bad** | ours: **1.43 moves/work, 1.07 pickup/feed** — worse than the LOWEST rated band |
+| **ceiling** | of 3,965 moves: **2,454 irreducible, 211 placement (5.3%), 1,300 routing (33%)** |
+| **conversion** | freed turns are worth **ZERO OR LESS** — h-front9 added ~1,440 actions for −$653 |
+| **verdict** | **BOUNDED AT ~$0.** The haul fix gated −$12,026. The geometry is downstream of the planner |
+
+---
+
+## The transferable lessons, which is what the frame is for
+
+1. **Measure the ceiling before building the model.** The opponent-shed oracle
+   (1.5%) and the placement ceiling (211 moves) each saved a week of work.
+2. **Check the mechanism fires before reading the gate.** Archive attempt #11
+   is "mechanism does not fire" — a null that measured nothing.
+   `tools/haul_probe.py` and the `alpha=0 bit-identical` convention exist for
+   this.
+3. **Matching a metric the corpus exhibits ≠ playing like the corpus.** The
+   haul floor moved pickup/feed 1.08 → 0.88 and lost $12,026, because
+   `moves/work` went the other way.
+4. **Print per-target metrics before accepting a kill.** S2's first run
+   reported a KILL that was a loss-imbalance artefact visible only per-kind.
+5. **Train on the deployment distribution.** A net trained on the top 21% of
+   the corpus was −13% out-of-distribution; retrained on the natural mix it
+   was +27%.
+6. **A false positive regresses with more data; a real effect strengthens.**
+   `r-net2k`'s win z went 0.31 → 2.90 → 2.57, pooling to 3.44.
