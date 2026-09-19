@@ -264,8 +264,20 @@ def ablate(args):
     T, F, A, G = d["T"], d["F"], d["A"], d["G"]
     S = d["S"] if "S" in d.files else None
     n_p = len(PRODUCTS)
+
+    # ARMS[0] is the reference for both the baseline and the seed-noise floor,
+    # so a subset always keeps it however the user spells the request.
+    if args.arms:
+        want, ref = set(args.arms), ARMS[0]
+        unknown = want - set(ARMS)
+        if unknown:
+            raise SystemExit(f"unknown arm(s): {sorted(unknown)}\n"
+                             f"available: {ARMS}")
+        ARMS = [a for a in ARMS if a in want or a == ref]
+
     print(f"{len(T):,} samples, {len(np.unique(G))} games, superset "
-          f"{T.shape[1]} channels\n")
+          f"{T.shape[1]} channels, {len(ARMS)} arms x {len(args.seeds)} "
+          f"seeds\n")
     print(f"    {'arm':<18}{'ch':>4}{'seed':>6}{'val MSE':>10}"
           f"{'held-out R2 on 10-day flow':>28}")
     res = {}
@@ -431,6 +443,9 @@ def main():
     ap.add_argument("--arm", default="")
     ap.add_argument("--out", default="",
                     help="model destination for --train")
+    ap.add_argument("--arms", nargs="+", default=[],
+                    help="subset of arms for --ablate; the reference arm is\n"
+                         "always kept for the baseline and noise floor")
     ap.add_argument("--data", default="",
                     help="dataset to READ for --train/--ablate")
     ap.add_argument("--data-out", default="",
