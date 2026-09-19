@@ -1,0 +1,9 @@
+{
+  "engine": "1.32.7",
+  "procs": 4,
+  "budget_s": 39600,
+  "steps": [
+    "{python} -u tools/metric_harvest.py --shard SHARD --procs {procs} --out {out}/metrics_TAG.npz --validate"
+  ],
+  "collect": []
+}

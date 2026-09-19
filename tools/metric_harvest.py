@@ -336,7 +336,14 @@ def job(path):
 
 
 def _paths(args):
-    idx = json.load(open(INDEX))
+    # rl/datasets/session_index.json is generated, not tracked, so it does not
+    # exist on a fresh Kaggle kernel. Build it rather than dying there.
+    if not os.path.exists(INDEX):
+        print("no session index; building it ...", flush=True)
+        from tools.opp_coupling import build_index
+        idx = build_index()
+    else:
+        idx = json.load(open(INDEX))
     items = sorted(idx.items())
     paths = [v["path"] for _, v in items if _rating_ok(v, args.min_rating)]
     if args.shard:

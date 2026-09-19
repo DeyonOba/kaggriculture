@@ -1,0 +1,11 @@
+{
+  "engine": "1.32.7",
+  "procs": 4,
+  "budget_s": 39600,
+  "steps": [
+    "{python} -u tools/s3_flow.py --build --n 4000 --procs {procs} --min-rating 0 --data-out {repo}/rl/datasets/s3_flow2.npz",
+    "{python} -u tools/s3_flow.py --train --arm TM_full_157 --data {repo}/rl/datasets/s3_flow2.npz --out {out}/boardnet_tm_big.npz --seed 0 --epochs 80",
+    "{python} -u tools/s3_flow.py --ablate --seeds 0 1 2 --data {repo}/rl/datasets/s3_flow2.npz --arms E_full_83 TM_full_157"
+  ],
+  "collect": []
+}

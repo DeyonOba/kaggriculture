@@ -1,0 +1,21 @@
+{
+  "id": "gideonoba/kaggriculture-metrics0",
+  "title": "kaggriculture-metrics0",
+  "code_file": "job.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "gideonoba/kaggriculture-code",
+    "gideonoba/kaggriculture-datasets",
+    "kaggle/kaggriculture-episodes-2026-09-15",
+    "kaggle/kaggriculture-episodes-2026-09-16",
+    "kaggle/kaggriculture-episodes-2026-09-17"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
