@@ -373,7 +373,10 @@ def ablate(args):
 
 def eval_job(spec):
     """Forecast MAE with board-projected / model / oracle opponent supply."""
-    path, use_model = spec
+    # The model path travels WITH the spec. It used to be the module-level
+    # MODEL constant, so --train --out <somewhere> trained one model and
+    # --eval silently scored a different, stale one.
+    path, use_model, model_path = spec
     sys.path.insert(0, REPO)
     import tools.fast_env as fast_env
     fast_env.install()
@@ -388,7 +391,7 @@ def eval_job(spec):
     net = stats = None
     if use_model:
         from tools.boardnet import load, predict
-        net, stats = load(MODEL)
+        net, stats = load(model_path)
 
     s = json.load(open(path))
     pf.FLOW.clear()
@@ -442,10 +445,19 @@ def eval_job(spec):
 def evaluate(args):
     # held-out games: skip the block used for training
     paths = _pick(args.n, args.min_rating, args.seed, skip=args.skip)
+    mp_ = args.model or MODEL
+    if not os.path.exists(mp_):
+        raise SystemExit(f"no model at {mp_}; train one first with "
+                         f"--train --arm <arm> --out <path>")
+    # ARM must match what the model was trained on -- a mismatch silently
+    # feeds the net a different channel slice of the same width in the worst
+    # case, so print it and let a wrong pairing be visible in the output.
+    arm = os.environ.get("ARM", "E_full_83")
+    print(f"model {os.path.basename(mp_)}   arm {arm}")
     print(f"{len(paths)} HELD-OUT sessions (skipping the first {args.skip} "
           f"used for training)\n", flush=True)
     with mp.Pool(args.procs) as pool:
-        rows = pool.map(eval_job, [(p, True) for p in paths])
+        rows = pool.map(eval_job, [(p, True, mp_) for p in paths])
     print(f"    {'opponent supply from':<28}"
           + "".join(f"{'k='+str(k):>9}" for k in EVAL_K))
     got = {}
@@ -492,6 +504,8 @@ def main():
     ap.add_argument("--arm", default="")
     ap.add_argument("--out", default="",
                     help="model destination for --train")
+    ap.add_argument("--model", default="",
+                    help="model to score for --eval; defaults to MODEL")
     ap.add_argument("--base", default="E_full_83",
                     help="baseline arm for the paired comparison; arms are\n"
                          "supersets, so this must be the one they extend")
