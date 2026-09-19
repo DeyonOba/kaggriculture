@@ -378,8 +378,10 @@ def arm_channels(name):
     C = B + hands                                           # 66
     D = C + mid                                             # 74
     E = D + shed                                            # 83, == v2
-    T_ARM = E + list(range(N_FULL, N_FULL + N_TEMPORAL))   # E + opponent lags
-    T_DEEP = E + list(range(N_FULL, N_FULL + N_TEMPORAL_D))
+    # Absolute offsets into the BOTH-stacks layout, so an arm means the same
+    # channels whichever build it is read from.
+    T_ARM = E + list(range(OFF_PLATEAU, OFF_CROP))          # E + 12 plateau
+    T_DEEP = E + list(range(OFF_CROP, N_PAIR_TB))           # E + 20 crop
     return {"A_v1_72": A, "B_drop_dead_64": B, "C_hands_66": C,
             "D_midday_74": D, "E_full_83": E, "F_shed_aux_83": E,
             "T_temporal_95": T_ARM, "T_crop_103": T_DEEP}[name]
@@ -464,12 +466,18 @@ def temporal_opp(hist, seat, n=10, planes=None, lags=None):
     return out
 
 
-N_PAIR_T = N_FULL + N_TEMPORAL
-N_PAIR_TD = N_FULL + N_TEMPORAL_D
+N_PAIR_T = N_FULL + N_TEMPORAL              # 103, the v1 temporal layout
+OFF_PLATEAU = N_FULL                        # 91  .. 102  plateau planes x 3 lags
+OFF_CROP = N_FULL + N_TEMPORAL              # 103 .. 122  crop planes x 4 lags
+N_PAIR_TB = N_FULL + N_TEMPORAL + N_TEMPORAL_D   # 123, BOTH stacks
 
 
 def board_pair_temporal(obs, seat=0, prev_mid=None, hist=None):
-    """board_pair_full plus the opponent's plateau planes at lags 1, 3, 10."""
+    """board_pair_full plus the opponent's plateau planes at lags 1, 3, 10.
+
+    Kept at exactly 103 channels so `rl/datasets/s3_flow.npz` and anything
+    trained from it stay correctly indexed.
+    """
     base = board_pair_full(obs, seat, prev_mid=prev_mid)
     n = base.shape[-1]
     out = np.zeros((N_PAIR_T, n, n), dtype="float32")
@@ -478,12 +486,21 @@ def board_pair_temporal(obs, seat=0, prev_mid=None, hist=None):
     return out
 
 
-def board_pair_temporal_deep(obs, seat=0, prev_mid=None, hist=None):
-    """board_pair_full plus the opponent's CROP planes at lags 1, 3, 5, 10."""
+def board_pair_temporal_both(obs, seat=0, prev_mid=None, hist=None):
+    """Both temporal stacks appended, so one build serves both arms.
+
+    Channels 0..90 are board_pair_full, 91..102 the plateau stack at lags
+    (1,3,10), 103..122 the crop stack at lags (1,3,5,10). Building both at
+    once is what makes T_temporal_95 and T_crop_103 comparable: the previous
+    ablation's arms came from one build and a crop arm from another would
+    differ by the sessions drawn as well as by the channels.
+    """
     base = board_pair_full(obs, seat, prev_mid=prev_mid)
     n = base.shape[-1]
-    out = np.zeros((N_PAIR_TD, n, n), dtype="float32")
+    h = hist or []
+    out = np.zeros((N_PAIR_TB, n, n), dtype="float32")
     out[:N_FULL] = base
-    out[N_FULL:] = temporal_opp(hist or [], seat, n,
-                                planes=HIST_PLANES, lags=LAGS_DEEP)
+    out[OFF_PLATEAU:OFF_CROP] = temporal_opp(h, seat, n)
+    out[OFF_CROP:] = temporal_opp(h, seat, n, planes=HIST_PLANES,
+                                  lags=LAGS_DEEP)
     return out

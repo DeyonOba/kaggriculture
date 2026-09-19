@@ -66,7 +66,7 @@ def job(path):
     import tools.fast_env as fast_env
     fast_env.install()
     from kaggle_environments import make
-    from tools.board_tensor import board_pair_temporal
+    from tools.board_tensor import board_pair_temporal_both
     import tools.price_forecast as pf
 
     s = json.load(open(path))
@@ -95,8 +95,9 @@ def job(path):
             continue
         # most-recent-first list of PAST dawns, for the temporal opponent stack
         past = [dawn[d] for d in range(day - 1, -1, -1) if d in dawn]
-        T.append(board_pair_temporal(dawn[day], 0,
-                                     prev_mid=mid.get(day - 1), hist=past))
+        T.append(board_pair_temporal_both(dawn[day], 0,
+                                          prev_mid=mid.get(day - 1),
+                                          hist=past))
         S.append(oshed.get(day, [0.0] * len(PRODUCTS)))
         f = np.zeros((H, len(PRODUCTS)), dtype="float32")
         for j in range(1, H + 1):
@@ -188,6 +189,14 @@ def ablate(args):
     res = {}
     for arm in ARMS:
         cols = arm_channels(arm)
+        if max(cols) >= T.shape[1]:
+            # An arm indexes ABSOLUTE channels, so a dataset built before that
+            # arm existed would silently hand it the wrong planes rather than
+            # fail. Skip loudly instead.
+            print(f"    {arm:<18}{len(cols):>4}   SKIPPED -- needs "
+                  f"{max(cols)+1} channels, dataset has {T.shape[1]}; "
+                  f"rebuild with --build")
+            continue
         Ti = np.ascontiguousarray(T[:, cols])
         for seed in args.seeds:
             net, stats, hist = fit(Ti, F, G, A=A,
