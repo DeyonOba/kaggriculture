@@ -90,6 +90,44 @@ def _pick(n, min_rating, seed, skip=0):
     return paths[skip: skip + n]
 
 
+def cap_series(dawn):
+    """-> ({day: (9,) log-scaled capacity}, (9,) scaled daily regen).
+
+    Everything here is PUBLIC -- market inventory is in the observation and
+    econ is the engine's own price curve -- so this runs identically at build
+    time and at play time. Shared by job() and eval_job() precisely so the
+    tensor the model is scored on cannot drift from the one it was trained
+    on; they used different encoders before and the eval could not even
+    construct the capacity arms.
+    """
+    from kagent import econ
+    from kaggle_environments.envs.kaggriculture.kaggriculture import MARKET_PARAMS
+    from tools.market_clock import daily_drain
+    floors = {p: max(1, int(CAP_FRAC * MARKET_PARAMS[p]["base"]))
+              for p in PRODUCTS}
+    lg = np.log1p(CAP_MAX)
+    capday = {}
+    for d, o in dawn.items():
+        inv = o["market"]["inventory"]
+        capday[d] = np.log1p(np.asarray(
+            [econ.units_sellable_above(p, inv[p], floors[p], cap=CAP_MAX)
+             for p in PRODUCTS], dtype="float32")) / lg
+    last = dawn[max(dawn)]
+    regen = np.asarray([daily_drain(last["town"]["unlocked_shops"], p)
+                        for p in PRODUCTS], dtype="float32") / REGEN_SCALE
+    return capday, regen
+
+
+def encode_day(dawn, mid, day, capday, regen):
+    """The ONE place a scoreable tensor is built, for build and eval alike."""
+    from tools.board_tensor import LAGS_DEEP, board_pair_all
+    past = [dawn[d] for d in range(day - 1, -1, -1) if d in dawn]
+    cl = np.stack([capday[max(0, day - L)] for L in LAGS_DEEP])
+    return board_pair_all(dawn[day], 0, prev_mid=mid.get(day - 1),
+                          hist=past, cap_now=capday[day], cap_lags=cl,
+                          regen=regen)
+
+
 def job(path):
     """Tensors, true opponent flow for the next H days, and the aux mask."""
     sys.path.insert(0, REPO)
@@ -120,37 +158,14 @@ def job(path):
     flow = pf.FLOW.get(1, {})
     sides = pf.SIDES.get(1, {})
 
-    # --- market capacity per product per dawn, the L2 sell-timing input ----
-    # Exact, not estimated: units sellable before price falls below the floor.
-    from kagent import econ
-    from kaggle_environments.envs.kaggriculture.kaggriculture import MARKET_PARAMS
-    from tools.market_clock import daily_drain
+    capday, regen = cap_series(dawn)
     from tools.board_tensor import LAGS_DEEP, board_pair_all
-    floors = {p: max(1, int(CAP_FRAC * MARKET_PARAMS[p]["base"]))
-              for p in PRODUCTS}
-    lg = np.log1p(CAP_MAX)
-    capday = {}
-    for d, o in dawn.items():
-        inv = o["market"]["inventory"]
-        capday[d] = np.log1p(np.asarray(
-            [econ.units_sellable_above(p, inv[p], floors[p], cap=CAP_MAX)
-             for p in PRODUCTS], dtype="float32")) / lg
-    last = dawn[max(dawn)]
-    regen = np.asarray([daily_drain(last["town"]["unlocked_shops"], p)
-                        for p in PRODUCTS], dtype="float32") / REGEN_SCALE
 
     T, F, A, D, S, C, B = [], [], [], [], [], [], []
     for day in sorted(dawn):
         if day + H not in dawn:
             continue
-        # most-recent-first list of PAST dawns, for the temporal opponent stack
-        past = [dawn[d] for d in range(day - 1, -1, -1) if d in dawn]
-        # capacity at each lag, clamped to day 0 rather than zero-padded --
-        # same convention as temporal_opp, so early game reads "unchanged"
-        cl = np.stack([capday[max(0, day - L)] for L in LAGS_DEEP])
-        T.append(board_pair_all(dawn[day], 0, prev_mid=mid.get(day - 1),
-                                hist=past, cap_now=capday[day],
-                                cap_lags=cl, regen=regen))
+        T.append(encode_day(dawn, mid, day, capday, regen))
         S.append(oshed.get(day, [0.0] * len(PRODUCTS)))
         f = np.zeros((H, len(PRODUCTS)), dtype="float32")
         b = np.zeros((H, len(PRODUCTS)), dtype="float32")
@@ -367,7 +382,6 @@ def eval_job(spec):
         ANIMALS, CROPS, PRODUCTS as ENGP, SHOPS, TOWN_CENTER_PRODUCTS,
         market_price)
     import tools.price_forecast as pf
-    from tools.board_tensor import board_pair2
     K = {"SHOPS": SHOPS, "TOWN": TOWN_CENTER_PRODUCTS, "CROPS": CROPS,
          "ANIMALS": ANIMALS, "PRODUCTS": ENGP, "market_price": market_price}
 
@@ -392,6 +406,7 @@ def eval_job(spec):
             mid[o["step"] // 24] = o
         env.step([a0(o), a1(env.state[1].observation)])
     flow = pf.FLOW.get(1, {})
+    capday, regen = cap_series(dawn)
 
     err = {m: {k: [] for k in EVAL_K} for m in ("board", "model", "oracle")}
     n_p = len(PRODUCTS)
@@ -404,8 +419,11 @@ def eval_job(spec):
         runs = {"board": None, "oracle": oracle}
         if net is not None:
             from tools.boardnet import predict
-            from tools.board_tensor import board_pair_full, arm_channels
-            t = board_pair_full(dawn[day], 0, prev_mid=mid.get(day - 1))
+            from tools.board_tensor import arm_channels
+            # encode_day, not board_pair_full: the latter stops at 91 channels
+            # so any arm carrying temporal or capacity planes indexed past the
+            # end of it. TM_full_157 could not be evaluated at all.
+            t = encode_day(dawn, mid, day, capday, regen)
             t = t[arm_channels(os.environ.get('ARM', 'E_full_83'))][None]
             t = np.ascontiguousarray(t, dtype='float32')
             q = predict(net, stats, t)[0].reshape(H, n_p)
