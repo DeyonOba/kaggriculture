@@ -206,3 +206,55 @@ both farms build out. Closing that needs a model of the opponent's *future
 purchases and plantings* — a policy model, not an accounting identity. It is
 the only part of the market that is not already solved, and it is the part
 that would let the forecast see a rival's ramp before it lands.
+
+---
+
+## 6. The Kaggle kernel run (2026-09-19)
+
+`gideonoba/kaggriculture-train` completed. Two of my errors and one real result.
+
+**The daily datasets never mounted.** All three
+`kaggriculture-episodes-2026-09-*` were in `kernel-metadata-train.json` and are
+absent from `/kaggle/input`; Kaggle dropped 64 GB of inputs silently, almost
+certainly a per-kernel input-size limit. `kaggle_train.py`'s guard caught it
+(`no daily episode datasets mounted; skipping harvest`) rather than training on
+nothing, so the failure was loud — but no daily data was used.
+
+**`arena/agents/` ships empty.** The log shows `arena/agents: [] []`. Agent
+bundles are gitignored, so `push.sh`'s `git ls-files` tarball carries none of
+them, and `net_ood.py` died on `r-mrg100/main.py`. This is already recorded in
+memory (`pub-*` agents are gitignored; external-opponent work cannot run on
+Kaggle) and I pushed anyway. **No kernel step that loads an agent bundle can
+work until the bundles are shipped some other way.**
+
+**The result: 2,000 games fixed the out-of-distribution failure.** Trained on
+40,000 samples at `--min-rating 0`, against 500 games before. Every product the
+learning curve said was still climbing improved; the saturated ones did not:
+
+| | 500g → 2,000g | | 500g → 2,000g |
+| --- | --- | --- | --- |
+| WOOL | 0.730 → **0.802** | STRAWBERRY | 0.948 → 0.950 |
+| CARROT | 0.632 → **0.735** | MELON | 0.868 → 0.853 |
+| EGG | 0.829 → **0.907** | | |
+| WHEAT | 0.828 → **0.869** | | |
+
+And it is the first model positive in **all three** opponent regimes:
+
+| regime | 2800+/400g | full/500g | full/2,000g |
+| --- | --- | --- | --- |
+| replay (2800+) | +71% | +49% | **+85%** |
+| vs champ-h8 | −13% | +25% | **+27%** |
+| vs r-mrg100 | −4% | −26% | **+17%** |
+
+**Gate**, pooled over two 270-world blocks:
+
+| arm | money | se | z | discordant b/c | win z |
+| --- | --- | --- | --- | --- | --- |
+| r-mrg100 | +$3,178 | 766 | 4.15 | 31/44 | 1.50 |
+| **r-net2k** | +$2,808 | 743 | 3.78 | 32/53 | **2.28** |
+
+Money remains marginally below `r-mrg100` and is block-inconsistent (+$1,883
+then +$3,694). The win-rate z = 2.28 is the first thing this week to move the
+metric the rating is made of — but it is the **eighth arm gated that day**, and
+one z = 2.28 out of eight is what multiplicity produces by chance. A third,
+larger, independent block decides it.
