@@ -130,3 +130,41 @@ melon/milk d11, strawberry d23, and wheat/carrot/tomato/egg never**. Predictable
    was +27%.
 6. **A false positive regresses with more data; a real effect strengthens.**
    `r-net2k`'s win z went 0.31 → 2.90 → 2.57, pooling to 3.44.
+
+---
+
+## Appendix: the three-block verdict on every surviving arm (2026-09-19)
+
+Same three seed blocks (45/45/110, seeds 0/1/5 = 1,131 worlds), so these are
+directly comparable:
+
+| agent | money | se | z | win z | what it adds |
+| --- | --- | --- | --- | --- | --- |
+| `r-mrg100` | +$2,978 | 558 | 5.34 | **2.17** | nothing learned — pure arithmetic |
+| `k-comp5` | **+$3,389** | 515 | **6.59** | 2.06 | closed-form risk penalty |
+| `r-net2k` | +$2,731 | 538 | 5.08 | **3.44** | 327k-param BoardNet |
+
+**None separates from the others.** `k-comp5 − r-mrg100 = +$411 ± 759`
+(z = 0.54), positive in 3/3 blocks (+351, +726, +268) — suggestive of a small
+real effect, not established.
+
+**A methodological error worth keeping.** I pre-registered "anything under
++$300 over r-mrg100 is a null", which is a POINT-ESTIMATE bar. +$411 clears it
+at z = 0.54, i.e. the bar would have licensed declaring a win on noise.
+Pre-register a **significance** criterion, not a magnitude.
+
+### The pattern across every learned component tried
+
+| component | params | verdict |
+| --- | --- | --- |
+| BoardNet opponent supply | 327,125 | ties the arithmetic (−$276) |
+| learnt risk variance | ~80 | loses to computed by ~$950 |
+| exec_bc ranker + Hungarian | 25 | null (+$366) |
+| pointer network | 52,289 | **−$33,414, z −25.4** |
+| computed risk | **0** | best money arm |
+| forward market model | **0** | the only thing that ever paid |
+
+Every time the engine's closed form has competed with a fitted model on the
+same consumer, **the closed form has won**. The engine is fully observable and
+deterministic, so a fitted model can only approximate what is exactly
+calculable — and pays a generalisation penalty for the privilege.
