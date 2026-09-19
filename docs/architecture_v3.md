@@ -258,3 +258,35 @@ then +$3,694). The win-rate z = 2.28 is the first thing this week to move the
 metric the rating is made of — but it is the **eighth arm gated that day**, and
 one z = 2.28 out of eight is what multiplicity produces by chance. A third,
 larger, independent block decides it.
+
+### Block 3, and the head-to-head (2026-09-19)
+
+Third independent seed block, 591 worlds, and the win-rate effect STRENGTHENED
+with sample rather than regressing:
+
+    r-net2k win z by block:   0.31  ->  2.90  ->  2.57
+
+| pooled, 1,131 worlds | money | se | z | b/c | win z |
+| --- | --- | --- | --- | --- | --- |
+| r-mrg100 | +$2,978 | 558 | 5.34 | 75/104 | 2.17 |
+| **r-net2k** | +$2,731 | 538 | 5.08 | 70/117 | **3.44** |
+
+**First thing in this project to clear the win metric.** The argument that it
+is not the eighth-arm multiplicity artefact I feared: a false positive from
+testing many arms regresses toward zero as n grows, and this went the other
+way.
+
+Two limits, both real:
+
+**It does not separate from `r-mrg100`.** Head-to-head over 120 paired games:
+0.47 win rate, **-$515**. The 327k-parameter model buys a better forecast and
+no measurable play advantage over the arithmetic.
+
+**The mirror inversion persists.** champ-h8 beats both rent-rule agents
+head-to-head (0.62 overall) while losing to both on the ladder. The rent rule's
+edge is planting where the opponent is not, and that inverts against an
+opponent running the same logic. The ladder is the right evaluation for the
+competition, but the edge is partly exploitation of a non-reacting opponent.
+
+**It is still not shippable.** This is the champ-h8 lineage (~810) against
+tape-sel's ~1694, and the round-robin has tape-sel unbeaten at +$33,440.
