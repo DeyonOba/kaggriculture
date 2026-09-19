@@ -317,15 +317,35 @@ def _script(actions):
 
 FLOW = {}
 
+# FLOW nets a SELL (+1) against a BUY_PRODUCT (-1), because net is all that
+# moves `market["inventory"]` and the forward model only ever needed the net.
+# But "sold 15, bought 5" and "sold 10, bought 0" store identically under that
+# rule while meaning very different things about a seat's intent, and the
+# decomposition is free -- the hook already sees both operations.
+#
+# SIDES keeps them apart: SIDES[seat][day][item] = {"sell": n, "buy": n}.
+# It is PRIVILEGED. Both seats' entries are recoverable from a replay and
+# neither is observable at play time, so this may be used as a training TARGET
+# or as a teacher's input, never as an input the deployed agent must supply.
+SIDES = {}
+
 
 def _patch_flow():
-    """Record every market commit by day and seat -- the TRUE supply flow."""
+    """Record every market commit by day and seat -- the TRUE supply flow.
+
+    Writes the netted series to FLOW and the sell/buy decomposition to SIDES.
+    """
     import kaggle_environments.envs.kaggriculture.kaggriculture as K
     oi = getattr(K, "_pf_oi", None) or K._initialize
     K._pf_oi = oi
     oc = getattr(K, "_pf_oc", None) or K._commit_unit
     K._pf_oc = oc
     state = {"day": 0}
+    # Callers clear FLOW themselves; SIDES is new, so clear it here rather
+    # than rely on every existing call site being updated. _patch_flow is
+    # invoked once per game, and a pool worker is reused across games, so a
+    # missed clear would silently pool one seat's trades across replays.
+    SIDES.clear()
 
     def init(st, env):
         oi(st, env)
@@ -342,6 +362,9 @@ def _patch_flow():
             if n:
                 d.setdefault(day, {})
                 d[day][item] = d[day].get(item, 0) + n
+                e = SIDES.setdefault(seat, {}).setdefault(day, {}).setdefault(
+                    item, {"sell": 0, "buy": 0})
+                e["sell" if n > 0 else "buy"] += 1
         return ok
 
     K._initialize = init
