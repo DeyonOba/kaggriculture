@@ -382,13 +382,25 @@ def arm_channels(name):
     # channels whichever build it is read from.
     T_ARM = E + list(range(OFF_PLATEAU, OFF_CROP))          # E + 12 plateau
     T_DEEP = E + list(range(OFF_CROP, N_PAIR_TB))           # E + 20 crop
+    now = list(range(*CAP_NOW))
+    lag = list(range(*CAP_LAGS))
+    reg = list(range(*CAP_REGEN))
+    # Three capacity questions, each isolated: does capacity help at all;
+    # does its HISTORY help beyond the level; does it compose with the board
+    # stack or merely restate it.
+    M_CAP = E + now + reg                                   # 101
+    M_CAPT = E + now + lag + reg                            # 137
+    TM = E + list(range(OFF_CROP, N_PAIR_TB)) + now + lag + reg   # 157
     return {"A_v1_72": A, "B_drop_dead_64": B, "C_hands_66": C,
             "D_midday_74": D, "E_full_83": E, "F_shed_aux_83": E,
-            "T_temporal_95": T_ARM, "T_crop_103": T_DEEP}[name]
+            "T_temporal_95": T_ARM, "T_crop_103": T_DEEP,
+            "M_cap_101": M_CAP, "M_capt_137": M_CAPT,
+            "TM_full_157": TM}[name]
 
 
 ARMS = ["A_v1_72", "B_drop_dead_64", "C_hands_66", "D_midday_74",
-        "E_full_83", "F_shed_aux_83", "T_temporal_95", "T_crop_103"]
+        "E_full_83", "F_shed_aux_83", "T_temporal_95", "T_crop_103",
+        "M_cap_101", "M_capt_137", "TM_full_157"]
 
 
 # ---------------------------------------------------------------------------
@@ -486,6 +498,48 @@ def board_pair_temporal(obs, seat=0, prev_mid=None, hist=None):
     return out
 
 
+# ---------------------------------------------------------------------------
+# MARKET CAPACITY, the one input a sell-timing rule actually needs.
+#
+# Every sell rule here prices a single unit at the current inventory. None
+# knows how much the market can still absorb. `tools/market_capacity.py`
+# computes that exactly -- econ.units_sellable_above(p, inv, floor) -- and
+# NOTHING consumes it: grep finds no market channel anywhere in this encoder.
+#
+# k_ablation fed raw inventory at lags and it paid (+0.018 to +0.033 alone),
+# but inventory is not capacity: capacity is a convex transform of it, so a
+# linear model on inventory cannot recover it and a CNN would have to learn
+# the engine's price curve from scratch. Handing it the transform directly is
+# strictly more information for the same channel count.
+#
+# Capacity is NOT computed here. This module imports numpy and nothing else,
+# because export_boardnet.py inlines it verbatim into the frozen bundle; an
+# `econ` import would break that. The caller supplies the numbers.
+CAP_N = len(PRODUCTS_L)                      # 9
+N_CAP = CAP_N * (1 + len(LAGS_DEEP)) + CAP_N  # now + 4 lags + regen = 54
+OFF_CAP = N_PAIR_TB                          # 123
+N_PAIR_TC = N_PAIR_TB + N_CAP                # 177
+
+CAP_NOW = (OFF_CAP, OFF_CAP + CAP_N)
+CAP_LAGS = (CAP_NOW[1], CAP_NOW[1] + CAP_N * len(LAGS_DEEP))
+CAP_REGEN = (CAP_LAGS[1], CAP_LAGS[1] + CAP_N)
+
+
+def cap_planes(cap_now, cap_lags, regen, n=10):
+    """-> (N_CAP, n, n) broadcast. Values are per-product, already scaled.
+
+    cap_now   (9,)            units sellable above the floor, today
+    cap_lags  (len(LAGS_DEEP), 9)  the same at each lag, oldest-last
+    regen     (9,)            daily drain, the rate capacity comes back
+    """
+    out = np.zeros((N_CAP, n, n), dtype="float32")
+    v = np.concatenate([np.asarray(cap_now, "float32").ravel(),
+                        np.asarray(cap_lags, "float32").ravel(),
+                        np.asarray(regen, "float32").ravel()])
+    out[:len(v)] = v[:, None, None]
+    return out
+
+
 def board_pair_temporal_both(obs, seat=0, prev_mid=None, hist=None):
     """Both temporal stacks appended, so one build serves both arms.
 
@@ -503,4 +557,24 @@ def board_pair_temporal_both(obs, seat=0, prev_mid=None, hist=None):
     out[OFF_PLATEAU:OFF_CROP] = temporal_opp(h, seat, n)
     out[OFF_CROP:] = temporal_opp(h, seat, n, planes=HIST_PLANES,
                                   lags=LAGS_DEEP)
+    return out
+
+
+def board_pair_all(obs, seat=0, prev_mid=None, hist=None,
+                   cap_now=None, cap_lags=None, regen=None):
+    """board_pair_temporal_both plus the market-capacity block -> 177 channels.
+
+    Capacity arrives precomputed (see cap_planes). Omitting it leaves those
+    planes zero, which is what an encoder with no market view has always had,
+    so the capacity arms degrade to the board arms rather than misbehaving.
+    """
+    base = board_pair_temporal_both(obs, seat, prev_mid=prev_mid, hist=hist)
+    n = base.shape[-1]
+    out = np.zeros((N_PAIR_TC, n, n), dtype="float32")
+    out[:N_PAIR_TB] = base
+    if cap_now is not None:
+        out[OFF_CAP:] = cap_planes(
+            cap_now,
+            np.zeros((len(LAGS_DEEP), CAP_N)) if cap_lags is None else cap_lags,
+            np.zeros(CAP_N) if regen is None else regen, n)
     return out

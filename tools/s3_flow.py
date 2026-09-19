@@ -13,8 +13,19 @@ So S3 predicts the oracle's own quantity and is scored on the same axis.
     KILL unless the model closes at least HALF of 13.0 -> 10.4, i.e. reaches
     11.7 at k=5. Below that it cannot matter downstream.
 
-Targets: 9 products x H days of net flow (sells minus buys), z-scored per
-output. Auxiliary: the opponent's per-tile crop occupancy at day t+H -- dense
+Targets: 9 products x H days, z-scored per output. `F` is net flow as before;
+`C` and `B` are the gross SELL and BUY series, kept apart because netting them
+erased 18% of all market commits (see price_forecast.SIDES). The buy series is
+live for WHEAT and FERTILIZER only -- the other seven products are never
+bought -- so a buy head must be read per product and dead columns excluded
+from any headline mean.
+
+All three come from the replay oracle and none is observable at play time.
+They are PRIVILEGED TARGETS: the model is trained to predict them from public
+state and at inference simply runs that prediction, so nothing has to be
+switched off.
+
+Auxiliary: the opponent's per-tile crop occupancy at day t+H -- dense
 spatial supervision, 100 gradients a sample instead of 90 scalars.
 
     PYTHONPATH=. uv run python tools/s3_flow.py --build --n 400
@@ -38,6 +49,25 @@ MODEL = os.path.join(REPO, "rl/datasets/boardnet_flow.npz")
 PRODUCTS = ["WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON",
             "EGG", "MILK", "WOOL", "FERTILIZER"]
 H = 10                      # days of flow predicted
+
+# Capacity is measured down to 60% of base, matching market_capacity.py.
+#
+# Scaling is LOG, not linear, and the smoke test is why. Capacity spans 33
+# units (milk) to unbounded (wheat, egg) in the same frame, so a linear scale
+# put seven products inside [0.03, 0.2] and pinned two at the ceiling with
+# zero variance -- six of the nine channels were numerically dead.
+#
+# The saturation is real rather than an artifact: units_sellable_above walks
+# one unit at a time and wheat's price never falls below 60% of base at any
+# inventory, so its capacity is genuinely infinite. That is the annuity/trap
+# split the market-structure work already found. CAP_MAX is therefore a
+# SEARCH ceiling, not a clamp on a real number -- hitting it means unbounded,
+# and log1p maps that to 1.0 while giving the crowded low end real
+# resolution. Kept at 2000 because the search is O(cap) and an unbounded
+# product runs it to completion on every call.
+CAP_FRAC = 0.6
+CAP_MAX = 2000
+REGEN_SCALE = 20.0
 EVAL_K = (1, 3, 5, 10)
 
 
@@ -66,7 +96,6 @@ def job(path):
     import tools.fast_env as fast_env
     fast_env.install()
     from kaggle_environments import make
-    from tools.board_tensor import board_pair_temporal_both
     import tools.price_forecast as pf
 
     s = json.load(open(path))
@@ -89,22 +118,53 @@ def job(path):
         env.step([a0(o), a1(env.state[1].observation)])
 
     flow = pf.FLOW.get(1, {})
-    T, F, A, D, S = [], [], [], [], []
+    sides = pf.SIDES.get(1, {})
+
+    # --- market capacity per product per dawn, the L2 sell-timing input ----
+    # Exact, not estimated: units sellable before price falls below the floor.
+    from kagent import econ
+    from kaggle_environments.envs.kaggriculture.kaggriculture import MARKET_PARAMS
+    from tools.market_clock import daily_drain
+    from tools.board_tensor import LAGS_DEEP, board_pair_all
+    floors = {p: max(1, int(CAP_FRAC * MARKET_PARAMS[p]["base"]))
+              for p in PRODUCTS}
+    lg = np.log1p(CAP_MAX)
+    capday = {}
+    for d, o in dawn.items():
+        inv = o["market"]["inventory"]
+        capday[d] = np.log1p(np.asarray(
+            [econ.units_sellable_above(p, inv[p], floors[p], cap=CAP_MAX)
+             for p in PRODUCTS], dtype="float32")) / lg
+    last = dawn[max(dawn)]
+    regen = np.asarray([daily_drain(last["town"]["unlocked_shops"], p)
+                        for p in PRODUCTS], dtype="float32") / REGEN_SCALE
+
+    T, F, A, D, S, C, B = [], [], [], [], [], [], []
     for day in sorted(dawn):
         if day + H not in dawn:
             continue
         # most-recent-first list of PAST dawns, for the temporal opponent stack
         past = [dawn[d] for d in range(day - 1, -1, -1) if d in dawn]
-        T.append(board_pair_temporal_both(dawn[day], 0,
-                                          prev_mid=mid.get(day - 1),
-                                          hist=past))
+        # capacity at each lag, clamped to day 0 rather than zero-padded --
+        # same convention as temporal_opp, so early game reads "unchanged"
+        cl = np.stack([capday[max(0, day - L)] for L in LAGS_DEEP])
+        T.append(board_pair_all(dawn[day], 0, prev_mid=mid.get(day - 1),
+                                hist=past, cap_now=capday[day],
+                                cap_lags=cl, regen=regen))
         S.append(oshed.get(day, [0.0] * len(PRODUCTS)))
         f = np.zeros((H, len(PRODUCTS)), dtype="float32")
+        b = np.zeros((H, len(PRODUCTS)), dtype="float32")
+        c = np.zeros((H, len(PRODUCTS)), dtype="float32")
         for j in range(1, H + 1):
             d = flow.get(day + j, {})
+            e = sides.get(day + j, {})
             for pi, p in enumerate(PRODUCTS):
-                f[j - 1, pi] = d.get(p, 0)
+                f[j - 1, pi] = d.get(p, 0)                    # net, as before
+                c[j - 1, pi] = e.get(p, {}).get("sell", 0)    # gross sells
+                b[j - 1, pi] = e.get(p, {}).get("buy", 0)     # gross buys
         F.append(f.reshape(-1))
+        C.append(c.reshape(-1))
+        B.append(b.reshape(-1))
         fut = dawn[day + H]["farms"][1]["tiles"]
         A.append(np.asarray(
             [[1.0 if (isinstance(t, dict) and t.get("kind") == "PLANT") else 0.0
@@ -113,7 +173,7 @@ def job(path):
     if not T:
         return None
     return (np.stack(T), np.stack(F), np.stack(A), np.asarray(D),
-            np.asarray(S, dtype="float32"))
+            np.asarray(S, dtype="float32"), np.stack(C), np.stack(B))
 
 
 def build(args):
@@ -125,11 +185,33 @@ def build(args):
     F = np.concatenate([o[1] for o in out])
     A = np.concatenate([o[2] for o in out])
     S = np.concatenate([o[4] for o in out])
+    C = np.concatenate([o[5] for o in out])
+    B = np.concatenate([o[6] for o in out])
     G = np.concatenate([np.full(len(o[0]), i) for i, o in enumerate(out)])
-    np.savez_compressed(DATA, T=T, F=F, A=A, G=G, S=S)
+    dest = args.data_out or DATA
+    np.savez_compressed(dest, T=T, F=F, A=A, G=G, S=S, C=C, B=B)
     print(f"{len(T):,} samples from {len(out)} games   tensor {T.shape[1:]}   "
           f"flow {F.shape[1]} outputs ({H} days x {len(PRODUCTS)} products)   "
-          f"-> {DATA} ({os.path.getsize(DATA)/1e6:.0f} MB)")
+          f"-> {dest} ({os.path.getsize(dest)/1e6:.0f} MB)")
+
+    # Which BUY columns carry any signal at all. Seven of nine products had
+    # exactly zero buys in the 6-game probe; at this scale that claim is
+    # either confirmed or corrected, and a dead column must never be averaged
+    # into a headline R2 as though the model had predicted it.
+    nb = B.reshape(len(B), H, len(PRODUCTS)).sum((0, 1))
+    ns = C.reshape(len(C), H, len(PRODUCTS)).sum((0, 1))
+    print(f"\n    {'product':<12}{'gross sells':>13}{'gross buys':>12}"
+          f"{'net':>10}{'buy share':>11}{'buy head':>11}")
+    live = []
+    for pi, p in enumerate(PRODUCTS):
+        sh = nb[pi] / max(1.0, ns[pi] + nb[pi])
+        if nb[pi] > 0:
+            live.append(p)
+        print(f"    {p:<12}{ns[pi]:>13,.0f}{nb[pi]:>12,.0f}"
+              f"{ns[pi]-nb[pi]:>10,.0f}{100*sh:>10.1f}%"
+              f"{('LIVE' if nb[pi] > 0 else 'dead'):>11}")
+    print(f"\n    buy head is live for {len(live)}/{len(PRODUCTS)} products: "
+          f"{', '.join(live) if live else 'NONE'}")
 
 
 def train(args):
@@ -347,7 +429,11 @@ def main():
     ap.add_argument("--ablate", action="store_true")
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1])
     ap.add_argument("--arm", default="")
-    ap.add_argument("--out", default="")
+    ap.add_argument("--out", default="",
+                    help="model destination for --train")
+    ap.add_argument("--data-out", default="",
+                    help="dataset destination for --build; kept separate from --out so\n"
+                         "--build --train cannot write both to one path")
     ap.add_argument("--n", type=int, default=400)
     ap.add_argument("--skip", type=int, default=400)
     ap.add_argument("--min-rating", type=float, default=2800.0)
