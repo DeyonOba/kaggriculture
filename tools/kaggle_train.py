@@ -123,12 +123,19 @@ def main():
     ap.add_argument("--procs", type=int, default=4)
     ap.add_argument("--harvest-budget-s", type=int, default=9000)
     ap.add_argument("--skip-harvest", action="store_true")
+    ap.add_argument("--skip-train", action="store_true",
+                    help="harvest only: convert the mounted day to\n                          action-only sessions and stop. One day per\n                          kernel, because Kaggle silently dropped 64 GB\n                          of inputs when three were attached.")
     args = ap.parse_args()
 
     os.makedirs(WORK, exist_ok=True)
     if not args.skip_harvest:
         print("== harvest ==", flush=True)
         harvest(args.harvest_budget_s)
+
+    if args.skip_train:
+        for f in sorted(glob.glob(os.path.join(WORK, "*"))):
+            print(f"  output: {f}  {os.path.getsize(f)/1e6:.1f} MB", flush=True)
+        return
 
     print("\n== index ==", flush=True)
     from tools.opp_coupling import build_index

@@ -378,9 +378,75 @@ def arm_channels(name):
     C = B + hands                                           # 66
     D = C + mid                                             # 74
     E = D + shed                                            # 83, == v2
+    T_ARM = E + list(range(N_FULL, N_FULL + N_TEMPORAL))   # E + opponent lags
     return {"A_v1_72": A, "B_drop_dead_64": B, "C_hands_66": C,
-            "D_midday_74": D, "E_full_83": E, "F_shed_aux_83": E}[name]
+            "D_midday_74": D, "E_full_83": E, "F_shed_aux_83": E,
+            "T_temporal_95": T_ARM}[name]
 
 
 ARMS = ["A_v1_72", "B_drop_dead_64", "C_hands_66", "D_midday_74",
-        "E_full_83", "F_shed_aux_83"]
+        "E_full_83", "F_shed_aux_83", "T_temporal_95"]
+
+
+# ---------------------------------------------------------------------------
+# TEMPORAL opponent board. `board_pair_full` gives the opponent as ONE frame
+# plus four planes of yesterday noon, and I justified that with the Markov
+# result -- which was measured on PRICE, where the engine integrates history
+# into the observation (consecutive_unwatered, cumulative market inventory).
+#
+# Opponent SUPPLY is a different target class and history measurably helps it.
+# tools/target_horizon.py, predicting their standing counts 10 days out:
+#
+#     STRAWBERRY  0.56 -> 0.87     WHEAT   0.08 -> -0.15
+#     GOOSE       0.54 -> 0.90     MELON   0.59 ->  0.07
+#     SHEEP       0.44 -> 0.70     CARROT  0.38 ->  0.20
+#     COW         0.39 -> 0.59
+#
+# History helps the PLATEAU quantities (strawberry, the animals) that ramp to
+# a target and hold, and HURTS the rotated ones (wheat, melon, carrot) whose
+# standing count oscillates. So the temporal stack carries only the plateau
+# planes, not the whole board -- feeding the rotated ones back in is the part
+# measured to be harmful.
+#
+# Lag spacing is geometric (1, 3, 10 days) rather than 1..10: the gain at H=10
+# came from FIVE-to-TEN days back, and ten consecutive frames would be ten
+# nearly-identical boards at 21 channels each.
+# ---------------------------------------------------------------------------
+
+PLATEAU_PLANES = [3, 10, 11, 12]     # strawberry one-hot, goose, cow, sheep
+LAGS = (1, 3, 10)
+N_TEMPORAL = len(PLATEAU_PLANES) * len(LAGS)
+
+
+def temporal_opp(hist, seat, n=10):
+    """-> (N_TEMPORAL, n, n) from `hist`, oldest-last list of past dawn obs.
+
+    hist[0] is the most recent PAST day; a lag beyond what we hold repeats the
+    oldest available frame rather than zero-padding, so early game looks like
+    "nothing has changed yet" instead of "the board was empty".
+    """
+    out = np.zeros((N_TEMPORAL, n, n), dtype="float32")
+    if not hist:
+        return out
+    for li, lag in enumerate(LAGS):
+        o = hist[min(lag - 1, len(hist) - 1)]
+        try:
+            b = board_tensor(o, 1 - seat)
+        except Exception:
+            continue
+        for pi, ch in enumerate(PLATEAU_PLANES):
+            out[li * len(PLATEAU_PLANES) + pi] = b[ch]
+    return out
+
+
+N_PAIR_T = N_FULL + N_TEMPORAL
+
+
+def board_pair_temporal(obs, seat=0, prev_mid=None, hist=None):
+    """board_pair_full plus the opponent's plateau planes at lags 1, 3, 10."""
+    base = board_pair_full(obs, seat, prev_mid=prev_mid)
+    n = base.shape[-1]
+    out = np.zeros((N_PAIR_T, n, n), dtype="float32")
+    out[:N_FULL] = base
+    out[N_FULL:] = temporal_opp(hist or [], seat, n)
+    return out

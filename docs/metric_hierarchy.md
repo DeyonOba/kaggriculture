@@ -61,7 +61,44 @@ Untested.
 | **good** | ratio > 1 on uncrashable products; selling before the glut day on crashable ones |
 | **bad** | realised ratio below the recorded band for that product |
 | **ceiling** | the floor binds on **2.5%** of sizing calls; milk + wool withhold **47 units a season** |
-| **verdict** | **essentially closed.** `premium_scale` has 4,270 bandit samples; opponent-stock floors gated +$41 on 1 discordant world |
+| **verdict** | **CLOSED, and not for the reason first given.** The JOINT test (capacity-rationed floors) settles it |
+
+**The joint test, 2026-09-19.** The first closure was marginal ("the floor
+binds on 2.5% of calls"), which is exactly the one-factor-at-a-time reasoning
+the LP experiment was built to avoid. `tools/make_capfloor_variant.py` moves
+the floor with remaining absorption capacity, its regeneration rate, our stock
+and their visible stock TOGETHER:
+
+    r-mrg100   +$3,079  z 2.93  win 0.337  discordant 18/23
+    c-cap50    +$3,147  z 2.99  win 0.337  discordant 18/23
+    c-cap100   +$3,103  z 2.96  win 0.337  discordant 18/23
+
+**Identical discordant worlds across all three arms.** The floor changes on
+100% of call sites with mean |delta| 57 and not one world's outcome flips.
+
+**The floor is not a lever at all.** `units_sellable_above(item, inv, floor,
+cap=stock)` is bounded by STOCK, and we never hold enough of anything for
+`floor` to bind. Every floor experiment ever run here -- `premium_scale` over
+4,270 samples, opponent-stock floors, the glut gate, this -- tuned a parameter
+outside the binding constraint. **Sell timing is controlled by PRODUCTION
+(L4/L5), not by price thresholds.**
+
+### Absorption capacity per product (tools/market_capacity.py, 40 games)
+
+The quantity every sell rule was missing. Capacity = units sellable above 60%
+of base; season budget = capacity at day 0 plus 30 days of regeneration.
+
+| product | cap d0 | cap d20 | regen/day | exhausts | season utilisation |
+| --- | --- | --- | --- | --- | --- |
+| FERTILIZER | 203 | 0 | 0.0 | d14.9 | **209% — oversold 2x** |
+| MELON | 101 | 1 | 1.0 | d16.1 | **116% — oversold** |
+| WOOL | 38 | 19 | 12.7 | d17.7 | 68% contested |
+| MILK | 31 | 6 | 20.2 | d16.6 | 57% contested |
+| STRAWBERRY | 26 | 71 | 26.1 | d24.8 | 50% |
+| CARROT | 158 | **279** | 17.2 | never | 33% — capacity GROWS |
+| TOMATO | 93 | **196** | 12.6 | never | 22% — capacity GROWS |
+| WHEAT | 5000 | 5000 | 30.7 | never | 8% |
+| EGG | 5000 | 5000 | 13.2 | never | 3% |
 
 Glut day per product is the one live sub-metric: **fertilizer d2, wool d7,
 melon/milk d11, strawberry d23, and wheat/carrot/tomato/egg never**. Predictable

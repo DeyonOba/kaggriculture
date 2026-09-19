@@ -57,7 +57,7 @@ def job(path):
     import tools.fast_env as fast_env
     fast_env.install()
     from kaggle_environments import make
-    from tools.board_tensor import board_pair_full
+    from tools.board_tensor import board_pair_temporal
     import tools.price_forecast as pf
 
     s = json.load(open(path))
@@ -84,7 +84,10 @@ def job(path):
     for day in sorted(dawn):
         if day + H not in dawn:
             continue
-        T.append(board_pair_full(dawn[day], 0, prev_mid=mid.get(day - 1)))
+        # most-recent-first list of PAST dawns, for the temporal opponent stack
+        past = [dawn[d] for d in range(day - 1, -1, -1) if d in dawn]
+        T.append(board_pair_temporal(dawn[day], 0,
+                                     prev_mid=mid.get(day - 1), hist=past))
         S.append(oshed.get(day, [0.0] * len(PRODUCTS)))
         f = np.zeros((H, len(PRODUCTS)), dtype="float32")
         for j in range(1, H + 1):
