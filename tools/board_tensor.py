@@ -379,13 +379,14 @@ def arm_channels(name):
     D = C + mid                                             # 74
     E = D + shed                                            # 83, == v2
     T_ARM = E + list(range(N_FULL, N_FULL + N_TEMPORAL))   # E + opponent lags
+    T_DEEP = E + list(range(N_FULL, N_FULL + N_TEMPORAL_D))
     return {"A_v1_72": A, "B_drop_dead_64": B, "C_hands_66": C,
             "D_midday_74": D, "E_full_83": E, "F_shed_aux_83": E,
-            "T_temporal_95": T_ARM}[name]
+            "T_temporal_95": T_ARM, "T_crop_103": T_DEEP}[name]
 
 
 ARMS = ["A_v1_72", "B_drop_dead_64", "C_hands_66", "D_midday_74",
-        "E_full_83", "F_shed_aux_83", "T_temporal_95"]
+        "E_full_83", "F_shed_aux_83", "T_temporal_95", "T_crop_103"]
 
 
 # ---------------------------------------------------------------------------
@@ -417,29 +418,54 @@ PLATEAU_PLANES = [3, 10, 11, 12]     # strawberry one-hot, goose, cow, sheep
 LAGS = (1, 3, 10)
 N_TEMPORAL = len(PLATEAU_PLANES) * len(LAGS)
 
+# `tools/k_ablation.py` then measured the SAME question directly -- per-kind
+# R^2 on the opponent's standing count, with and against history, identical
+# window, held out by game -- and came back the other way round:
+#
+#     gain from history, H=5 days:  melon +0.26  wheat +0.17  tomato +0.14
+#                                   strawberry +0.07
+#                                   cow +0.00  sheep +0.01  goose +0.00
+#
+# The animals are already predicted at R^2 0.82-0.94 from the current frame
+# alone, because an animal is bought once and then stands there -- the count
+# IS the forecast, and history has nothing to add. Crops rotate, so the phase
+# of the rotation is only legible over time, and melon (the one crop no shop
+# buys, on a 10-day clock) gains most of all.
+#
+# So the plateau restriction is backwards FOR THIS TARGET. It is not
+# necessarily wrong for the one it was fitted on -- that was BoardNet's price
+# head, a different label -- so both sets stay reachable and the old arm keeps
+# its exact channel list. HIST_PLANES is what the forward model should use.
+HIST_PLANES = [0, 1, 2, 3, 4]        # crop one-hot: wheat carrot tom straw melon
+LAGS_DEEP = (1, 3, 5, 10)            # measured best; adding d5 is worth +0.024
+N_TEMPORAL_D = len(HIST_PLANES) * len(LAGS_DEEP)
 
-def temporal_opp(hist, seat, n=10):
-    """-> (N_TEMPORAL, n, n) from `hist`, oldest-last list of past dawn obs.
+
+def temporal_opp(hist, seat, n=10, planes=None, lags=None):
+    """-> (len(planes)*len(lags), n, n) from `hist`, oldest-last past dawns.
 
     hist[0] is the most recent PAST day; a lag beyond what we hold repeats the
     oldest available frame rather than zero-padding, so early game looks like
     "nothing has changed yet" instead of "the board was empty".
     """
-    out = np.zeros((N_TEMPORAL, n, n), dtype="float32")
+    planes = PLATEAU_PLANES if planes is None else planes
+    lags = LAGS if lags is None else lags
+    out = np.zeros((len(planes) * len(lags), n, n), dtype="float32")
     if not hist:
         return out
-    for li, lag in enumerate(LAGS):
+    for li, lag in enumerate(lags):
         o = hist[min(lag - 1, len(hist) - 1)]
         try:
             b = board_tensor(o, 1 - seat)
         except Exception:
             continue
-        for pi, ch in enumerate(PLATEAU_PLANES):
-            out[li * len(PLATEAU_PLANES) + pi] = b[ch]
+        for pi, ch in enumerate(planes):
+            out[li * len(planes) + pi] = b[ch]
     return out
 
 
 N_PAIR_T = N_FULL + N_TEMPORAL
+N_PAIR_TD = N_FULL + N_TEMPORAL_D
 
 
 def board_pair_temporal(obs, seat=0, prev_mid=None, hist=None):
@@ -449,4 +475,15 @@ def board_pair_temporal(obs, seat=0, prev_mid=None, hist=None):
     out = np.zeros((N_PAIR_T, n, n), dtype="float32")
     out[:N_FULL] = base
     out[N_FULL:] = temporal_opp(hist or [], seat, n)
+    return out
+
+
+def board_pair_temporal_deep(obs, seat=0, prev_mid=None, hist=None):
+    """board_pair_full plus the opponent's CROP planes at lags 1, 3, 5, 10."""
+    base = board_pair_full(obs, seat, prev_mid=prev_mid)
+    n = base.shape[-1]
+    out = np.zeros((N_PAIR_TD, n, n), dtype="float32")
+    out[:N_FULL] = base
+    out[N_FULL:] = temporal_opp(hist or [], seat, n,
+                                planes=HIST_PLANES, lags=LAGS_DEEP)
     return out
