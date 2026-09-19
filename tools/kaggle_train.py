@@ -32,36 +32,45 @@ SESS = os.path.join(REPO, "rl/datasets/sessions")
 
 
 def convert(path):
-    """One full replay -> our session dict, or None."""
+    """One daily-dump replay -> our action-only session dict, or None.
+
+    Daily dumps differ from the older session format: `id` is a UUID and
+    `configuration.seed` is null. The real identifiers live under `info`
+    (`EpisodeId`, `seed`), and `rewards` carries the finals. Reading the old
+    fields silently returns None for every file, which is what made the first
+    local harvest convert 0 of 6.
+    """
     try:
         with open(path) as f:
             d = json.load(f)
     except Exception:
         return None
+    info = d.get("info") or {}
     steps = d.get("steps") or []
     if not steps or len(steps[0]) < 2:
+        return None
+    ep = info.get("EpisodeId") or d.get("id")
+    seed = info.get("seed")
+    if seed is None:
+        seed = (d.get("configuration") or {}).get("seed")
+    if seed is None or ep is None:
         return None
     acts = [[], []]
     for st in steps:
         for i in (0, 1):
             acts[i].append(st[i].get("action"))
-    info = d.get("info") or {}
-    seed = (d.get("configuration") or {}).get("seed")
-    if seed is None:
-        return None
     return {
-        "episode": d.get("id"),
+        "episode": ep,
         "seed": seed,
         "teams": info.get("TeamNames"),
-        "finals": [s.get("reward") for s in steps[-1][:2]],
+        "finals": d.get("rewards") or [s.get("reward") for s in steps[-1][:2]],
         "shops": ((steps[-1][0].get("observation") or {}).get("town") or {})
                  .get("unlocked_shops"),
         "actions": acts,
-        "module_version": d.get("version"),
+        "module_version": d.get("module_version") or d.get("version"),
         "scores": info.get("LiveScores") or info.get("TeamScores"),
         "score_source": ["daily-dump", "daily-dump"],
     }
-
 
 def harvest(budget_s):
     """Convert every mounted daily dataset into rl/datasets/sessions/."""

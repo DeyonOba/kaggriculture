@@ -52,6 +52,16 @@ HORIZONS = (1, 3, 5, 10)
 # the model
 # --------------------------------------------------------------------------
 
+
+def _rating_ok(v, floor):
+    """Sessions from the DAILY DUMPS carry finals but no scores, so a strict
+    `scores is not None` filter discards every harvested game. Accept them
+    whenever no rating floor is requested."""
+    sc = v.get("scores")
+    if sc and all(x is not None for x in sc):
+        return min(sc) >= floor
+    return floor <= 0
+
 def shop_drain(shops, product, SHOPS, TOWN):
     per_event = sum((2 if len(SHOPS[s]) == 1 else 1)
                     for s in shops if product in SHOPS[s])
@@ -425,8 +435,7 @@ def main():
     import random
     idx = json.load(open(INDEX))
     paths = [v["path"] for v in idx.values()
-             if v["scores"] and all(x is not None for x in v["scores"])
-             and min(v["scores"]) >= args.min_rating]
+             if _rating_ok(v, args.min_rating)]
     random.Random(args.seed).shuffle(paths)
     paths = paths[: args.n]
     print(f"{len(paths)} sessions, both seats >= {args.min_rating:.0f}\n", flush=True)

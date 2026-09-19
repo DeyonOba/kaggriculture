@@ -33,6 +33,16 @@ KINDS = ["WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON",
          "COW", "SHEEP", "GOOSE"]
 
 
+
+def _rating_ok(v, floor):
+    """Sessions from the DAILY DUMPS carry finals but no scores, so a strict
+    `scores is not None` filter discards every harvested game. Accept them
+    whenever no rating floor is requested."""
+    sc = v.get("scores")
+    if sc and all(x is not None for x in sc):
+        return min(sc) >= floor
+    return floor <= 0
+
 def _script(actions):
     st = {"t": 0}
 
@@ -82,8 +92,7 @@ def build(args):
     import random
     idx = json.load(open(INDEX))
     paths = [v["path"] for v in idx.values()
-             if v["scores"] and all(x is not None for x in v["scores"])
-             and min(v["scores"]) >= args.min_rating]
+             if _rating_ok(v, args.min_rating)]
     random.Random(args.seed).shuffle(paths)
     paths = paths[: args.n]
     print(f"replaying {len(paths)} sessions rated >= {args.min_rating:.0f} ...",

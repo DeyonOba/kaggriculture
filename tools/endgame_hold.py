@@ -41,6 +41,16 @@ PRODUCTS = ["WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON",
             "EGG", "MILK", "WOOL", "FERTILIZER"]
 
 
+
+def _rating_ok(v, floor):
+    """Sessions from the DAILY DUMPS carry finals but no scores, so a strict
+    `scores is not None` filter discards every harvested game. Accept them
+    whenever no rating floor is requested."""
+    sc = v.get("scores")
+    if sc and all(x is not None for x in sc):
+        return min(sc) >= floor
+    return floor <= 0
+
 def job(path):
     sys.path.insert(0, REPO)
     import tools.fast_env as fast_env
@@ -83,8 +93,7 @@ def main():
     import random
     idx = json.load(open(INDEX))
     rows0 = [v for v in idx.values()
-             if v["scores"] and all(x is not None for x in v["scores"])
-             and min(v["scores"]) >= args.min_rating]
+             if _rating_ok(v, args.min_rating)]
     random.Random(args.seed).shuffle(rows0)
     paths = [v["path"] for v in rows0[: args.n]]
     print(f"replaying {len(paths)} sessions ...\n", flush=True)

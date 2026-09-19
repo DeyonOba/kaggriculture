@@ -41,12 +41,21 @@ H = 10                      # days of flow predicted
 EVAL_K = (1, 3, 5, 10)
 
 
+
+def _rating_ok(v, floor):
+    """Sessions from the DAILY DUMPS carry finals but no scores, so a strict
+    `scores is not None` filter discards every harvested game. Accept them
+    whenever no rating floor is requested."""
+    sc = v.get("scores")
+    if sc and all(x is not None for x in sc):
+        return min(sc) >= floor
+    return floor <= 0
+
 def _pick(n, min_rating, seed, skip=0):
     import random
     idx = json.load(open(INDEX))
     paths = [v["path"] for v in idx.values()
-             if v["scores"] and all(x is not None for x in v["scores"])
-             and min(v["scores"]) >= min_rating]
+             if _rating_ok(v, min_rating)]
     random.Random(seed).shuffle(paths)
     return paths[skip: skip + n]
 
