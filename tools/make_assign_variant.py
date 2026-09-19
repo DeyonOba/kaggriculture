@@ -14,7 +14,16 @@ conflate:
                     null, matching is not the bottleneck and no assignment
                     architecture can help.
 
-    --cost learned  OPTIMAL matching, LEARNED cost -- the exec_bc ranker
+    --cost ptr      POINTER NETWORK: task self-attention, units glimpsing over
+                  the task set, and a compatibility layer emitting per-unit
+                  logits with a learned unit-task distance bias. Unlike the
+                  two below it can represent "unit A should take this BECAUSE
+                  unit B is taking that" -- the joint structure neither a
+                  linear ranker nor Hungarian-on-a-fixed-cost can express.
+                  Trained on M & M & P & Q joint assignments, 59.7% joint
+                  top-1 (24.1% before the distance bias was added).
+
+  --cost learned  OPTIMAL matching, LEARNED cost -- the exec_bc ranker
                     cloned from M & M & P & Q, which predicts their task
                     choice at 69.4% against our rule's 27.9%. If THIS beats
                     the above, the cost function was wrong, which is the only
@@ -124,6 +133,8 @@ def _assign_optimal(view, idxs, zone_tasks, need_tasks, units, claimed,
         for c, t in enumerate(pool):
             if t.need and inv.get(t.need, 0) < 1:
                 continue
+            if _ASSIGN_COST == "ptr":
+                continue            # filled in below, jointly
             if _ASSIGN_COST == "learned":
                 f = _assign_feats(view, t, ux, uy, zone_of, n_zones, i)
                 s = 0.0
@@ -134,6 +145,34 @@ def _assign_optimal(view, idxs, zone_tasks, need_tasks, units, claimed,
                 d = abs(ux - t.x) + abs(uy - t.y)
                 urgent = 0 if (late and t.pri == P_SURVIVAL) else 1
                 C[r, c] = urgent * 1000.0 + d * 10.0 + t.pri
+    if _ASSIGN_COST == "ptr":
+        try:
+            nu, nt = len(idxs), len(pool)
+            Uf = _np.zeros((nu, 6), "float32")
+            Tf = _np.zeros((nt, len(_BCF)), "float32")
+            Df = _np.zeros((nu, nt), "float32")
+            rx, ry = units[idxs[0]]
+            for c, t in enumerate(pool):
+                f = _assign_feats(view, t, rx, ry, zone_of, n_zones, idxs[0])
+                Tf[c] = [f.get(nm, 0.0) for nm in _BCF]
+            for r, i in enumerate(idxs):
+                ux, uy = units[i]
+                inv = view.unit_inv(i)
+                Uf[r] = [ux / 10.0, uy / 10.0,
+                         min(sum(inv.values()), 12) / 12.0,
+                         (i % max(1, n_zones)) / max(1, n_zones),
+                         view.hour / 24.0, view.day / 29.0]
+                for c, t in enumerate(pool):
+                    Df[r, c] = (abs(ux - t.x) + abs(uy - t.y)) / 10.0
+            lg = _ptr_logits(Uf, Tf, Df, _np.ones(nt, bool))
+            for r, i in enumerate(idxs):
+                inv = view.unit_inv(i)
+                for c, t in enumerate(pool):
+                    if t.need and inv.get(t.need, 0) < 1:
+                        continue
+                    C[r, c] = -float(lg[r, c])
+        except Exception:
+            return []
     rows, cols = linear_sum_assignment(C)
     return [(idxs[r], pool[c]) for r, c in zip(rows, cols) if C[r, c] < BIG]
 
@@ -144,18 +183,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="champ-h8")
     ap.add_argument("--name", required=True)
-    ap.add_argument("--cost", choices=["dist", "learned"], required=True)
+    ap.add_argument("--cost", choices=["dist", "learned", "ptr"], required=True)
+    ap.add_argument("--ptr", default="", help="module from export_ptrnet.py")
     args = ap.parse_args()
 
     d = json.load(open(RANKER))
     src = open(os.path.join(REPO, "arena", "agents", args.base, "main.py")).read()
     head, mods, tail = _split_bundle(src)
+    ptr_src = open(args.ptr).read() if args.cost == "ptr" else ""
     out, done = [], False
     for mod, text in mods:
         if mod == "scheduler":
             if ANCHOR not in text:
                 raise SystemExit("pass-1 anchor not found in scheduler")
-            text = (GLUE.replace("__COST__", args.cost)
+            text = (ptr_src + GLUE.replace("__COST__", args.cost)
                         .replace("__BCW__", repr(d["w"]))
                         .replace("__BCF__", repr(d["features"]))
                     + text.replace(ANCHOR, REPL, 1))
