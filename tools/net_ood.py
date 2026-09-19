@@ -57,7 +57,8 @@ def job(spec):
         ANIMALS, CROPS, PRODUCTS as ENGP, SHOPS, TOWN_CENTER_PRODUCTS,
         market_price)
     import tools.price_forecast as pf
-    from tools.board_tensor import board_pair_full, arm_channels
+    from tools.board_tensor import arm_channels
+    from tools.s3_flow import cap_series, encode_day
     from tools.boardnet import load, predict
     K = {"SHOPS": SHOPS, "TOWN": TOWN_CENTER_PRODUCTS, "CROPS": CROPS,
          "ANIMALS": ANIMALS, "PRODUCTS": ENGP, "market_price": market_price}
@@ -92,6 +93,7 @@ def job(spec):
             mid[o["step"] // 24] = o
         env.step([a0(o), a1(env.state[1].observation)])
     flow = pf.FLOW.get(1, {})
+    capday, regen = cap_series(dawn)
 
     err = {m: {k: [] for k in EVAL_K} for m in ("board", "model", "oracle")}
     for day in sorted(dawn):
@@ -100,7 +102,10 @@ def job(spec):
         truth = {p: [dawn[day + k]["market"]["prices"][p] for k in range(H + 1)]
                  for p in ENGP}
         oracle = [{}] + [dict(flow.get(day + j, {})) for j in range(1, H + 1)]
-        t = board_pair_full(dawn[day], 0, prev_mid=mid.get(day - 1))
+        # encode_day, not board_pair_full: the latter stops at 91
+        # channels, so every temporal or capacity arm indexed past its
+        # end. Same bug that made s3_flow --eval unable to score them.
+        t = encode_day(dawn, mid, day, capday, regen)
         x = np.ascontiguousarray(t[cols], dtype="float32")[None]
         q = predict(net, stats, x)[0].reshape(H, len(PRODUCTS))
         mdl = [{}] + [{p: float(q[j - 1, i]) for i, p in enumerate(PRODUCTS)}
