@@ -76,7 +76,14 @@ melon/milk d11, strawberry d23, and wheat/carrot/tomato/egg never**. Predictable
 | **bad** | SELL suppressed while HIRE fills slots |
 | **measured** | **21 saturated turns/game, 46.8 SELLs suppressed, $29,009 at then-current prices**; HIRE issues 268 orders vs SELL's 171 |
 | **caveat** | end-of-bell stranding is only **$55/seat**, so this is a DELAY not a loss; the real cost is price drift over the delay |
-| **status** | **LIVE.** Global hire caps gated −$7,234/−$39,678, but preferring SELL over HIRE *only on saturated turns* is untested |
+| **status** | **CLOSED, 2026-09-19.** Reserving SELL slots only on saturated turns gates below baseline at every dose, monotone: o-res1 −$1,108, o-res2 −$377, o-res3 −$6,914, o-res4 −$15,822 against r-mrg100 |
+
+The mechanism worked — `o-res2` cut suppression 87% ($31,104 → $3,936) with HIRE
+unchanged at 269 — and recovering the sells made the agent WORSE. That confirms
+the caveat: $29,009 bounded a DELAY, not a loss. Everything sells eventually
+($55/seat stranded), so recovery buys one turn of price drift and costs the
+deferred hires. **Hiring beats selling for a market slot at every measurable
+dose**, reproducing m-hire5/m-hire3 (−$7,234/−$39,678) at smaller doses.
 
 ## L4 — INVESTMENT (land, livestock, crops)
 
