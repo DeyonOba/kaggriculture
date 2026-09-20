@@ -59,6 +59,20 @@ CRASHY = {p for p, m in K.MARKET_PARAMS.items() if m["above_target"] > 1.0}
 SAFE = {p for p, m in K.MARKET_PARAMS.items() if m["above_func"] == "log"}
 STRUCT_COST = {"COOP": 0, "PASTURE": 0}   # build actions cost a turn, not cash
 
+
+def _sat(x, scale):
+    """Monotone squash to [0,1) that NEVER pins.
+
+    `min(x, C) / C` looks bounded and harmless and is neither: it discards
+    every distinction above C. Measured on the first propagation run, 13 of
+    48 features sat at their cap for >30% of samples and E:invested was
+    pinned 71% of the time, driving its correlation to exactly 0.000 and
+    making it impossible to test the recorded "invested r=+0.304 at day 10".
+    tanh keeps the ordering everywhere and still bounds the range.
+    """
+    return float(np.tanh(max(0.0, float(x)) / float(scale)))
+
+
 NAMES = [
     "invested", "invested_lead", "money", "money_lead", "invest_over_money",
     "occ_all", "occ_q0", "occ_q1", "occ_q2", "occ_q3",
@@ -106,9 +120,9 @@ def features(obs, seat, private=None):
 
     inv_me, inv_op = invested_of(f), invested_of(opp)
     money, omoney = float(f["money"]), float(opp["money"])
-    v[ix["invested"]] = min(inv_me, 6000) / 6000.0
+    v[ix["invested"]] = _sat(inv_me, 6000)
     v[ix["invested_lead"]] = np.tanh((inv_me - inv_op) / 2000.0)
-    v[ix["money"]] = min(money, 30000) / 30000.0
+    v[ix["money"]] = _sat(money, 30000)
     v[ix["money_lead"]] = np.tanh((money - omoney) / 5000.0)
     v[ix["invest_over_money"]] = min(inv_me / max(money + inv_me, 1.0), 1.0)
 
@@ -184,39 +198,38 @@ def features(obs, seat, private=None):
     v[ix["newest_quad_occ"]] = filled[newest] / max(unlocked[newest], 1)
 
     # ---- timing. An action is worth 13x more on day 3 than day 27.
-    v[ix["mean_days_to_yield"]] = (min(float(np.mean(days_to)), 12) / 12.0
+    v[ix["mean_days_to_yield"]] = (_sat(float(np.mean(days_to)), 12)
                                    if days_to else 0.0)
     ncommit = max(len(days_to), 1)
     v[ix["frac_yielding"]] = yielding / ncommit
     v[ix["season_left"]] = max(0.0, (30 - day)) / 30.0
-    v[ix["pending_yield"]] = min(pending, 40) / 40.0
+    v[ix["pending_yield"]] = _sat(pending, 40)
 
     v[ix["crash_frac"]] = crashy / ncommit
     v[ix["safe_frac"]] = safe / ncommit
-    v[ix["melon_tiles"]] = min(melon, 25) / 25.0
-    v[ix["livestock_tiles"]] = min(live, 25) / 25.0
+    v[ix["melon_tiles"]] = _sat(melon, 25)
+    v[ix["livestock_tiles"]] = _sat(live, 25)
 
     # ---- labour. We are labour-SHORT, so hands-per-work is the binding one.
     nh = len(f.get("hands") or [])
-    v[ix["hands"]] = min(nh, 12) / 12.0
-    v[ix["work_pending"]] = min(work, 40) / 40.0
-    v[ix["hands_per_work"]] = min((nh + 1) / max(work, 1), 3.0) / 3.0
+    v[ix["hands"]] = _sat(nh, 12)
+    v[ix["work_pending"]] = _sat(work, 40)
+    v[ix["hands_per_work"]] = _sat((nh + 1) / max(work, 1), 3)
 
-    v[ix["unwatered"]] = min(unwatered, 25) / 25.0
-    v[ix["weeds"]] = min(weeds, 25) / 25.0
+    v[ix["unwatered"]] = _sat(unwatered, 25)
+    v[ix["weeds"]] = _sat(weeds, 25)
     unfed = sum(1 for row in tiles for t in row
                 if isinstance(t, dict) and t.get("animal")
                 and not t.get("fed_today"))
-    v[ix["unfed"]] = min(unfed, 12) / 12.0
+    v[ix["unfed"]] = _sat(unfed, 12)
     v[ix["neglect_rate"]] = (unwatered + unfed) / ncommit
 
     shed = (private.get("shed") or {})
     invs = (private.get("inventories") or [])
     bag = sum(sum(x for x in (b or {}).values() if x > 0) for b in invs)
-    v[ix["bag_units"]] = min(bag, 40) / 40.0
-    v[ix["shed_frac"]] = min(sum(shed.values()), 100) / 100.0
-    v[ix["seeds_held"]] = min(sum((private.get("seeds") or {}).values()),
-                              30) / 30.0
+    v[ix["bag_units"]] = _sat(bag, 40)
+    v[ix["shed_frac"]] = _sat(sum(shed.values()), 100)
+    v[ix["seeds_held"]] = _sat(sum((private.get("seeds") or {}).values()), 30)
     return v
 
 

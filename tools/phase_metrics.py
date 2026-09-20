@@ -44,6 +44,75 @@ CRASHY = {p for p, m in K.MARKET_PARAMS.items() if m["above_target"] > 1.0}
 TPD = 24
 
 
+def _sat(x, scale):
+    """Monotone squash to [0,1) that NEVER pins.
+
+    `min(x, C) / C` looks bounded and harmless and is neither: it discards
+    every distinction above C. Measured on the first propagation run, 13 of
+    48 features sat at their cap for >30% of samples and E:invested was
+    pinned 71% of the time, driving its correlation to exactly 0.000 and
+    making it impossible to test the recorded "invested r=+0.304 at day 10".
+    tanh keeps the ordering everywhere and still bounds the range.
+    """
+    return float(np.tanh(max(0.0, float(x)) / float(scale)))
+
+
+
+# ---------------------------------------------------------------- propagation
+# Measured by tools/propagation.py over 400 games with RANDOMISED openings
+# (12 random legal farmer actions in days 0-8). The randomisation is what
+# makes the early numbers meaningful at all: in champ-h8 self-play the
+# opening never varies, only 4 of 48 features have any cross-game spread at
+# day 2, and every early correlation reads ~0 as an artifact.
+#
+# Full writeup: docs/metric_propagation.md
+#
+#   EARLY  days 2-10   INVESTMENT propagates
+#     melon_tiles +0.379 | invested_lead +0.250 | occ_q0 +0.222
+#     board_roi   +0.214 | pending_yield +0.151 | seeds_held -0.137
+#   CROSSOVER at day 11-12
+#   MID/END days 12-29  MONEY LEAD dominates, 0.552 -> 0.892, nothing close
+#
+# And the fact that matters most: INVESTMENT FLIPS SIGN at day ~8-10.
+#   day     2      4      6      8     10     15     20
+#   r   +0.366 +0.326 +0.366 +0.211 -0.032 -0.232 -0.200
+# Capital on the board is an asset early and a LIABILITY late, because only
+# the bank scores. The same quantity is a virtue on day 4 and a vice on 20.
+PROPAGATORS = {
+    "EARLY": [("E:melon_tiles", 0.379), ("E:invested_lead", 0.250),
+              ("E:occ_q0", 0.222), ("M:board_roi", 0.214),
+              ("E:pending_yield", 0.151), ("E:seeds_held", -0.137)],
+    "MID":   [("E:money_lead", 0.552), ("E:invest_over_money", -0.455),
+              ("E:invested_lead", -0.290)],
+    "END":   [("E:money_lead", 0.804), ("E:seeds_held", -0.340),
+              ("E:invested_lead", -0.307)],
+}
+CROSSOVER_DAY = 11
+
+
+def phase_of(day):
+    """The three phases, split at the MEASURED crossover, not at round numbers."""
+    if day < CROSSOVER_DAY:
+        return "EARLY"
+    return "MID" if day < 20 else "END"
+
+
+def phase_weight(day):
+    """-> (w_invest, w_money). How much each side of the crossover counts.
+
+    A hard switch at day 11 would make the objective discontinuous across a
+    boundary the agent walks through every game, so this ramps over the
+    measured transition (days 8-14) instead.
+    """
+    if day <= 8:
+        return 1.0, 0.0
+    if day >= 14:
+        return 0.0, 1.0
+    t = (day - 8) / 6.0
+    return 1.0 - t, t
+
+
+
 # ----------------------------------------------------------------- mid phase
 MID_NAMES = ["dead_capital", "dead_frac", "board_value", "board_roi",
              "payback_days", "wheat_days_left", "service_burden",
@@ -100,21 +169,21 @@ def mid_features(obs, seat, private=None, season=30):
             if prod in CRASHY:
                 risk += cost
 
-    v[ix["dead_capital"]] = min(dead, 4000) / 4000.0
+    v[ix["dead_capital"]] = _sat(dead, 4000)
     v[ix["dead_frac"]] = dead / max(invested, 1.0)
-    v[ix["board_value"]] = min(board, 20000) / 20000.0
-    v[ix["board_roi"]] = min(board / max(invested, 1.0), 4.0) / 4.0
-    v[ix["payback_days"]] = (min(float(np.mean(horizons)), 12) / 12.0
+    v[ix["board_value"]] = _sat(board, 20000)
+    v[ix["board_roi"]] = _sat(board / max(invested, 1.0), 4)
+    v[ix["payback_days"]] = (_sat(float(np.mean(horizons)), 12)
                              if horizons else 0.0)
     # SERVICE: animals eat 1 WHEAT each per day and escape after 2 unfed days.
     wheat = ((private.get("shed") or {}).get("WHEAT", 0)
              + sum((b or {}).get("WHEAT", 0)
                    for b in (private.get("inventories") or [])))
-    v[ix["wheat_days_left"]] = (min(wheat / animals, 10) / 10.0
+    v[ix["wheat_days_left"]] = (_sat(wheat / animals, 10)
                                 if animals else 1.0)
-    v[ix["service_burden"]] = min(animals, 20) / 20.0
+    v[ix["service_burden"]] = _sat(animals, 20)
     v[ix["capital_at_risk"]] = risk / max(invested, 1.0)
-    v[ix["marginal_tile_days"]] = min(left, 30) / 30.0
+    v[ix["marginal_tile_days"]] = _sat(left, 30)
     return v
 
 
@@ -212,15 +281,14 @@ def end_features(obs, seat, private=None, season=30):
         r, fl = sell_revenue(item, n, inv0, 0, 1, [n])
         dumped += r
         floored += fl
-    v[ix["unsold_units"]] = min(units, 100) / 100.0
-    v[ix["unsold_at_base"]] = min(base, 20000) / 20000.0
-    v[ix["unsold_if_dumped"]] = min(dumped, 20000) / 20000.0
+    v[ix["unsold_units"]] = _sat(units, 100)
+    v[ix["unsold_at_base"]] = _sat(base, 20000)
+    v[ix["unsold_if_dumped"]] = _sat(dumped, 20000)
     v[ix["dump_loss_frac"]] = 1.0 - (dumped / base if base > 0 else 1.0)
     v[ix["floor_frac"]] = floored / max(units, 1)
     v[ix["days_left"]] = left / 30.0
-    v[ix["drain_cover"]] = min(sum(drain.values()) * left / max(units, 1),
-                               5.0) / 5.0
-    v[ix["liquidation_pressure"]] = min(units / max(left, 1), 50) / 50.0
+    v[ix["drain_cover"]] = _sat(sum(drain.values()) * left / max(units, 1), 5)
+    v[ix["liquidation_pressure"]] = _sat(units / max(left, 1), 50)
     return v
 
 
