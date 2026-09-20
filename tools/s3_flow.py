@@ -290,7 +290,11 @@ def ablate(args):
     # ARMS[0] is the reference for both the baseline and the seed-noise floor,
     # so a subset always keeps it however the user spells the request.
     if args.arms:
-        want, ref = set(args.arms), ARMS[0]
+        # The reference used to be ARMS[0] unconditionally, because the old
+        # unpaired floor was derived from it. The paired statistic needs only
+        # the --base arm, so forcing A_v1_72 in just burns a third of the fits.
+        want, ref = set(args.arms), (args.base if args.base in ARMS else ARMS[0])
+        want.add(ref)
         unknown = want - set(ARMS)
         if unknown:
             raise SystemExit(f"unknown arm(s): {sorted(unknown)}\n"

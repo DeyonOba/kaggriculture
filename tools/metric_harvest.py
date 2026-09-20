@@ -278,6 +278,10 @@ def job(path):
     day_pri = np.zeros((D, P), "float32")
     day_cap = np.zeros((D, P), "float32")
     day_shop = np.zeros(D, "float32")
+    # hands are sampled at MIDDAY, not dawn: _end_of_day clears both `hands`
+    # and `hires_today`, so the dawn frame reads 0 for every seat on every
+    # day. The first traversal declared this column and never wrote it, which
+    # is worse -- it read as a real zero rather than a missing one.
     seat_day = np.zeros((D, S, 4), "float32")       # money, quads, hands, shed_tot
     seat_kind = np.zeros((D, S, K), "float32")
     seat_shed = np.zeros((D, S, P), "float32")
@@ -316,6 +320,10 @@ def job(path):
                 v = [float(sh.get(p, 0)) for p in PRODUCTS]
                 seat_shed[d, seat] = v
                 seat_day[d, seat, 3] = sum(v)
+        elif o["step"] % 24 == 12:
+            d = min(st["day"], D - 1)
+            for seat in range(S):
+                seat_day[d, seat, 2] = o["farms"][seat].get("hires_today", 0)
         env.step([a0(o), a1(env.state[1].observation)])
 
     regen = np.asarray([daily_drain(lastshops, p) for p in PRODUCTS], "float32")
