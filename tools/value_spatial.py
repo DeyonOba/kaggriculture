@@ -137,7 +137,7 @@ def build(args):
           f"{cur/max(ng,1):.0f} correlated samples each")
 
 
-def build_net(C, nu, width=64, blocks=3):
+def build_net(C, nu, width=64, blocks=3, n_aux=0):
     """The trunk + value head. Module level so `fit` and inference agree.
 
     Same stem/ResBlock/mean+amax shape as `boardnet.build`, which cleared its
@@ -170,11 +170,27 @@ def build_net(C, nu, width=64, blocks=3):
             self.body = nn.Sequential(*[ResBlock(width) for _ in range(blocks)])
             self.head = nn.Sequential(nn.Linear(2 * width + nu, 128), nn.ReLU(),
                                       nn.Linear(128, 1))
+            # AUXILIARY head (UNREAL-style): reads the SHARED trunk only, and
+            # never touches the value target. It can reshape the
+            # representation but cannot bias V -- which is why an
+            # observational target is safe here and would not be as a reward.
+            # n_aux=0 adds no parameters, so an older checkpoint still loads.
+            self.aux = (nn.Sequential(nn.Linear(2 * width, 64), nn.ReLU(),
+                                      nn.Linear(64, n_aux))
+                        if n_aux else None)
+
+        def _trunk(self, x):
+            h = self.body(self.stem(x))
+            return torch.cat([h.mean((2, 3)), h.amax((2, 3))], 1)
 
         def forward(self, x, u):
-            h = self.body(self.stem(x))
-            g = torch.cat([h.mean((2, 3)), h.amax((2, 3))], 1)
-            return self.head(torch.cat([g, u], 1)).squeeze(1)
+            return self.head(torch.cat([self._trunk(x), u], 1)).squeeze(1)
+
+        def both(self, x, u):
+            """-> (value logit, aux prediction or None)."""
+            g = self._trunk(x)
+            v = self.head(torch.cat([g, u], 1)).squeeze(1)
+            return v, (self.aux(g) if self.aux is not None else None)
 
     return VNet()
 

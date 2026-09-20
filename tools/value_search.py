@@ -46,6 +46,10 @@ sys.path.insert(0, REPO)
 DATA = os.path.join(REPO, "rl/datasets/value_search.npz")
 TENS = os.path.join(REPO, "rl/datasets/value_search_T.npy")
 MODEL = os.path.join(REPO, "rl/datasets/value_search_model.npz")
+# day at which money_lead becomes decisive (propagation: r=0.699)
+AUX_DAY = 20
+AUX_NAMES = ["money_lead@20", "invested_lead@20",
+             "board_roi@20", "shed_frac@20"]
 
 
 _CACHE = {}
@@ -59,10 +63,11 @@ def load():
     import torch
     from tools.value_spatial import build_net
     d = np.load(MODEL)
-    meta = ("C", "nu", "width", "blocks")
-    net = build_net(*[int(d[k]) for k in meta])
+    meta = ("C", "nu", "width", "blocks", "n_aux")
+    net = build_net(int(d["C"]), int(d["nu"]), int(d["width"]),
+                    int(d["blocks"]), int(d["n_aux"]) if "n_aux" in d else 0)
     net.load_state_dict({k: torch.from_numpy(d[k]) for k in d.files
-                         if k not in meta})
+                         if k not in meta and k != "aux_names"})
     net.eval()
     _CACHE["net"] = net
     return net
@@ -87,6 +92,8 @@ def job(spec):
     from kaggle_environments import make
     import tools.board_tensor as bt
     from tools.action_space import legal_ops, legal_qty, to_action, OPS, QTY
+    import tools.early_metrics as em
+    import tools.phase_metrics as pmx
 
     def load(n):
         g = {}
@@ -146,13 +153,35 @@ def job(spec):
         pv = s.private
         T = bt.board_pair_units(s, 0, private=pv).astype("float16")
         U = bt.unit_state(s, 0, 0, pv).astype("float16")
+        # AUXILIARY TARGETS, captured DURING the playout. They must be FUTURE
+        # values: the trunk already sees today's board, so predicting today's
+        # melon_tiles is trivial and teaches nothing. Day 20 is where
+        # propagation measured money_lead becoming decisive (r 0.699).
+        aux = None
         while not e.done:
             s2 = e.state[0].observation
+            if aux is None and s2["step"] >= AUX_DAY * 24:
+                p2 = s2.private
+                ef = em.features(s2, 0, p2)
+                mf = pmx.mid_features(s2, 0, p2)
+                aux = np.array([ef[em.NAMES.index("money_lead")],
+                                ef[em.NAMES.index("invested_lead")],
+                                mf[pmx.MID_NAMES.index("board_roi")],
+                                ef[em.NAMES.index("shed_frac")]], "float32")
             e.step([a0(s2), a1(e.state[1].observation)])
+        if aux is None:          # branch already past day 20
+            s2 = e.state[0].observation
+            p2 = s2.private
+            ef = em.features(s2, 0, p2)
+            mf = pmx.mid_features(s2, 0, p2)
+            aux = np.array([ef[em.NAMES.index("money_lead")],
+                            ef[em.NAMES.index("invested_lead")],
+                            mf[pmx.MID_NAMES.index("board_roi")],
+                            ef[em.NAMES.index("shed_frac")]], "float32")
         fin0, fin1 = e.state[0].reward, e.state[1].reward
         out.append((T, U, float(fin0 > fin1), float(fin0 - fin1),
                     0 if op_i is None else 1,
-                    -1 if op_i is None else int(op_i)))
+                    -1 if op_i is None else int(op_i), aux))
     return (step_at // 24, out)
 
 
@@ -174,18 +203,18 @@ def build(args):
           flush=True)
     T = np.lib.format.open_memmap(TENS, mode="w+", dtype="float16",
                                   shape=shape)
-    U, Y, M, B, D, IS_ALT, OPI = [], [], [], [], [], [], []
+    U, Y, M, B, D, IS_ALT, OPI, AUX = [], [], [], [], [], [], [], []
     cur = nb = 0
     with mp.Pool(args.procs, maxtasksperchild=8) as pool:
         for res in pool.imap_unordered(job, specs):
             if not res:
                 continue
             day, rows = res
-            for (t, u, y, mg, isalt, opi) in rows:
+            for (t, u, y, mg, isalt, opi, aux) in rows:
                 T[cur] = t
                 U.append(u); Y.append(y); M.append(mg)
                 B.append(nb); D.append(day)
-                IS_ALT.append(isalt); OPI.append(opi)
+                IS_ALT.append(isalt); OPI.append(opi); AUX.append(aux)
                 cur += 1
             nb += 1
             if nb % 100 == 0:
@@ -197,7 +226,9 @@ def build(args):
     np.savez_compressed(DATA, U=np.asarray(U, "float16"), Y=Y, M=M, B=B,
                         D=np.asarray(D, "int16"),
                         IS_ALT=np.asarray(IS_ALT, "int8"),
-                        OPI=np.asarray(OPI, "int16"), n=cur)
+                        OPI=np.asarray(OPI, "int16"),
+                        AUX=np.asarray(AUX, "float32"),
+                        aux_names=np.array(AUX_NAMES), n=cur)
     # how much ORDERING signal does this actually contain?
     npair = wins = ties = 0
     for b in np.unique(B):
@@ -288,7 +319,16 @@ def fit(args):
     print(f"  held-out BRANCH POINTS: {nb_va}  <- the effective n, not the"
           f" pair count")
 
-    net = build_net(T.shape[1], U.shape[1], args.width, args.blocks)
+    AUX = d["AUX"] if "AUX" in d else None
+    n_aux = AUX.shape[1] if AUX is not None and args.aux > 0 else 0
+    if n_aux:
+        # z-score: the four targets have different units, and an unscaled MSE
+        # would let whichever has the largest variance dominate the gradient
+        mu, sd = AUX.mean(0), AUX.std(0) + 1e-6
+        AUXn = ((AUX - mu) / sd).astype("float32")
+        print(f"  AUX targets ({args.aux:g} weight): "
+              f"{[str(x) for x in d['aux_names']]}")
+    net = build_net(T.shape[1], U.shape[1], args.width, args.blocks, n_aux)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr,
                            weight_decay=args.wd)
     bce = nn.BCEWithLogitsLoss()
@@ -327,7 +367,11 @@ def fit(args):
             ia, ib = pb[:, 0], pb[:, 1]
             xa, ua = batch(ia)
             xb, ub = batch(ib)
-            la, lb = net(xa, ua), net(xb, ub)
+            if n_aux:
+                la, aa = net.both(xa, ua)
+                lb, ab = net.both(xb, ub)
+            else:
+                la, lb = net(xa, ua), net(xb, ub)
             # RankNet / Bradley-Terry: the logit DIFFERENCE must carry the
             # sign of the played-out difference. This is the only term
             # trained on a counterfactual.
@@ -336,6 +380,11 @@ def fit(args):
             if pointwise_w > 0:
                 loss = loss + pointwise_w * 0.5 * (
                     bce(la, Yt[ia]) + bce(lb, Yt[ib]))
+            if n_aux:
+                ta = torch.from_numpy(AUXn[ia])
+                tb = torch.from_numpy(AUXn[ib])
+                loss = loss + args.aux * 0.5 * (
+                    ((aa - ta) ** 2).mean() + ((ab - tb) ** 2).mean())
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -374,7 +423,7 @@ def fit(args):
         print(f"  -> best {sel_name} sign accuracy {best:.3f}")
 
     np.savez_compressed(MODEL, C=T.shape[1], nu=U.shape[1], width=args.width,
-                        blocks=args.blocks,
+                        blocks=args.blocks, n_aux=n_aux,
                         **{k: v.numpy() for k, v in net.state_dict().items()})
     net.eval()
     fin_m, fin_w = sign_acc(mva, M), sign_acc(wva, Y)
@@ -408,6 +457,10 @@ def main():
     ap.add_argument("--patience", type=int, default=8)
     ap.add_argument("--alpha", type=float, default=0.3,
                     help="weight on the pointwise win-label term")
+    ap.add_argument("--aux", type=float, default=0.3,
+                    help="weight on the AUXILIARY forecast head (0 disables). "
+                         "Targets are FUTURE values at day 20 -- the trunk "
+                         "already sees today's board.")
     ap.add_argument("--warmup", type=int, default=10,
                     help="epochs on the MARGIN criterion before switching "
                          "to WIN")
