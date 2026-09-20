@@ -43,12 +43,30 @@ ANIMALS = ["GOOSE", "COW", "SHEEP"]
 
 # The per-cell vocabulary. Parameterised ops are flattened into one entry
 # each, which is what makes the head a plain categorical per cell.
+# Everything a unit can carry. PICKUP and PLACE both range over ALL of it,
+# which the corpus confirms and which the livestock chain REQUIRES:
+#
+#   BUILD_COOP -> BUY_ANIMAL:GOOSE (lands in the SHED) -> PICKUP:GOOSE (bag)
+#   -> PLACE:GOOSE (tile) -> FEED/CARE -> HARVEST (EGG to bag) -> DROP -> SELL
+#
+# PLACE takes the animal from the unit's BAG, and PICKUP is the only bridge
+# from shed to bag. Restricting PICKUP to WHEAT and FERTILIZER made
+# PLACE:GOOSE/COW/SHEEP permanently unreachable -- the policy could never
+# have learnt livestock at all. Corpus over 30 games: PICKUP COW 555,
+# SHEEP 421, GOOSE 43.
+#
+# PLACE also has a SHED-DROP fallthrough used as a TARGETED drop -- DROP
+# dumps the whole bag, PLACE:MILK stores only milk, which matters against
+# shed capacity. Corpus: PLACE FERTILIZER 1,081, MILK 917, STRAWBERRY 660.
+CARRY = ["WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON",
+         "EGG", "MILK", "WOOL", "FERTILIZER", "GOOSE", "COW", "SHEEP"]
+
 OPS = (["PASS", "NORTH", "SOUTH", "EAST", "WEST",
         "WATER", "HARVEST", "FEED", "CARE", "FERTILIZE", "DIG",
         "COLLECT_FERTILIZER", "DROP", "BUILD_COOP", "BUILD_PASTURE"]
        + [f"PLANT:{c}" for c in CROPS]
-       + [f"PLACE:{a}" for a in ANIMALS]
-       + [f"PICKUP:{i}" for i in ("WHEAT", "FERTILIZER")])
+       + [f"PLACE:{i}" for i in CARRY]
+       + [f"PICKUP:{i}" for i in CARRY])
 N_OPS = len(OPS)
 OP_IX = {o: i for i, o in enumerate(OPS)}
 MOVE_D = {"NORTH": (0, -1), "SOUTH": (0, 1), "EAST": (1, 0), "WEST": (-1, 0)}
@@ -118,7 +136,7 @@ def legal_ops(obs, seat, unit_idx, private=None):
     if _shed_adjacent(x, y, n):
         if any(v > 0 for v in bag.values()):
             m[OP_IX["DROP"]] = 1
-        for it in ("WHEAT", "FERTILIZER"):
+        for it in CARRY:
             if shed.get(it, 0) > 0:
                 m[OP_IX[f"PICKUP:{it}"]] = 1
         # PLACE has a SECOND path: if the animal-placement branch does not
@@ -127,9 +145,9 @@ def legal_ops(obs, seat, unit_idx, private=None):
         # room -- missing this made the mask too strict on GOOSE and SHEEP.
         room = 100 - sum(shed.values())
         if room > 0:
-            for a in ANIMALS:
-                if bag.get(a, 0) > 0:
-                    m[OP_IX[f"PLACE:{a}"]] = 1
+            for it in CARRY:
+                if bag.get(it, 0) > 0:
+                    m[OP_IX[f"PLACE:{it}"]] = 1
 
     t = tiles[y][x]
     if t == "LOCKED":
