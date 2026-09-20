@@ -62,8 +62,13 @@ def job(spec):
     # The two heads differ ONLY in what they can see. Same branch points, same
     # seeds, same downstream policy -- so blindness and sign accuracy are
     # directly comparable between them, which is the whole point of the refit.
-    if head == "spatial":
-        import tools.value_spatial as vs
+    if head in ("spatial", "search"):
+        # same trunk and same encoder for both -- only the LABELS the head was
+        # fit on differ, which is exactly the variable under test
+        if head == "search":
+            import tools.value_search as vs
+        else:
+            import tools.value_spatial as vs
         model = vs.load()
 
         import tools.board_tensor as bt
@@ -135,6 +140,11 @@ def job(spec):
             "in_same": bool(np.allclose(ra, rb))}
 
 
+LABEL = {"agg": "day-level aggregates",
+         "spatial": "spatial trunk, CORPUS labels",
+         "search": "spatial trunk, SEARCH-OUTCOME labels"}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--agent", default="champ-h8")
@@ -143,8 +153,11 @@ def main():
     ap.add_argument("--procs", type=int, default=5)
     ap.add_argument("--target", type=float, default=0.60,
                     help="sign accuracy eps must clear")
-    ap.add_argument("--head", default="agg", choices=["agg", "spatial"],
-                    help="agg = day-level value_head; spatial = the refit")
+    ap.add_argument("--head", default="agg",
+                    choices=["agg", "spatial", "search"],
+                    help="agg = day-level value_head; spatial = encoder refit "
+                         "on corpus labels; search = refit on PLAYED-OUT "
+                         "counterfactual outcomes")
     args = ap.parse_args()
 
     rng = np.random.default_rng(5)
@@ -179,7 +192,7 @@ def main():
     out_tie = (np.abs(vd) < 1e-9) & seen
 
     print(f"\nhead = {args.head}   "
-          f"({'spatial trunk, 181ch' if args.head == 'spatial' else 'day-level aggregates'})")
+          f"({LABEL[args.head]})")
     print(f"\n{n} branch points where the outcome actually differed\n")
     print(f"  0. CAN V SEE THE ACTION AT ALL?\n")
     print(f"     INPUT identical after both actions: {blind.sum()}/{n}"
