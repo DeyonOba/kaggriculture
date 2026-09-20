@@ -294,6 +294,7 @@ def board_pair2(obs, seat=0, prev_mid=None):
     return out
 
 
+
 # ---------------------------------------------------------------------------
 # Superset encoder for ABLATION. Carries every channel any arm might want, so
 # one dataset build serves all arms and each arm is a pure channel slice --
@@ -578,3 +579,100 @@ def board_pair_all(obs, seat=0, prev_mid=None, hist=None,
             np.zeros((len(LAGS_DEEP), CAP_N)) if cap_lags is None else cap_lags,
             np.zeros(CAP_N) if regen is None else regen, n)
     return out
+
+# ---------------------------------------------------------------------------
+# PER-UNIT STATE, and why it is not a plane.
+#
+# Four ops guard on the ACTING UNIT'S bag rather than on the board: FEED
+# needs a WHEAT, FERTILIZE a FERTILIZER, PLACE the animal itself, DROP
+# anything at all (tools/action_space.py verifies this against the engine).
+# So the mask a policy samples against is per-unit, not per-cell.
+#
+# And 24.3% of unit-frames sit on a SHARED cell, with 74.9% of those groups
+# doing different things -- so a spatial plane cannot even represent "the
+# bag of the unit here", because there may be several. The exact bag
+# therefore goes to the per-unit head as a VECTOR, and the spatial planes
+# carry only aggregate logistics the encoder can legitimately use.
+CARRY = PRODUCTS_L + ANIMALS_L           # 12 carryable items
+N_UNIT_FEAT = len(CARRY) + 6
+UNIT_PLANES = 4                          # units, carried, wheat, fertilizer
+OFF_UNIT = N_PAIR_TC
+N_PAIR_U = OFF_UNIT + UNIT_PLANES
+
+
+def _units_and_bags(obs, seat, private):
+    """-> [(idx, x, y, bag)] for every unit of `seat`."""
+    farm = obs["farms"][seat]
+    invs = (private or {}).get("inventories") or []
+    out = []
+    f = farm.get("farmer")
+    if f:
+        out.append((0, f[0], f[1], invs[0] if len(invs) > 0 else {}))
+    for i, h in enumerate(farm.get("hands") or []):
+        j = i + 1
+        out.append((j, h[0], h[1], invs[j] if len(invs) > j else {}))
+    return out
+
+
+def unit_planes(obs, seat, private, n=10):
+    """-> (UNIT_PLANES, n, n). Aggregate logistics, safe under co-location.
+
+    Counting units per cell matters in its own right: the policy cannot give
+    two co-located units different jobs through a shared map, so it should at
+    least be able to SEE that they are stacked.
+    """
+    out = np.zeros((UNIT_PLANES, n, n), dtype="float32")
+    for _i, x, y, bag in _units_and_bags(obs, seat, private):
+        if not (0 <= x < n and 0 <= y < n):
+            continue
+        tot = float(sum(v for v in (bag or {}).values() if v > 0))
+        out[0, y, x] += 1.0 / 4.0
+        out[1, y, x] += min(tot, 20.0) / 20.0
+        out[2, y, x] += min(float((bag or {}).get("WHEAT", 0)), 12.0) / 12.0
+        out[3, y, x] += min(float((bag or {}).get("FERTILIZER", 0)), 12.0) / 12.0
+    return out
+
+
+def unit_state(obs, seat, unit_idx, private):
+    """-> (N_UNIT_FEAT,) float32 for ONE unit. The head's non-spatial input.
+
+    Everything a bag-dependent mask bit is conditioned on, plus where the
+    unit stands relative to the shed -- PICKUP and DROP are shed-adjacent
+    only, so that distance is a legality-relevant feature, not decoration.
+    """
+    v = np.zeros(N_UNIT_FEAT, dtype="float32")
+    farm = obs["farms"][seat]
+    n = len(farm["tiles"])
+    for i, x, y, bag in _units_and_bags(obs, seat, private):
+        if i != unit_idx:
+            continue
+        for k, item in enumerate(CARRY):
+            v[k] = min(float((bag or {}).get(item, 0)), 12.0) / 12.0
+        b = len(CARRY)
+        v[b] = x / float(n)
+        v[b + 1] = y / float(n)
+        v[b + 2] = 1.0 if unit_idx == 0 else 0.0
+        sd = min(abs(x - (n // 2)) + abs(y - (n // 2)),
+                 abs(x - (n // 2 - 1)) + abs(y - (n // 2 - 1)))
+        v[b + 3] = min(sd, 10) / 10.0
+        v[b + 4] = 1.0 if sd <= 1 else 0.0
+        v[b + 5] = min(float(sum(w for w in (bag or {}).values() if w > 0)),
+                       20.0) / 20.0
+        break
+    return v
+
+
+def board_pair_units(obs, seat=0, prev_mid=None, hist=None,
+                     cap_now=None, cap_lags=None, regen=None, private=None):
+    """board_pair_all plus the aggregate unit-logistics planes -> 181 channels."""
+    base = board_pair_all(obs, seat, prev_mid=prev_mid, hist=hist,
+                          cap_now=cap_now, cap_lags=cap_lags, regen=regen)
+    n = base.shape[-1]
+    out = np.zeros((N_PAIR_U, n, n), dtype="float32")
+    out[:N_PAIR_TC] = base
+    if private is None:
+        private = obs.get("private") or {}
+    out[OFF_UNIT:] = unit_planes(obs, seat, private, n)
+    return out
+
+
