@@ -132,9 +132,11 @@ def job(spec):
             oo = e2.state[0].observation
             e2.step([a0(oo), a1(e2.state[1].observation)])
         margin = e2.state[0].reward - e2.state[1].reward
-        out.append((v, margin, rep))
-    (va, ma, ra), (vb, mb, rb) = out
+        win = float(e2.state[0].reward > e2.state[1].reward)
+        out.append((v, margin, rep, win))
+    (va, ma, ra, wa), (vb, mb, rb, wb) = out
     return {"day": day_at // 24, "v_diff": va - vb, "m_diff": ma - mb,
+            "w_diff": wa - wb,
             "v_base": va, "op": OPS[alt_i],
             # the honest blindness test: did the head's INPUT differ at all?
             "in_same": bool(np.allclose(ra, rb))}
@@ -215,6 +217,19 @@ def main():
         print(f"     -> NOT above chance. Residual mode is dead at any tau,")
         print(f"        and this reproduces the recorded 'wrong sign on 3 of 4'.")
 
+    # THE WIN CRITERION, out-of-sample. Margin and win are different
+    # questions and only one of them is what rating measures, so a head that
+    # orders margin at chance may still order WINS -- or, far more likely,
+    # may have looked good in-sample only through epoch selection.
+    wd = np.array([r["w_diff"] for r in rows])[ok][seen]
+    wm = wd != 0
+    if wm.sum() >= 10:
+        wacc = float(np.mean(np.sign(vd[wm]) == np.sign(wd[wm])))
+        wse = np.sqrt(0.25 / wm.sum())
+        print(f"\n  1b. THE WIN CRITERION (the one that scores)\n")
+        print(f"     branches where the WIN flipped: {wm.sum()}/{len(vd)}")
+        print(f"     win sign accuracy {wacc:.3f} +/- {wse:.3f}"
+              f"   (z = {(wacc - 0.5) / wse:+.2f})")
     print(f"\n  2. THE CURVE -- accuracy by |V(a) - V(b)|\n")
     print(f"     {'|v diff| >=':>14}{'n':>7}{'sign acc':>11}{'mean |margin|':>15}")
     eps = None

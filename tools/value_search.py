@@ -46,6 +46,16 @@ sys.path.insert(0, REPO)
 DATA = os.path.join(REPO, "rl/datasets/value_search.npz")
 TENS = os.path.join(REPO, "rl/datasets/value_search_T.npy")
 MODEL = os.path.join(REPO, "rl/datasets/value_search_model.npz")
+
+
+def model_path(tag=""):
+    """Per-arm checkpoint path. Two fit arms writing to ONE path means the
+    second silently overwrites the first, which quietly invalidates any A/B
+    comparison made afterwards. It cost nothing here only because arm A
+    refit reproducibly (0.610 against 0.618)."""
+    if not tag:
+        return MODEL
+    return MODEL.replace(".npz", f"_{tag}.npz")
 # day at which money_lead becomes decisive (propagation: r=0.699)
 AUX_DAY = 20
 AUX_NAMES = ["money_lead@20", "invested_lead@20",
@@ -422,7 +432,8 @@ def fit(args):
             net.load_state_dict(best_state)
         print(f"  -> best {sel_name} sign accuracy {best:.3f}")
 
-    np.savez_compressed(MODEL, C=T.shape[1], nu=U.shape[1], width=args.width,
+    out_path = model_path(args.tag)
+    np.savez_compressed(out_path, C=T.shape[1], nu=U.shape[1], width=args.width,
                         blocks=args.blocks, n_aux=n_aux,
                         **{k: v.numpy() for k, v in net.state_dict().items()})
     net.eval()
@@ -435,7 +446,7 @@ def fit(args):
     print(f"\n  baselines on the same statistic (corpus labels):")
     print(f"     aggregate head  0.609 +/- 0.072  (n=46, selected subset)")
     print(f"     spatial   head  0.455 +/- 0.042  (n=143)")
-    print(f"  -> {MODEL}")
+    print(f"  -> {out_path}")
 
 
 def main():
@@ -457,6 +468,9 @@ def main():
     ap.add_argument("--patience", type=int, default=8)
     ap.add_argument("--alpha", type=float, default=0.3,
                     help="weight on the pointwise win-label term")
+    ap.add_argument("--tag", default="",
+                    help="suffix for the checkpoint, so A/B arms do not "
+                         "overwrite each other")
     ap.add_argument("--aux", type=float, default=0.3,
                     help="weight on the AUXILIARY forecast head (0 disables). "
                          "Targets are FUTURE values at day 20 -- the trunk "
