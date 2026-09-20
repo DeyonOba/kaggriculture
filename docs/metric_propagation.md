@@ -104,7 +104,14 @@ shaping term. That distinction was checked rather than assumed:
 | --- | --- |
 | PBRS ([Ng, Harada & Russell 1999](https://www.teach.cs.toronto.edu/~csc2542h/fall/material/csc2542f16_reward_shaping.pdf)) — `F(s,s') = γΦ(s') − Φ(s)` preserves the optimal policy for any Φ | **No.** It is a guarantee about transforming *RL rewards*. We fit V by supervised regression on played-out outcomes; adding a potential to a supervised target does not inherit the proof, it just biases V. |
 | Auxiliary tasks ([UNREAL, Jaderberg et al. 2016](https://arxiv.org/abs/1611.05397)) | **Yes.** Extra heads on the shared trunk. The V target is untouched, so auxiliary gradients can only reshape the representation, never bias the value. |
-| Terminal prediction ([Kartal et al. 2019](https://arxiv.org/pdf/1907.10827)) | **Yes, free.** Fixed 30-day season, so days-remaining is a no-cost auxiliary signal. |
+| Terminal prediction ([Kartal et al. 2019](https://arxiv.org/abs/1907.10827)) | **No — and I had this backwards.** TP estimates *temporal closeness to a terminal state*, which needs episodes that end at DIFFERENT times. Ours are fixed: 719 steps, every game, verified. The target would be a deterministic function of the step counter, which the net is already given (`season_left` is a feature). Zero signal. I first wrote that the fixed season made it *free*; the fixed season is exactly what makes it inapplicable. Cited from a search summary rather than the paper. |
+
+**Only ONE of the three techniques surveyed actually applied.** PBRS is a
+guarantee about RL reward transformations, not supervised regression.
+Terminal prediction needs variable-length episodes. That leaves auxiliary
+tasks — and when it was run, the auxiliary head was a null too (arm B
+scored slightly *worse* than arm A on both criteria). Three techniques
+surveyed, one applicable, zero that helped.
 
 **The auxiliary target must be a FUTURE value, not the current one.** The
 trunk already sees the board, so predicting today's `melon_tiles` is
