@@ -46,12 +46,11 @@ sys.path.insert(0, REPO)
 
 def job(spec):
     """One branch point: play action A and action B to the end, same world."""
-    seed, day_at, agent, opp = spec
+    seed, day_at, agent, opp, head = spec
     sys.path.insert(0, REPO)
     import tools.fast_env as fast_env
     fast_env.install()
     from kaggle_environments import make
-    import tools.value_head as vh
     from tools.action_space import legal_ops, to_action, OPS
 
     def load(n):
@@ -59,7 +58,35 @@ def job(spec):
         exec(open(f"{REPO}/arena/agents/{n}/main.py").read(), g)
         return g["agent"]
     a0, a1 = load(agent), load(opp)
-    model = vh._load_model()
+
+    # The two heads differ ONLY in what they can see. Same branch points, same
+    # seeds, same downstream policy -- so blindness and sign accuracy are
+    # directly comparable between them, which is the whole point of the refit.
+    if head == "spatial":
+        import tools.value_spatial as vs
+        model = vs.load()
+
+        import tools.board_tensor as bt
+
+        def V(e):
+            o = e.state[0].observation
+            return vs.value(model, o, 0, o.private)
+
+        def REP(e):
+            o = e.state[0].observation
+            return np.concatenate([
+                bt.board_pair_units(o, 0, private=o.private).ravel(),
+                bt.unit_state(o, 0, 0, o.private)])
+    else:
+        import tools.value_head as vh
+        model = vh._load_model()
+
+        def V(e):
+            o = e.state[0].observation
+            return vh.value(model, o, 0, o["step"] // 24)
+
+        def REP(e):
+            return np.asarray(vh.features(e.state[0].observation, 0), "float64")
 
     # run to the branch point
     env = make("kaggriculture", configuration={"seed": seed}, debug=False)
@@ -95,16 +122,17 @@ def job(spec):
             e2.step([a0(oo), a1(e2.state[1].observation)])
         oo = e2.state[0].observation
         e2.step([act, a1(e2.state[1].observation)])
-        v = vh.value(model, e2.state[0].observation, 0,
-                     e2.state[0].observation["step"] // 24)
+        v, rep = V(e2), REP(e2)
         while not e2.done:
             oo = e2.state[0].observation
             e2.step([a0(oo), a1(e2.state[1].observation)])
         margin = e2.state[0].reward - e2.state[1].reward
-        out.append((v, margin))
-    (va, ma), (vb, mb) = out
+        out.append((v, margin, rep))
+    (va, ma, ra), (vb, mb, rb) = out
     return {"day": day_at // 24, "v_diff": va - vb, "m_diff": ma - mb,
-            "v_base": va, "op": OPS[alt_i]}
+            "v_base": va, "op": OPS[alt_i],
+            # the honest blindness test: did the head's INPUT differ at all?
+            "in_same": bool(np.allclose(ra, rb))}
 
 
 def main():
@@ -115,6 +143,8 @@ def main():
     ap.add_argument("--procs", type=int, default=5)
     ap.add_argument("--target", type=float, default=0.60,
                     help="sign accuracy eps must clear")
+    ap.add_argument("--head", default="agg", choices=["agg", "spatial"],
+                    help="agg = day-level value_head; spatial = the refit")
     args = ap.parse_args()
 
     rng = np.random.default_rng(5)
@@ -122,7 +152,7 @@ def main():
     for i in range(args.n):
         seed = 400_000 + i
         step = int(rng.integers(2 * 24, 26 * 24))
-        specs.append((seed, step, args.agent, args.opp))
+        specs.append((seed, step, args.agent, args.opp, args.head))
     with mp.Pool(args.procs, maxtasksperchild=10) as pool:
         rows = [r for r in pool.map(job, specs) if r]
 
@@ -141,15 +171,22 @@ def main():
     # unit inventory, so a single WATER / HARVEST / MOVE / FEED / CARE changes
     # NOTHING it can see. Blindness, not inversion, and they look identical if
     # ties are scored wrong.
-    blind = np.abs(vd) < 1e-9
+    blind = np.array([r["in_same"] for r in rows])[ok]
     seen = ~blind
     agree = (np.sign(vd) == np.sign(md))
+    # a head whose INPUT differs can still emit a tie; count that separately
+    # rather than folding it into either bucket.
+    out_tie = (np.abs(vd) < 1e-9) & seen
 
+    print(f"\nhead = {args.head}   "
+          f"({'spatial trunk, 181ch' if args.head == 'spatial' else 'day-level aggregates'})")
     print(f"\n{n} branch points where the outcome actually differed\n")
     print(f"  0. CAN V SEE THE ACTION AT ALL?\n")
-    print(f"     V identical after both actions: {blind.sum()}/{n}"
-          f" = {100*blind.mean():.0f}%   <- V is BLIND to these")
-    print(f"     V differs:                      {seen.sum()}/{n}\n")
+    print(f"     INPUT identical after both actions: {blind.sum()}/{n}"
+          f" = {100*blind.mean():.0f}%   <- V is BLIND to these,")
+    print(f"       {'':<36}no threshold can rescue them")
+    print(f"     input differs:                     {seen.sum()}/{n}"
+          f"   (of which output still ties: {out_tie.sum()})\n")
     print(f"  1. WHERE V CAN SEE, DOES IT ORDER CORRECTLY?\n")
     if seen.sum() < 5:
         print("     too few non-tied branches to say anything")
@@ -204,9 +241,10 @@ def main():
         print(f"  eps = {eps:.2f}   derived, not picked: the smallest value gap"
               f"\n        at which this head's sign accuracy clears "
               f"{args.target:.2f}.")
-    print(f"\n  NOTE: this head was fit on the recorded corpus, so it learned"
-          f"\n  co-occurrence. The spec calls for refitting on search outcomes;"
-          f"\n  this run is the BASELINE that refit has to beat.")
+    print(f"\n  NOTE: BOTH heads are fit on the recorded corpus, so both learned"
+          f"\n  co-occurrence. --head spatial changes the ENCODER only. The"
+          f"\n  label fix (search outcomes) is a separate, later change, and"
+          f"\n  sign accuracy is the statistic it would move.")
 
 
 if __name__ == "__main__":

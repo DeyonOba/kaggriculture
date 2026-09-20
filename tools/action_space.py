@@ -69,6 +69,44 @@ OPS = (["PASS", "NORTH", "SOUTH", "EAST", "WEST",
        + [f"PICKUP:{i}" for i in CARRY])
 N_OPS = len(OPS)
 OP_IX = {o: i for i, o in enumerate(OPS)}
+
+# ---- quantity: the SECOND categorical --------------------------------------
+# PICKUP and the PLACE shed-drop path both take an `n` argument. The first
+# version of this file emitted `[op, item, 1]`, which is not a simplification
+# but a CAP -- and a cap on exactly the thing our agent is worst at.
+#
+# Measured over 400 corpus games, 29,626 PICKUPs:
+#
+#   n        1      2      3      4      5      6     >6
+#          27.5%  13.1%   9.5%  19.3%  13.9%  16.3%   0.5%     mean 3.32
+#
+# n=1 is 27.5% of what real agents do, so a vocabulary without quantity can
+# express barely a quarter of the corpus. 1-6 covers 99.5%; past 6 is 0.5%.
+#
+# The justification is FIDELITY, not throughput. A first version of this
+# comment argued that bigger n fixes our hauling deficit; a rating-banded
+# measurement refutes that. Top 10% vs bottom 10%, 250 games each:
+#
+#              PICKUPs/game     mean n
+#   top 10%        55            2.81
+#   bottom 10%     82            3.62
+#
+# Stronger agents haul LESS, on both axes. So "carry more per trip" is not
+# the direction of improvement, and the quantity head exists so the policy
+# can REPRESENT what the corpus does -- not because larger n is better.
+#
+# Six buckets, read off the corpus rather than picked. This is deliberately
+# NOT the {1,2,3,5,8,13,20} guessed in docs/policy_spec.md for the market
+# head -- that set was invented, this one is measured, and they disagree.
+QTY = [1, 2, 3, 4, 5, 6]
+N_QTY = len(QTY)
+QTY_IX = {q: i for i, q in enumerate(QTY)}
+QTY_OPS = ("PICKUP", "PLACE")
+# `shedCapacity` lives in env.configuration (default 100), not on the
+# observation and not as a module constant in the engine -- an earlier draft
+# referenced a K.DEFAULT_CONFIG that does not exist and would have raised
+# AttributeError on the first PLACE.
+SHED_CAP = 100
 MOVE_D = {"NORTH": (0, -1), "SOUTH": (0, 1), "EAST": (1, 0), "WEST": (-1, 0)}
 
 
@@ -191,6 +229,62 @@ def legal_ops(obs, seat, unit_idx, private=None):
     return m
 
 
+def legal_qty(obs, seat, unit_idx, op_name, private=None,
+              shed_cap=SHED_CAP):
+    """-> (N_QTY,) uint8: which quantities are DISTINCT and effective.
+
+    The engine clamps rather than rejects (`n = min(n, available)`), so an
+    oversized n is not illegal -- it is a SYNONYM for the largest legal one.
+    Masking to distinct outcomes stops the categorical spending probability
+    mass on duplicates, and keeps "mask bit set => state changes" true, which
+    is the invariant `verify` checks.
+
+    Ops that take no quantity report n=1 only, so the head is always a valid
+    distribution over something.
+    """
+    m = np.zeros(N_QTY, "uint8")
+    head = op_name.split(":")[0]
+    if head not in QTY_OPS or ":" not in op_name:
+        m[0] = 1
+        return m
+    item = op_name.split(":", 1)[1]
+
+    farm = obs["farms"][seat]
+    if private is None:
+        private = (obs.get("private") or {})
+    tiles = farm["tiles"]
+    n = len(tiles)
+    pos = (farm.get("farmer") if unit_idx == 0
+           else (farm.get("hands") or [None] * 99)[unit_idx - 1]
+           if unit_idx - 1 < len(farm.get("hands") or []) else None)
+    if pos is None:
+        return m
+    x, y = pos[0], pos[1]
+    bag = _bag(private, unit_idx)
+    shed = (private.get("shed") or {})
+
+    if head == "PICKUP":
+        # bounded by shed stock only -- `_inv_add` does not cap the bag
+        cap = shed.get(item, 0)
+    else:
+        t = tiles[y][x]
+        # the ANIMAL-placement branch takes exactly one and ignores n, so n=1
+        # is the only meaningful quantity there
+        if (item in ANIMALS and isinstance(t, dict)
+                and t.get("kind") == K.ANIMALS[item]["structure"]
+                and "animal" not in t):
+            m[0] = 1
+            return m
+        if not _shed_adjacent(x, y, n):
+            return m
+        cap = min(bag.get(item, 0),
+                  max(0, shed_cap - sum(shed.values())))
+    for i, q in enumerate(QTY):
+        if q <= cap:
+            m[i] = 1
+    return m
+
+
 def legal_map(obs, seat, private=None):
     """-> (n, n, N_OPS) for a GridNet-style head. LOSSY where units share a cell.
 
@@ -209,11 +303,17 @@ def legal_map(obs, seat, private=None):
     return out
 
 
-def to_action(op_name):
-    """Vocabulary entry -> the list the engine expects."""
+def to_action(op_name, qty=1):
+    """Vocabulary entry (+ quantity) -> the list the engine expects.
+
+    `qty` is honoured only by PICKUP and the PLACE shed-drop path; every
+    other op ignores a third element, so passing it is harmless but pointless.
+    """
     if ":" in op_name:
         head, arg = op_name.split(":", 1)
-        return [head, arg] if head != "PICKUP" else [head, arg, 1]
+        if head in QTY_OPS:
+            return [head, arg, int(qty)]
+        return [head, arg]
     return [op_name]
 
 
@@ -254,7 +354,7 @@ def main():
         while not env.done:
             o = env.state[0].observation
             if step % 120 == 0:
-                m = legal_mask(o, 0, env.state[0].observation.private)
+                m = legal_map(o, 0, env.state[0].observation.private)
                 live = sum(1 for row in o["farms"][0]["tiles"]
                            for t in row if t != "LOCKED")
                 tot += m.reshape(-1, N_OPS).sum(0).astype(int)
