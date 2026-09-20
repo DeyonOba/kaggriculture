@@ -46,6 +46,30 @@ DAYS = 30
 # name -> (base schedule, planner-source edit). Each edit replaces the scalar
 # decision with a lookup into a per-day array injected next to CHAMP_HIRES.
 SCHEDULES = {
+    # --- OPENING schedules -------------------------------------------------
+    # Relative ANIMAL count at day 3 is the strongest early signal in the
+    # 21,054-game corpus (r = +0.237 against the final margin) -- stronger
+    # than crops (+0.005) and far stronger than money (+0.008). It is also
+    # taken with ZERO shop information: the first shop opens on day 3.
+    # The herd targets were the one opening lever with no schedule.
+    "cow": {
+        "base": [2, 2, 2, 3, 4, 5, 6, 7, 8] + [8] * 10 + [0] * 11,
+        "days": (0, 6),
+        "array": "COW_SCHED",
+        "find": '    cow = 2 if day < 3 else min(knobs["cows"], 2 + (day - 2))',
+        "repl": '    cow = (COW_SCHED[day] if day < len(COW_SCHED) else '
+                '(2 if day < 3 else min(knobs["cows"], 2 + (day - 2))))',
+    },
+    "sheep": {
+        "base": [2] * 7 + [3, 4, 5, 6, 7, 8] + [8] * 8 + [0] * 9,
+        "days": (0, 6),
+        "array": "SHEEP_SCHED",
+        "find": '    sheep = 2 if day < 7 else min(knobs["sheep"], '
+                '2 + (day - 6))',
+        "repl": '    sheep = (SHEEP_SCHED[day] if day < len(SHEEP_SCHED) '
+                'else (2 if day < 7 else min(knobs["sheep"], 2 + (day - 6))))',
+    },
+
     "hires": {
         "base": [5, 4, 4, 5, 4, 5, 7, 9, 9, 10] + [11] * 16 + [10, 10, 10, 8],
         "days": (0, 29),
@@ -166,6 +190,8 @@ def main():
     ap.add_argument("--worlds", type=int, default=3)
     ap.add_argument("--base-seed", type=int, default=51000)
     ap.add_argument("--procs", type=int, default=6)
+    ap.add_argument("--days", default="",
+                    help="restrict the search window, e.g. 0-6 for the opening")
     ap.add_argument("--deltas", default="-4,-2,0,2,4")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
@@ -173,6 +199,11 @@ def main():
     spec = SCHEDULES[args.schedule]
     base = list(spec["base"])
     lo, hi = spec["days"]
+    if args.days:
+        # --days 0-6 restricts the search to the opening without
+        # editing the schedule definition
+        a, _, b = args.days.partition("-")
+        lo, hi = int(a), int(b or a)
     deltas = [int(d) for d in args.deltas.split(",")]
     worlds = [(o, args.base_seed + k) for o in OPPS for k in range(args.worlds)]
     out_path = args.out or f"rl/datasets/rollout_{args.schedule}.json"
