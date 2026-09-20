@@ -118,8 +118,13 @@ trunk already sees the board, so predicting today's `melon_tiles` is
 trivial and teaches nothing. The targets are therefore forecasts:
 
 - `money_lead` **at day 20** — the day it becomes decisive
-- `board_roi` **realised** — how much committed capital actually converts
-- days remaining (terminal prediction)
+- `invested_lead` at day 20
+- `board_roi` at day 20 — how much committed capital actually converts
+- `shed_frac` at day 20
+
+Days-remaining is **not** among them: see the terminal-prediction row above.
+What `tools/value_search.py` actually implements is these four day-20
+forecasts, z-scored.
 
 Phase weighting follows the crossover: early states are scored mostly on the
 investment forecast, late states mostly on the money forecast.
