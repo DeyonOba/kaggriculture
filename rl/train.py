@@ -28,6 +28,7 @@ from multiprocessing import Pool  # noqa: E402
 
 from kagent import features  # noqa: E402
 from rl import rollout  # noqa: E402
+from tools import shaping as _shaping  # noqa: E402
 from rl.common import (  # noqa: E402
     PlannerNet,
     ValueNet,
@@ -56,8 +57,17 @@ MARGIN_COEF = 3.0 / 1000.0  # within-episode margin: the two banks of one episod
 WIN_COEF = 6.0            # ordinary (league/heuristic) games
 SESSION_WIN_COEF = 15.0   # session-replay games: beating a real recorded
                           # opponent on its true world IS the objective now
+# Both of these were per-step / terminal costs on STATE VARIABLES, which is
+# not a potential-based form, so they moved the optimum rather than the
+# convergence rate -- and both moved it onto behaviour the ladder has already
+# refuted (see tests/test_shaping.py H4b/H4c and docs/shaping_spec.md S3).
+# They are kept only to reproduce the old curriculum under --legacy-shaping.
 CARRY_COEF = 0.005   # per-decision cost of holding unsold stock (softened: gen-4
 UNSOLD_COEF = 0.2    # coefficients handicapped raw profit vs a penalty-free champion)
+# `unsold` needs no penalty of its own under PBRS: Phi(terminal) = 0 means the
+# final shaping term is exactly -Phi(s_last), so ending the season holding a
+# large non-cash portfolio is already charged, at the potential's own scale
+# and with no free coefficient to tune.
 KL_STOP = 0.03       # per-iteration early stop on policy drift
 WARMUP_ITERS = 3     # value-head-only updates while advantages are garbage
 
@@ -163,16 +173,37 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
                 print(f"   champion-FT epoch {epoch+1}: nll={total/fn:.3f}")
 
 
-def _episode_advantages(ep, shaping_w):
+def _episode_advantages(ep, shaping_w, legacy=False):
+    """Per-decision rewards, then GAE.
+
+    The intermediate term is potential-based (Ng, Harada & Russell 1999):
+
+        F_t = GAMMA * Phi(s_{t+1}) - Phi(s_t),   Phi(terminal) = 0
+
+    which telescopes to -Phi(s_0) over the episode -- a constant per world,
+    so it cannot change which policy is optimal, only how fast the critic
+    finds it. `tools/shaping.py` carries the derivation and the three ways
+    this was previously got wrong; `tests/test_shaping.py` holds them shut.
+
+    `legacy=True` restores the pre-2026-09-21 curriculum verbatim, for
+    reproducing old runs. It is not policy-invariant and should not be used
+    to train anything new.
+    """
     recs = ep["records"]
     n = len(recs)
     if n == 0:
         return [], []
-    pvs = [r["pv"] for r in recs] + [ep["final_money"]]
+    phis = [r["pv"] / 1000.0 for r in recs]
+    shape = (_shaping.legacy_shaping_terms(
+                 phis, terminal_potential=ep["final_money"] / 1000.0)
+             if legacy else
+             _shaping.shaping_terms(phis, GAMMA,
+                                    terminal_potential=_shaping.TERMINAL_POTENTIAL))
     rewards = []
     for i in range(n):
-        r = shaping_w * (pvs[i + 1] - pvs[i]) / 1000.0
-        r -= CARRY_COEF * recs[i].get("stock", 0.0) / 1000.0
+        r = shaping_w * shape[i]
+        if legacy:
+            r -= CARRY_COEF * recs[i].get("stock", 0.0) / 1000.0
         if i == n - 1:
             wc = SESSION_WIN_COEF if ep.get("is_session") else WIN_COEF
             margin = ep["final_money"] - ep.get("opp_money", ep["final_money"])
@@ -190,7 +221,8 @@ def _episode_advantages(ep, shaping_w):
             else:
                 r += MONEY_COEF * ep["final_money"] + wc * (2 * ep["win"] - 1)
                 r += MARGIN_COEF * margin
-            r -= UNSOLD_COEF * ep.get("unsold_value", 0.0) / 1000.0
+            if legacy:
+                r -= UNSOLD_COEF * ep.get("unsold_value", 0.0) / 1000.0
         rewards.append(r)
     values = [r["value"] for r in recs]
     adv = [0.0] * n
@@ -208,7 +240,7 @@ def _episode_advantages(ep, shaping_w):
 
 def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bundles=(),
               prior_net=None, prior_kl=0.0,
-              patience=4):
+              patience=4, legacy_shaping=False):
     snapshots = []
     league = []          # weight paths of every new-best: future opponents
     best_score = -1.0
@@ -319,7 +351,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
 
         all_recs, all_adv, all_ret = [], [], []
         for ep in episodes_out:
-            adv, ret = _episode_advantages(ep, shaping_w)
+            adv, ret = _episode_advantages(ep, shaping_w, legacy=legacy_shaping)
             all_recs.extend(ep["records"])
             all_adv.extend(adv)
             all_ret.extend(ret)
@@ -516,6 +548,11 @@ def main():
     ap.add_argument("--prior-kl", type=float, default=0.0,
                     help="KL penalty toward the frozen BC prior (residual trust region)")
     ap.add_argument("--lr", type=float, default=None, help="policy/value learning rate (default LR)")
+    ap.add_argument("--legacy-shaping", action="store_true",
+                    help="restore the pre-2026-09-21 curriculum: undiscounted "
+                         "portfolio delta + per-step carry cost + terminal "
+                         "unsold penalty. NOT policy-invariant (see "
+                         "docs/shaping_spec.md); for reproducing old runs only")
     ap.add_argument("--paired", action="store_true",
                     help="reward = outcome minus the champion plan's outcome on the identical world (twin episodes)")
     ap.add_argument("--plateau-cool", type=float, default=None,
@@ -593,6 +630,7 @@ def main():
             net, vnet, pool, run_dir, args.iters, args.episodes, args.procs,
             opp_bundles=bundles, patience=args.patience,
             prior_net=prior_net, prior_kl=args.prior_kl,
+            legacy_shaping=args.legacy_shaping,
         )
 
 

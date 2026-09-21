@@ -4,6 +4,69 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## potential-based shaping — 2026-09-21 · 3 policy-distorting terms removed from the trainer
+
+The sub-reward problem, done with a theorem instead of a gate. Ng/Harada/Russell: adding
+`F = gamma*Phi(s') - Phi(s)` for ANY state function Phi leaves the optimal policy set exactly
+unchanged, and that form is necessary as well as sufficient. So a fitted Phi carries none of
+the risk the same model carries as a decision rule -- the first construction here where a
+fitted model is **safe by theorem rather than by gate**.
+
+`rl/train.py` already had shaping. It was not potential-based in three separate ways, and all
+three push toward behaviour the ladder has already refuted:
+
+| defect | what it does | what it matches |
+| --- | --- | --- |
+| `Phi(s') - Phi(s)` — no gamma | pays `(1-g)Phi` per step to STALL | never liquidate, into an engine that scores sold product only |
+| `- CARRY_COEF * stock` per step | not a difference → moves the optimum, toward dumping early | `x-mel100`, gated **−$1,482 (z −3.52)** |
+| `- UNSOLD_COEF * unsold` at the end | `final_money` already prices unsold at 0; this prices it −0.2x | the glut penalty, **−$1,230** |
+
+Measured, not asserted: on 400 real trajectories at gamma 0.997 the missing gamma hands out
+**1.60 reward units/episode = 13.3% of the entire win signal**, paid for holding. Shipped the
+corrected form; `CARRY_COEF`/`UNSOLD_COEF` survive only under `--legacy-shaping`. The unsold
+penalty needs no replacement: **Phi(terminal)=0 already charges it**, at the potential's own
+scale, with no coefficient to tune.
+
+**28 tests, all by exact value iteration on constructed MDPs** — no sampling. H1 telescoping
+(1,000 trajectories x 5 discounts); H3 invariance (900 random MDPs, Phi drawn 50x larger than
+the rewards, zero strict-optimum changes); H4a/b/c each FLIP a constructed policy, and 500
+random potentials cannot reproduce the H4b flip.
+
+### Phi, fitted and scored (H7/H8)
+
+`rl/datasets/propagation_perturb.npz` — 400 games x 30 days x 48 metrics with **margin and
+win** attached. Split BY GAME (30 rows share one label), alpha chosen inside train only, six
+independent splits:
+
+| Phi | R^2 vs margin | AUC vs win |
+| --- | --- | --- |
+| fit, all 48 | **+0.390 ± 0.048** | **0.775 ± 0.031** |
+| fit, obeying reward_design Rules 1 & 2 | +0.381 ± 0.049 | 0.769 ± 0.032 |
+| `LeadPotential` (zero-fit) | +0.232 ± 0.037 | 0.742 ± 0.028 |
+| cash only (what the trainer had) | +0.240 ± 0.037 | 0.728 ± 0.022 |
+
+Paired, fit − cash = **+0.150 ± 0.019**. The rules cost 0.009 ± 0.019 — **free**, so we take
+them. Cash-only Phi is NEGATIVE R^2 on all eleven days 0-10 and averages 0.52 AUC, dipping to
+0.383 at day 6; the fitted Phi runs 0.70 mean AUC over days 2-10. Early-game signal exists and
+is not in the money.
+
+Two of our own fitting bugs found by out-of-sample scoring, both invisible in-sample: a
+near-constant column surviving a variance clamp (coefficient ~1e7, R^2 −214), and a test row
+**3,677 sigmas** outside the training range (Phi answered −$850,541 against a $5,563 margin
+sd). Fixed by dropping degenerate columns, a de-standardisation round-trip check, and clamping
+Phi to the support the fit saw.
+
+### The limit, stated up front
+
+PBRS telescopes to `-Phi(s_0)`, and in a paired gate both arms start from the same `s_0`, so
+**the paired difference is unchanged bit for bit**. `ladder_gate`, the knob bandit, CEM, ES and
+the schedule rollout are every instrument in our shipping path, and PBRS is a no-op for all of
+them. Its only consumer is `rl/train.py`'s GAE critic. A gate result on this change is not
+missing — it is mathematically guaranteed to be zero.
+
+New: `tools/shaping.py`, `tools/fit_potential.py`, `tests/test_shaping.py`,
+`docs/shaping_spec.md`, `rl/datasets/potential.json`.
+
 ## future shop demand — 2026-09-21 · +$676 ± 249 (z 2.72), SHIPPED
 
 Re-read of README Town Buildings against `_rent_inventory` found the half of the forecast the
