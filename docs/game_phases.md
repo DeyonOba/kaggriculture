@@ -92,3 +92,80 @@ held-out win rate** on data already on disk.
   by day 18. Phase D is a tape-lineage target only.
 - Gate everything on the ladder (`gate-candidate` skill); the 3-opponent panel
   inverts.
+
+---
+
+## Measured 2026-09-22: how much of the outcome each phase actually decides
+
+The table at the top of this document is P(win) per day for two *specific*
+lineages. This is the complementary measurement — how much of the final
+result is *determined* by the end of each phase, across 400 games with
+randomised openings (`rl/datasets/propagation_perturb.npz`), read off the
+per-day potential fitted by `tools/fit_potential.py` (six splits, by game,
+held-out).
+
+Φ's own error floor is **R² = 0.900 at day 29** — the season is over and it
+still misses a tenth. So "resolved" is quoted both raw and as a share of what
+is knowable at all.
+
+| phase | days | margin resolved | of knowable | win AUC start → end | gain |
+| --- | --- | --- | --- | --- | --- |
+| **A opening** | 0–7 | 14.8% | **16.4%** | 0.554 → 0.638 | +0.084 |
+| **B contest** | 7–17 | 25.9% | **28.8%** | 0.638 → 0.796 | **+0.158** |
+| **C consolidation** | 18–25 | 32.6% | **36.2%** | 0.795 → 0.948 | +0.153 |
+| **D endgame** | 26–29 | 10.1% | **11.3%** | 0.959 → 0.997 | +0.038 |
+
+```
+day  7   83.9% of the knowable margin still open   win AUC 0.638
+day 12   78.1%                                     win AUC 0.687
+day 17   55.1%                                     win AUC 0.796
+day 21   35.7%                                     win AUC 0.876
+day 25   16.3%                                     win AUC 0.948
+```
+
+**Three things follow, and the third is the one that matters.**
+
+**1. The opening decides almost nothing.** 84% of the knowable margin is
+still open at day 7 and 78% at day 12. That is an independent confirmation,
+on different data and a different estimator, of `docs/reward_design.md`
+Rule 2 — *"through day 12 the money lead is a coin flip", r ≈ 0.00,
+sign-correct 50%*. Two measurements, two datasets, same answer: **do not
+shape, reward, or search the opening on any outcome proxy.** There is nothing
+there yet to be right about.
+
+**2. Raw resolution peaks in consolidation, not contest** — C resolves 36.2%
+of the knowable margin against B's 28.8%. Taken alone that would argue for
+spending effort on days 18–25.
+
+**3. It would be the wrong conclusion for us, and the table at the top of
+this document is why.** champ-h8's own P(win) falls 0.511 → **0.084 across
+phase B** and is **0.000 by day 21**. The 36.2% that resolves in C is margin
+we have already lost by the time C starts: it is resolving *how badly*, not
+*whether*. Since the rating is win-based, **phase B (days 7–17) is the only
+phase where an intervention can still change the result**, and it is exactly
+the phase where the tape dips to 0.34 and recovers to 0.65 while we do not.
+
+So the per-stage policy, stated once:
+
+```
+A  days 0-7    nothing to reward. 84% still open, cash is a coin flip.
+               Shape on investment STATE only, or not at all.
+B  days 7-17   the whole game. Every reward, every search, every schedule
+               degree of freedom belongs here.
+C  days 18-25  resolves the most margin and decides no wins FOR US.
+               Margin theatre. Do not spend search here.
+D  days 26-29  11.3%, and champ-h8 is at P(win) 0 long before it.
+```
+
+### One thing this measurement does NOT license
+
+A tempting corollary is to score search candidates by rolling only to a phase
+boundary and reading Φ, instead of playing all 30 days — 1.7× to 3.8× cheaper
+per evaluation. The arithmetic that makes it look free is wrong: `1 − R²` is
+Φ's **prediction error against the outcome**, not i.i.d. noise that averages
+out with more games. The part of it that correlates with the candidate is
+**bias**, and no sample size removes a bias. Truncated scoring is a
+hypothesis — *does Φ rank candidates the way the full game does?* — and the
+test is to score a dozen existing arms both ways and compare the orderings.
+It is cheap. It has not been run. Until it has, every gate plays the full
+season.
