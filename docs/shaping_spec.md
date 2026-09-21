@@ -95,9 +95,16 @@ bias = (1 − γ) · Σ_t γ^t · Φ(s_{t+1})
 — strictly positive wherever Φ is, and **proportional to how long value is
 held**. With Φ = portfolio value that is a standing payment for *not*
 liquidating, against an engine whose scoring rule is that unsold inventory is
-worth zero. Measured on 400 real trajectories at γ = 0.997: **1.60 reward
-units per episode, 13.3% of the entire win signal** (WIN_COEF 6.0, swing 12),
-at full curriculum weight.
+worth zero.
+
+> **Corrected 2026-09-21, after measuring on real episodes rather than on a
+> proxy.** This section first reported 1.60 reward units/episode (13.3% of
+> the win signal), sized from a Φ reconstructed out of tanh-squashed
+> propagation metrics. Reading `pv` directly off 24 real episode records
+> gives mean Φ = 52.58 rather than 18.87, and the stall bonus is
+> **+4.790 ± 0.135 reward units per episode — 40% of the entire win signal**
+> (2 × WIN_COEF = 12.0). Same three-fold factor everywhere it was quoted.
+> `docs/shaping_ab_preregistration.md` §0 carries the full table.
 
 **2. `CARRY_COEF × stock`.** A per-step cost on a state variable is not a
 difference of anything, so it is not potential-based, so it moves the
@@ -111,8 +118,27 @@ value on top prices it *negative*. This is the glut-penalty failure again,
 verbatim: **before adding a term, find where in the objective the quantity
 already enters.**
 
+**4. Φ(terminal) = `final_money`, not 0 — and it is the largest term of all.**
+The legacy code builds `pvs = [r["pv"] for r in recs] + [ep["final_money"]]`,
+so the last shaping term carries the entire season's bank a second time:
+**+113.910 ± 5.271 reward units**, on top of `MONEY_COEF × final_money =
+124.28`. While the curriculum weight is on, the legacy reward pays roughly
+**238 for money against 12 for the win** — a 20:1 ratio in favour of the
+quantity this project has repeatedly recorded as the wrong objective. H5
+named this as a convention violation and did not price it; pricing it makes
+it the headline.
+
 Defects 1 and 2 point in opposite directions, which is why the whole thing
 was survivable and why it needed three hand-tuned magic constants.
+
+**And two of the four are inert on the current trajectory distribution.**
+`stock` and `unsold_value` are **exactly 0.000 in all 24 measured episodes**
+— the heuristic liquidates completely and holds nothing at the hour-0
+decision point, so `CARRY_COEF` and `UNSOLD_COEF` never fire. The H4b/H4c
+proofs stand — those terms *would* move the optimum in states where they
+bite — but the honest accounting is **one large active defect (stall), one
+larger unpriced one (money counted twice), and two latent ones**. Whether the
+latent pair ever activates is exactly what the A/B run measures.
 
 ## 4 Experiment: nine hypotheses, all decided
 

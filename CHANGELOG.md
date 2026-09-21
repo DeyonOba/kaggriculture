@@ -4,6 +4,48 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## shaping A/B: the fix is correct and behaviourally inert — 2026-09-21
+
+Pre-registered (`docs/shaping_ab_preregistration.md`), then run. Same BC checkpoint, same
+`--seed 1234`, same world seeds per iteration, one flag different. Iterations 0-3 came back
+**identical to the last digit** in both arms, which is the control working.
+
+**P1 (primary, mechanism) REFUTED.** Predicted the legacy arm would drift toward holding while
+the shaping was on. Paired over the clean window (iters 3-9):
+
+| | `unsold` A−B | `held_stock` A−B | `win_vs_gate` A−B |
+| --- | --- | --- | --- |
+| shaping active 3-9 | **+10.0 ± 22.9** (t +0.44) | −3.9 ± 13.5 (t −0.29) | −0.00 (t −1.74) |
+
+Wrong sign and a twentieth of an se from nothing. `unsold` sits in a $277-468 band and
+`held_stock` in $3,500-3,900 **in both arms for all 20 iterations**. The stall bonus is real
+and large (+4.79/episode, 40% of the win swing) and 448 episodes of differential training did
+not convert it into behaviour.
+
+**Unpredicted, and it needs its caveat first.** The legacy arm banks more (A−B money −1,420 ±
+510 over 3-19) — but `PLATEAU_COOL` makes the LR endogenous to each arm's own eval, so B
+trained the back half at ~1.7x the learning rate and iters 10-19 are confounded. In the clean
+window the gap is **not resolved (t −1.23)**. And **the wins are identical in every window.**
+If the effect is real it is what the arithmetic predicts — the legacy reward pays ~238 for
+money against 12 for the win — and it is worth nothing, because the rating is win-based.
+**Fifth** time margin and win have come apart here.
+
+**The finding with the most weight is not about shaping.** Both arms destroyed the BC policy
+and never recovered: `win_vs_gate` 0.59 -> 0.13 by iter 7, back to only ~0.46 by iter 19;
+held-out session win rate **0.06 at every eval** in arm A against the rl-v9 baseline of 0.08.
+Twenty iterations from a 66.3%-accurate BC start produced nothing under EITHER reward.
+Corroborates `docs/training_algorithms.md`: *"training was not the constraint; the economy the
+executor could express was."* Fixing the reward was necessary and is not sufficient.
+
+**Corrections to the previous entry, from measuring on real episode records instead of a
+tanh-proxy:** the stall bonus is **+4.790 ± 0.135 = 40%** of the win signal, not 13.3% (mean
+Phi is 52.58, not 18.87); there is a **fourth and larger defect** — legacy sets
+`Phi(terminal) = final_money` instead of 0, injecting the season's bank a second time at
+**+113.910 ± 5.271**; and `CARRY_COEF`/`UNSOLD_COEF` are 0.000 on the heuristic teacher's
+trajectories but ~0.56 / ~0.06 on the learner's, so "inert" was wrong and "minor" is right.
+
+New: `rl/train.py --seed` and per-iteration `telemetry.jsonl`.
+
 ## potential-based shaping — 2026-09-21 · 3 policy-distorting terms removed from the trainer
 
 The sub-reward problem, done with a theorem instead of a gate. Ng/Harada/Russell: adding
@@ -21,8 +63,13 @@ three push toward behaviour the ladder has already refuted:
 | `- CARRY_COEF * stock` per step | not a difference → moves the optimum, toward dumping early | `x-mel100`, gated **−$1,482 (z −3.52)** |
 | `- UNSOLD_COEF * unsold` at the end | `final_money` already prices unsold at 0; this prices it −0.2x | the glut penalty, **−$1,230** |
 
-Measured, not asserted: on 400 real trajectories at gamma 0.997 the missing gamma hands out
-**1.60 reward units/episode = 13.3% of the entire win signal**, paid for holding. Shipped the
+Measured on 24 real episode records (corrected from a first pass that used a tanh-proxy Phi and
+understated it 3x): the missing gamma hands out **+4.790 ± 0.135 reward units/episode = 40% of
+the entire win signal**, paid for holding. And a FOURTH defect, the largest: the legacy code
+sets `Phi(terminal) = final_money` instead of 0, so the last shaping term carries the whole
+season's bank a second time at **+113.910 ± 5.271** on top of `MONEY_COEF*final = 124.28` --
+roughly **238 for money against 12 for the win**. Two of the four terms (`CARRY_COEF`,
+`UNSOLD_COEF`) measure **exactly 0.000** on all 24 episodes: latent, not active. Shipped the
 corrected form; `CARRY_COEF`/`UNSOLD_COEF` survive only under `--legacy-shaping`. The unsold
 penalty needs no replacement: **Phi(terminal)=0 already charges it**, at the potential's own
 scale, with no coefficient to tune.

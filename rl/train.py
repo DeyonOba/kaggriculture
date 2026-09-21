@@ -438,9 +438,28 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
         ]
         durs = sorted(ep["duration"] for ep in episodes_out)
         bad = sum(1 for ep in episodes_out if any(s != "DONE" for s in ep["statuses"]))
+        # Behavioural telemetry. The shaping defects are predicted to move
+        # LIQUIDATION, not money: the missing gamma pays to hold, the carry
+        # cost pays to dump. `unsold` is what the engine scores at zero, so
+        # it is the direct read-out. Logged per iteration so the two arms can
+        # be compared on mechanism rather than on a noisy final rating.
+        unsold = [ep.get("unsold_value", 0.0) for ep in episodes_out]
+        held = [sum(r.get("stock", 0.0) for r in ep["records"])
+                / max(1, len(ep["records"])) for ep in episodes_out]
+        telemetry = {
+            "iter": it, "shaping_w": shaping_w, "legacy": bool(legacy_shaping),
+            "money": sum(money) / len(money),
+            "win_vs_gate": sum(gate_wins) / max(1, len(gate_wins)),
+            "unsold": sum(unsold) / len(unsold),
+            "held_stock": sum(held) / len(held),
+            "episodes": len(episodes_out), "steps": n, "bad": bad,
+        }
+        with open(os.path.join(run_dir, "telemetry.jsonl"), "a") as _tf:
+            _tf.write(json.dumps(telemetry) + "\n")
         print(
             f"iter {it:3}: money mean={sum(money)/len(money):8.0f} "
             f"win-vs-gate={sum(gate_wins)/max(1,len(gate_wins)):.2f} "
+            f"unsold={telemetry['unsold']:7.0f} held={telemetry['held_stock']:7.0f} "
             f"shaping={shaping_w:.2f} lr={lr_now:.1e} steps={n} bad={bad} "
             f"ep_dur p50={durs[len(durs)//2]:.1f}s max={durs[-1]:.1f}s ({time.time()-t0:.0f}s)"
         )
@@ -548,6 +567,11 @@ def main():
     ap.add_argument("--prior-kl", type=float, default=0.0,
                     help="KL penalty toward the frozen BC prior (residual trust region)")
     ap.add_argument("--lr", type=float, default=None, help="policy/value learning rate (default LR)")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="seed torch + python so two runs differ ONLY in what "
+                         "you changed. Rollouts are already deterministic in "
+                         "(weights, world seed, side); this pins net init and "
+                         "minibatch shuffling, which are the rest of it")
     ap.add_argument("--legacy-shaping", action="store_true",
                     help="restore the pre-2026-09-21 curriculum: undiscounted "
                          "portfolio delta + per-step carry cost + terminal "
@@ -569,6 +593,10 @@ def main():
         help="stop after this many evals without a profit improvement",
     )
     args = ap.parse_args()
+    if args.seed is not None:
+        random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        print(f"seeded torch+python with {args.seed}")
     global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED
     RESIDUAL = bool(args.residual)
     PAIRED = bool(args.paired)
