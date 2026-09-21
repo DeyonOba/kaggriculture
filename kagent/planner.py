@@ -80,11 +80,21 @@ def _rent_inventory(view, horizon):
     day = view.day
     mine = _rent_board_supply(view.me.tiles, day, horizon)
     opp = _rent_board_supply(view.opp.tiles, day, horizon)
+    # README Town Buildings: a shop unlocks every _FUT_EVERY days, drawn
+    # uniformly WITH REPLACEMENT from the eight types and capped at
+    # _FUT_CAP instances. Holding `drain` at today's shops understates
+    # demand over a 14-day horizon, and understates it unevenly -- melon is
+    # in no shop and can never gain any, wheat is in five of eight.
+    _open_now = len(view.unlocked_shops)
     path = {p: [cur[p]] for p in cur}
     for k in range(1, horizon + 1):
+        _d = day + k
+        _new = max(0, _d // _FUT_EVERY - day // _FUT_EVERY)
+        _new = min(_FUT_CAP, _open_now + _new) - _open_now
         for p in cur:
             cur[p] += (mine[k].get(p, 0) + opp[k].get(p, 0)
-                       - drain.get(p, 0.0))
+                       - drain.get(p, 0.0)
+                       - _FUT_LAM * _new * _FUT.get(p, 0.0))
             path[p].append(cur[p])
     return path
 
@@ -131,6 +141,11 @@ def _rent_pick(view, day, free):
 
 """Day-level strategic planner: quotas, hiring, land, sell floors."""
 
+
+_FUT = {'WHEAT': 3.75, 'CARROT': 2.25, 'TOMATO': 1.5, 'STRAWBERRY': 3.0, 'MELON': 0.0, 'EGG': 1.5, 'MILK': 2.25, 'WOOL': 1.5, 'FERTILIZER': 0.0}
+_FUT_LAM = 1.0
+_FUT_EVERY = 3
+_FUT_CAP = 8
 
 # ---- Tunables (arena-calibrated) -------------------------------------------
 

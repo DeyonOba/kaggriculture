@@ -244,3 +244,96 @@ gate paired on identical worlds with `tools/ladder_gate.py`, read **win
 rate** and not margin, replicate on a second independent block, and treat a
 capability or accuracy score as a diagnostic only — `p1-mel100` moved
 capability +50pp and money −$14,897 on the same change.
+
+---
+
+## 7. Training a temporal model on sub-rewards, with win rate as the objective
+
+Searched 2026-09-21 for the specific shape this project needs: a long-horizon
+episodic game, one terminal outcome, and a set of per-phase metrics we would
+like to use as intermediate signal without corrupting the objective.
+
+**The one theoretical guarantee, and it is the thing to build on.**
+Potential-based reward shaping (Ng, Harada & Russell 1999) adds
+`F(s, s') = γΦ(s') − Φ(s)` for an arbitrary potential `Φ` over states, and
+**provably leaves the set of optimal policies unchanged** — no cycle of
+states can yield a net gain from the shaping, so the agent cannot farm the
+auxiliary signal. Everything else in the shaping literature trades that
+guarantee for speed.
+[survey](https://www.emergentmind.com/topics/potential-based-reward-shaping) ·
+[equivalence to Q-value init, arXiv:1106.5267](https://arxiv.org/pdf/1106.5267)
+(already listed unread in section 4 — it should move to the top of the list)
+· [multi-objective extension](https://www.researchgate.net/publication/316839917_Policy_Invariance_under_Reward_Transformations_for_Multi-Objective_Reinforcement_Learning)
+· [general-sum stochastic games, arXiv:1401.3907](https://arxiv.org/pdf/1401.3907)
+— the two-player case, which is ours.
+
+**Why that matters more here than usual.** This project's whole failure
+record is auxiliary signals that predicted well and then moved the policy the
+wrong way: the value head got the sign wrong on 3 of 4 arms, capacity
+channels bought +0.0187 flow R² and −44% out-of-distribution, and copying the
+corpus's melon fertilisation cost $14,897. A shaping term with no invariance
+guarantee is the same bet again. `tools/phase_metrics.py`'s per-phase
+quantities (book value, burn, deployed capital, exposure) are **exactly the
+shape of a potential function** — they are state functions, not
+trajectory statistics — so `Φ(s) = book_value(s)` is both available and safe.
+
+**If the guarantee is given up, keep the true objective as the evaluator.**
+The standard construction is an ensemble of reward-specific policies sharing
+experience, with a top-level controller selecting on the *unshaped* return
+([IJCAI'19](https://www.ijcai.org/proceedings/2019/0324.pdf) ·
+[assistance rewards without bias, AAMAS'25](https://dl.acm.org/doi/abs/10.5555/3709347.3744019)),
+or auto-tuned shaping weights
+([arXiv:2512.15120](https://arxiv.org/html/2512.15120v1) ·
+[ARMS](https://arxiv.org/pdf/2605.23562) ·
+[dynamic framework](https://arxiv.org/html/2608.08158)). For RTS-shaped games
+specifically, *action guidance*
+([arXiv:2010.03956](https://arxiv.org/pdf/2010.03956)) trains on shaped
+rewards while the evaluated policy optimises the sparse one.
+
+**Win rate vs margin is a two-objective problem and has bitten us already.**
+Competitive setups conventionally use ±1 at the terminal state and add a
+shaped damage-style term ([FightLadder](https://arxiv.org/pdf/2406.02081)).
+Our equivalent of "damage" is margin — and margin and win rate have come
+apart four times now: `match-all` +$1,381 with wins 5/144 → 4/144, the hiring
+rollout +$1,215 with wins dead flat, `h9-carry` −$521 losing 54–34 on wins.
+Multi-objective RL recovers a Pareto front but does not choose the weights;
+here the weight is not free, because **the rating is win-based**. Margin is
+at best a lower-variance proxy to learn from, never the thing to select on.
+
+**Temporal credit assignment, for a 720-step episode with one payoff.**
+[Survey, arXiv:2312.01072](https://arxiv.org/pdf/2312.01072) is the map.
+Return-decomposition methods (RUDDER, Temporal Value Transport) redistribute
+a delayed return across timesteps, which is the direct answer to "which of
+720 turns earned the money". Worth weighing against what we already have:
+`tools/action_value.py` answers the same question *exactly*, by deterministic
+single-action deletion at 1.09 s an eval, and it is what measured the 13×
+decay from $1,317/action on day 3 to $103 on day 27. A learned decomposition
+has to beat an exact counterfactual — the same bar DreamerV2 faces against
+the real engine.
+[Hierarchical RL with advantage-based auxiliary rewards, arXiv:1910.04450](https://arxiv.org/pdf/1910.04450)
+is the closest fit to a per-phase decomposition.
+
+### The concrete proposal this points to
+
+1. `Φ(s) = book value` (cash + inventory at live prices + deployed capital),
+   per `docs/game_phases.md`. Potential-based, so policy-invariant.
+2. Auxiliary heads on the board CNN for the eight standing-count kinds —
+   already validated at +0.116/+0.137 R² — in UNREAL's role: shared encoder,
+   denser gradient, **not** added to the reward.
+3. Select on **win rate** on the held-out ladder. Margin is diagnostic.
+4. Gate every step with `tools/ladder_gate.py`, two independent blocks,
+   McNemar on discordant worlds.
+
+Sources:
+[PBRS survey](https://www.emergentmind.com/topics/potential-based-reward-shaping) ·
+[arXiv:1106.5267](https://arxiv.org/pdf/1106.5267) ·
+[arXiv:1401.3907](https://arxiv.org/pdf/1401.3907) ·
+[IJCAI'19 successive RL](https://www.ijcai.org/proceedings/2019/0324.pdf) ·
+[AAMAS'25 assistance rewards](https://dl.acm.org/doi/abs/10.5555/3709347.3744019) ·
+[arXiv:2512.15120](https://arxiv.org/html/2512.15120v1) ·
+[ARMS arXiv:2605.23562](https://arxiv.org/pdf/2605.23562) ·
+[arXiv:2608.08158](https://arxiv.org/html/2608.08158) ·
+[action guidance arXiv:2010.03956](https://arxiv.org/pdf/2010.03956) ·
+[FightLadder arXiv:2406.02081](https://arxiv.org/pdf/2406.02081) ·
+[TCA survey arXiv:2312.01072](https://arxiv.org/pdf/2312.01072) ·
+[HRL auxiliary rewards arXiv:1910.04450](https://arxiv.org/pdf/1910.04450)

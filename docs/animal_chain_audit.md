@@ -23,6 +23,7 @@ whether past results survive an executor swap at all.
 - [Part 14 — risk is settled null; the rent rule is +$4,336](#part-14--the-risk-analysis-was-already-applied-what-it-sat-on-was-never-shipped)
 - [Part 15 — hiring rollout: money clears, wins do not](#part-15--the-hiring-rollout-money-clears-wins-do-not)
 - [Part 16 — melon risk: right diagnosis, refuted fix](#part-16--melon-risk-the-diagnosis-was-right-the-fix-is-refuted)
+- [Part 17 — future shop demand: +$676, shipped](#part-17--the-shops-that-have-not-opened-yet-676--249-shipped)
 
 ---
 
@@ -1612,3 +1613,85 @@ table really is inverted, and melon really is the highest-glut-risk crop.
 The intervention is refuted. What would *not* be redundant is the half the
 rent rule cannot see: the **opponent's** future supply into the same pool.
 That is `k-diff`, and it gated +$362 ± 1,136 (z 0.32).
+
+---
+
+# Part 17 — the shops that have not opened yet: +$676 ± 249, SHIPPED
+
+Part 16 refuted a risk term because `_rent_pick` already priced it. Re-reading
+README Town Buildings against `_rent_inventory` finds the half it genuinely
+does not price — and it is the demand side, not the supply side.
+
+## The gap
+
+```python
+drain = econ.town_drain_per_day(view.unlocked_shops)   # TODAY's shops
+for k in range(1, horizon + 1):
+    cur[p] += mine[k] + opp[k] - drain[p]              # held CONSTANT
+```
+
+README: a shop unlocks every `townShopUnlockInterval` (3) days, drawn
+**uniformly with replacement** from the eight types, capped at eight
+instances; each instance consumes one of every product it demands every
+`townShopSellInterval` (4) turns — 6 a day, doubled for a single-product
+shop. With `_RENT_HORIZON = 14`, the forecast misses about four future draws
+entirely.
+
+It misses them **unevenly**, which is the whole point. Expected new demand
+per future instance, straight off the shop table:
+
+| product | shop types demanding it | E[units/day] per future instance |
+| --- | --- | --- |
+| WHEAT | 5 of 8 | **3.75** |
+| STRAWBERRY | 4 | 3.00 |
+| CARROT | 2 (pet cafe ×2) | 2.25 |
+| MILK | 3 | 2.25 |
+| TOMATO / EGG / WOOL | 2 / 2 / 1 (yarn ×2) | 1.50 |
+| **MELON** | **0** | **0.00** |
+| FERTILIZER | 0 | 0.00 |
+
+So melon is the one crop whose price can only ever be pushed down, and the
+forecast was treating its demand exactly like wheat's.
+
+## Result
+
+`tools/make_futdemand_variant.py`. λ scales the expectation; λ = 0 is
+bit-identical to the base by construction, and was verified so ($100,099 on
+both).
+
+| arm | block 0 | block 1 | block 2 | **pooled** | wins |
+| --- | --- | --- | --- | --- | --- |
+| `x-fut05` (λ 0.5) | +$426 ± 363 | +$239 ± 273 | — | +$332 ± 227 (z 1.46) | 14 c / 6 b |
+| **`x-fut10` (λ 1.0)** | +$909 ± 446 | +$227 ± 369 | +$893 ± 470 | **+$676 ± 249 (z 2.72)** | **30 c / 17 b**, p 0.079 |
+
+Positive in all three blocks, **monotone upward in λ** — the mirror image of
+the glut arms, which were monotone *downward*. Note the standard error:
+$249 against ~$650 for the other planner arms, because this is a narrow
+forecast correction — only 47 of 1,038 worlds are discordant, and the ones
+that move, move the right way.
+
+**Shipped** to `kagent/planner.py`. Verified: `dev-exec` gates **+$0 with 0
+discordant worlds** against `x-fut10`, win rate 0.367.
+
+## Why this one worked and the glut penalty did not
+
+Both start from the same correct observation — melon's demand is structurally
+the thinnest in the game. They differ in where they put it:
+
+| | where it acts | already priced? |
+| --- | --- | --- |
+| `x-glut50` | a penalty **on the rent**, after `sell_revenue` | **yes** — `sell_revenue` already walks the price down along `above_func`. Double-counted. −$1,230 |
+| `x-fut10` | the **inventory path** the rent is priced against | **no** — `_rent_inventory` never modelled future unlocks. +$676 |
+
+That is the rule worth keeping from this pair: *before adding a term, find
+where in the objective the quantity already enters.* The same fact about
+melon produced −$1,230 in one place and +$676 in the other.
+
+## Running total on the shipped stack
+
+| change | vs its base | wins |
+| --- | --- | --- |
+| underfoot + hoist (executor) | +$880 ± 656 (z 1.34) | flat |
+| rent planner | **+$4,336 ± 633 (z 6.85)** | **0.302 → 0.347** |
+| future shop demand | **+$676 ± 249 (z 2.72)** | 0.350 → 0.367 |
+| hiring rollout | +$1,215 ± 440 (z 2.76) | flat — **held** |

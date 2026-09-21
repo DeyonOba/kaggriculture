@@ -4,6 +4,60 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## future shop demand — 2026-09-21 · +$676 ± 249 (z 2.72), SHIPPED
+
+Re-read of README Town Buildings against `_rent_inventory` found the half of the forecast the
+rent rule genuinely does NOT price. It held demand at `town_drain_per_day(view.unlocked_shops)`
+— **today's** shops — constant across a 14-day horizon, while the README says a shop unlocks
+every 3 days, drawn uniformly with replacement from the eight types, capped at eight instances,
+each consuming 6/day per product it demands (2× for single-product shops). Over the horizon
+that is ~4 missed draws, and they are missed **unevenly**:
+
+| product | shop types | E[units/day] per future instance |
+| --- | --- | --- |
+| WHEAT | 5 of 8 | **3.75** |
+| STRAWBERRY | 4 | 3.00 |
+| CARROT / MILK | 2 (×2) / 3 | 2.25 |
+| TOMATO / EGG / WOOL | 2 / 2 / 1 (×2) | 1.50 |
+| **MELON** | **0** | **0.00** |
+
+Melon is the one crop whose price can only ever be pushed down; the forecast treated its demand
+like wheat's.
+
+| arm | b0 | b1 | b2 | **pooled 1,038w** | wins |
+| --- | --- | --- | --- | --- | --- |
+| `x-fut05` (λ 0.5) | +$426 ± 363 | +$239 ± 273 | — | +$332 ± 227 (z 1.46) | 14 c / 6 b |
+| **`x-fut10` (λ 1.0)** | +$909 ± 446 | +$227 ± 369 | +$893 ± 470 | **+$676 ± 249 (z 2.72)** | **30 c / 17 b**, p 0.079 |
+
+Positive in all three blocks, **monotone upward in λ** — the mirror of the glut arms, which
+were monotone down. λ = 0 verified bit-identical to the base. se is $249 vs ~$650 for other
+planner arms because only 47 of 1,038 worlds are discordant. **Shipped**; `dev-exec` verifies
++$0 / 0 discordant vs `x-fut10`, win rate 0.367.
+
+**Why this worked where the glut penalty did not.** Same correct observation about melon, two
+different places to put it: `x-glut50` penalised the **rent**, which `econ.sell_revenue` had
+already discounted along `above_func` — double-counted, −$1,230. `x-fut10` corrects the
+**inventory path the rent is priced against**, which nothing modelled — +$676. *Before adding
+a term, find where in the objective the quantity already enters.*
+
+### `docs/research_reading.md` section 7: training on sub-rewards
+
+Searched for the exact shape needed — long episodic horizon, one terminal outcome, per-phase
+metrics as intermediate signal. The load-bearing result is **potential-based reward shaping**
+(Ng/Harada/Russell): `F(s,s') = γΦ(s') − Φ(s)` provably leaves the optimal policy set
+unchanged, so the agent cannot farm the auxiliary signal. That guarantee matters more here than
+usual — every auxiliary signal this project has added predicted well and moved the policy the
+wrong way. `tools/phase_metrics.py`'s book value / burn / deployed capital are state functions,
+i.e. exactly the shape of a valid Φ.
+
+Also recorded: win rate and margin have now come apart four times (`match-all`, the hiring
+rollout, `h9-carry`, and every null-positive arm this week), so margin is a lower-variance
+proxy to learn from and never the thing to select on; and return-decomposition methods (RUDDER,
+TVT) must beat `tools/action_value.py`, which already answers "which of 720 turns earned it"
+*exactly* by deterministic single-action deletion at 1.09 s an eval.
+
+New: `tools/make_glut_variant.py`, `tools/make_futdemand_variant.py`.
+
 ## melon glut risk — 2026-09-21 · the sd table IS inverted, and fixing it loses money
 
 The critique is right and stronger than stated: melon is in **no shop at all** (README Town

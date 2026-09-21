@@ -58,3 +58,4 @@ nohup.out
 replay-*.html
 
 arena/agents/x-glut*
+arena/agents/x-fut*
