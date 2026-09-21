@@ -45,6 +45,9 @@ OPPS = ["arena/agents/pub-ahmed-v38/main.py",
 # champ-h8 was frozen. So the rollout must operate on the FROZEN bundle, which
 # cannot be monkeypatched -- it is patched textually instead, the same way
 # tools/make_knob_variant.py patches baked-in knob rules.
+# The schedule is only meaningful for the stack it was optimised on: the
+# rent planner changed what a marginal hand is worth per day. Override with
+# --base so a rollout is never silently fitted to a superseded agent.
 BASE_AGENT = "arena/agents/champ-h8/main.py"
 AGENT_DIR = "/tmp/rollout_agents"
 _HIRES_RE = None
@@ -98,7 +101,14 @@ def main():
     ap.add_argument("--deltas", default="-2,-1,0,1,2")
     ap.add_argument("--days", default="0-29")
     ap.add_argument("--out", default="rl/datasets/rollout_hires.json")
+    ap.add_argument("--base", default=None,
+                    help="agent whose CHAMP_HIRES is rolled out (default "
+                         "champ-h8); use the CURRENT best stack")
     args = ap.parse_args()
+    if args.base:
+        global BASE_AGENT
+        BASE_AGENT = f"arena/agents/{args.base}/main.py"
+        print(f"rolling out over {BASE_AGENT}")
 
     import re
     src = open(os.path.join(REPO, BASE_AGENT)).read()

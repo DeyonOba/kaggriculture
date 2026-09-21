@@ -1,0 +1,303 @@
+[
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 155,
+  "day": 6,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#00",
+  "agent": "p1-mel100",
+  "rigid": 0,
+  "capability": 3,
+  "settle_end": 215,
+  "us": 1555.0,
+  "them": 174822.0,
+  "rigid_step": null,
+  "cap_step": 156,
+  "cap_tile": [
+   1,
+   0
+  ],
+  "window": [
+   155,
+   167
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 158,
+  "day": 6,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#01",
+  "agent": "p1-mel100",
+  "rigid": 0,
+  "capability": 3,
+  "settle_end": 215,
+  "us": 33.0,
+  "them": 132015.0,
+  "rigid_step": null,
+  "cap_step": 159,
+  "cap_tile": [
+   1,
+   0
+  ],
+  "window": [
+   158,
+   167
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 205,
+  "day": 8,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#02",
+  "agent": "p1-mel100",
+  "rigid": 3,
+  "capability": 3,
+  "settle_end": 263,
+  "us": 604.0,
+  "them": 153444.0,
+  "rigid_step": 205,
+  "cap_step": 205,
+  "cap_tile": [
+   2,
+   0
+  ],
+  "window": [
+   205,
+   215
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 181,
+  "day": 7,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#03",
+  "agent": "p1-mel100",
+  "rigid": 3,
+  "capability": 3,
+  "settle_end": 239,
+  "us": 1573.0,
+  "them": 171810.0,
+  "rigid_step": 181,
+  "cap_step": 181,
+  "cap_tile": [
+   4,
+   0
+  ],
+  "window": [
+   181,
+   191
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 304,
+  "day": 12,
+  "x": 7,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#04",
+  "agent": "p1-mel100",
+  "rigid": 3,
+  "capability": 3,
+  "settle_end": 359,
+  "us": 10906.0,
+  "them": 119538.0,
+  "rigid_step": 304,
+  "cap_step": 304,
+  "cap_tile": [
+   7,
+   0
+  ],
+  "window": [
+   304,
+   311
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 331,
+  "day": 13,
+  "x": 0,
+  "y": 4,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#05",
+  "agent": "p1-mel100",
+  "rigid": 0,
+  "capability": 0,
+  "settle_end": 383,
+  "us": 17280.0,
+  "them": 162503.0,
+  "rigid_step": null,
+  "cap_step": null,
+  "cap_tile": null,
+  "window": [
+   331,
+   335
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 444,
+  "day": 18,
+  "x": 0,
+  "y": 8,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#06",
+  "agent": "p1-mel100",
+  "rigid": 0,
+  "capability": 0,
+  "settle_end": 503,
+  "us": 35737.0,
+  "them": 75887.0,
+  "rigid_step": null,
+  "cap_step": null,
+  "cap_tile": null,
+  "window": [
+   444,
+   455
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 491,
+  "day": 20,
+  "x": 2,
+  "y": 8,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#07",
+  "agent": "p1-mel100",
+  "rigid": 0,
+  "capability": 0,
+  "settle_end": 551,
+  "us": 59073.0,
+  "them": 108295.0,
+  "rigid_step": null,
+  "cap_step": null,
+  "cap_tile": null,
+  "window": [
+   491,
+   503
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 581,
+  "day": 24,
+  "x": 6,
+  "y": 3,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#08",
+  "agent": "p1-mel100",
+  "rigid": 0,
+  "capability": 3,
+  "settle_end": 647,
+  "us": 73034.0,
+  "them": 99177.0,
+  "rigid_step": null,
+  "cap_step": 587,
+  "cap_tile": [
+   7,
+   4
+  ],
+  "window": [
+   581,
+   599
+  ]
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 616,
+  "day": 25,
+  "x": 3,
+  "y": 1,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#09",
+  "agent": "p1-mel100",
+  "rigid": 0,
+  "capability": 3,
+  "settle_end": 671,
+  "us": 107656.0,
+  "them": 108507.0,
+  "rigid_step": null,
+  "cap_step": 616,
+  "cap_tile": [
+   9,
+   2
+  ],
+  "window": [
+   616,
+   623
+  ]
+ }
+]

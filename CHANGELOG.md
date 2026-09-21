@@ -4,6 +4,585 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## hiring rollout ported + gated — 2026-09-21 · money +$1,215 (z 2.76), wins FLAT -> hold
+
+Re-rolled on `x-rentfx` rather than champ-h8 (a schedule is only meaningful for the stack it
+was fitted on; `--base` is now a flag so this cannot be silent again). Rollout on 8 evaluation
+worlds: −$26,984 → −$22,036 (**+$4,948**), moving six days — 2 (4→2), 3 (5→7), 7 (9→8),
+26–28 (10→11). Days 10–25 untouched: the 11-hand plateau is already optimal.
+
+| block | money vs `x-rentfx` | z | win | McNemar |
+| --- | --- | --- | --- | --- |
+| seed 0 | +$939 ± 797 | 1.18 | 0.350 → 0.361 | 28 c / 24 b |
+| seed 1 | +$930 ± 768 | 1.21 | 0.344 → 0.350 | 23 c / 21 b |
+| seed 2 | +$1,776 ± 718 | 2.47 | 0.335 → 0.312 | 25 c / 33 b |
+| **pooled, 1,038 worlds** | **+$1,215 ± 440** | **+2.76** | **0.343 → 0.341** | **76 c / 78 b, p 0.94** |
+
+**Money clears 2 se; wins are dead flat.** Verdict **hold, not ship** — the rating is
+win-based, and `match-all` already taught us a +$1,381 margin gain can cost head-to-head wins.
+Contrast the rent rule on the same instrument: +$4,336 **and** +4.5pp win rate at p 0.0027.
+
+**In-sample +$4,948 → out-of-sample +$1,215, a 75% shrink**, exactly as `rollout_hires`'
+docstring predicted (cost-improvement only guarantees the evaluation worlds). The original
++$3,287 ± 1,528 was probably the same shape; the per-day hiring schedule is worth about a
+quarter of its in-sample number. `x-hirefx` built and gated; `kagent/` unchanged.
+
+### `docs/research_reading.md` section 6 written
+
+The gap flagged earlier is closed with the papers named: **UNREAL**
+([arXiv:1611.05397](https://arxiv.org/pdf/1611.05397)) for densifying a reward that is one
+number at step 719 against a per-world sd of $34,749 — the measured reason residual PPO
+collapsed — with auxiliary targets that already exist and already validate (board CNN
++0.116/+0.137 R², market an exact identity); **DreamerV2**
+([arXiv:2010.02193](https://arxiv.org/pdf/2010.02193)) for imagination rollouts, whose only
+possible gain here is compute since the engine is already an exact simulator, so it must beat
+`fast_env`'s bit-identical 1.70× by more than its own error; and the **Maia** line
+(arXiv:2409.20553) for the unrealised spatial piece — a distribution over board
+representations rather than a value head over aggregates.
+
+The intended arc **BC → RL → Maia-style spatial policy** has never got past the first arrow.
+Recorded with the bar the opponent-model use case has to clear: `k-diff5`
+(`rent − λ × their visible holding`) is the direct contest proxy and gated **+$362 ± 1,136
+(z 0.32)** — pricing a tile at its own harvest-day price already absorbs most of what their
+board says, because their supply lands in the same inventory the forecast reads. And the
+workflow is written down: spec → research → use-case ideas → experiment → evaluate/test →
+commit → train → test over baseline, with the two steps this project skips called out.
+
+## rent planner on the fixed executor — 2026-09-21 · +$4,336 ± 633, z 6.85, WIN RATE +4.5pp
+
+### The risk analysis was already applied, and its increment is null
+
+`tools/fit_risk.py` / `volatility.py` / `make_risk_variant.py` exist and were applied to
+`_rent_pick` in three modes. The recorded arms look like risk wins — `k-comp5` +$4,017 ± 1,040
+(z 3.86), `k-lear5` +$3,163 ± 1,012 (z 3.13) vs champ-h8 at 270 worlds — but every `k-*` arm is
+built on `r-mrg100`, which already carries `_rent_pick`; champ-h8 does not. Those are **rent +
+risk** against a base with neither. `docs/metric_harvest_spec.md` already separated them:
+**`k-comp5 − r-mrg100` is z = 0.54 on 1,131 worlds.** Risk-adjusting the rent rule does nothing,
+at 4× the sample size anything else here has used — consistent with the fitted variance model
+being weak (best R² 0.135, negative for TOMATO and WOOL): *risk level is knowable, risky states
+are not.* Nothing to re-run.
+
+### What it sat on was never shipped
+
+`_rent_pick` prices every plantable crop at **its own harvest-day price with self-impact** and
+takes the best $/tile-day — the forward market model, this project's first fitted-model win
+(+$3,185 ± 768, replicated; "+$2,605 ± 500 … the one thing that paid"). It lives in `r-mrg100`,
+which differs from champ-h8 in `planner` alone, and it is **not in the champion**.
+
+`x-rentfx` = `h12-ufh` + that planner:
+
+| block | money vs `h12-ufh` | z | win | McNemar |
+| --- | --- | --- | --- | --- |
+| seed 0 | **+$4,208 ± 908** | 4.63 | 0.303 → **0.350** | 34 c / 18 b, p 0.037 |
+| seed 1 | **+$4,464 ± 883** | 5.05 | 0.301 → **0.344** | 32 c / 17 b, p 0.044 |
+| **pooled, 692 worlds** | **+$4,336 ± 633** | **+6.85** | **0.302 → 0.347** | **66 c / 35 b, p 0.0027** |
+
+**The only result in this audit that clears the bar on the metric the rating actually uses.**
+Everything else was null-positive at best: underfoot +$336 (z 0.51), hoist +$880 (z 1.34),
+BC +$1,233 (z 1.95). Landed in `kagent/planner.py`; **`dev-exec` verifies at +$0 / 0 discordant
+worlds against `x-rentfx`**.
+
+### The pattern is now three for three
+
+`docs/board_state_plan.md` called it: both replicated wins here — the hiring rollout
+(+$3,287 ± 1,528) and the rent rule — came from replacing a **constant** with a state-dependent
+rule computed by **arithmetic**, not a fitted model. This session confirms it from the other
+side: residual planner head inert (+$4 ± 6, 0 discordant), full neural planner −$22,887, melon
+fertilisation copied from the corpus −$14,897, arithmetic rent rule **+$4,336**.
+
+**Next: the other unshipped arithmetic rule** — the per-day hiring schedule from
+`tools/rollout_hires.py` (+$3,287 ± 1,528 out-of-sample) replacing `CHAMP_HIRES`' 30 hardcoded
+constants. Same shape, same evidence class, never run on the fixed executor.
+
+## old planner weights on the fixed executor — 2026-09-21 · the residual head is INERT
+
+The BC ranker flipped −$1,052 → +$1,233 on `h12-ufh`, so the trained **planner** heads deserved
+the same retest: `rl/runs/g10..g14e/best_weights.json` were all scored on the broken dispatch
+and abandoned. `rl/export.py` cannot answer it (it writes `kagent/weights.py` and builds from
+the dev tree, not the gated bundle), so `tools/make_neural_variant.py` patches the frozen
+bundle's `weights` module directly. `policy.py` dispatches
+`BANDIT_RULES → CHAMPION_PLAN → _LAYERS`, so a neural arm needs both off — which makes
+`h13-weights` (rules off, no net) the honest baseline rather than `h12-ufh`.
+
+| arm | head | money | z | win | discordant |
+| --- | --- | --- | --- | --- | --- |
+| `n1-g14e` | residual offsets over the champion plan | **+$4 ± 6** | 0.66 | 0.277 | **0 / 0** |
+| `n1-g13` | full neural planner (rl-v9 lineage) | **−$22,887 ± 1,105** | **−20.71** | **0.176** | 38 / 3, p<0.0001 |
+
+**The residual head is inert, not held back.** Zero discordant worlds in 346, ±$4 pooled, $3 on
+a single full game. It reproduces `docs/VERSIONS.md`'s own gen-14 account: the BC prior was too
+peaked (P(zero offset) 0.996), and after softening it learned mostly to *stop* deviating, its
+argmax playing identically to champ-h3. The weights encode "do exactly what the champion plan
+says", so no executor fix can revive them. `n1-g13` simply prices the abandoned rl-v9 lineage
+against the current field.
+
+**This does not contradict the BC result.** The BC ranker replaces `pick`'s ordering *inside*
+the executor, so a disobedient executor destroys its signal — real coupling, and it flipped. A
+planner head sits *above* the executor and emits quotas; its failure here is that it learned
+the identity function. Different layer, different failure, and only the executor-coupled one
+transfers. **There is no trained planner artifact worth reviving — planner work has to be
+re-fitted, not re-scored.**
+
+Also: `docs/research_reading.md` gains a section 6 flagging that the board-state encoder / board
+CNN line — the most recent modelling work, written up in method detail across four docs — has
+**no citation anywhere**. Recorded as an explicit TODO rather than filled with a guessed
+reference.
+
+New: `tools/make_neural_variant.py`.
+
+## dev-tree drift gated — 2026-09-21 · it was ONE line; melon fertilisation REFUTED at −$14,897
+
+### 100% of the drift is `weights.py`
+
+`tools/make_swap_variant.py` swaps exactly one `kagent/` module into the gated bundle. All
+arms vs `h12-ufh`, 346 held-out worlds:
+
+| arm | dev diff lines | money | win |
+| --- | --- | --- | --- |
+| `h13-weights` | 2 | **−$538 ± 433** | 0.303 → **0.277** (14 b-only / 5 c-only, p 0.064) |
+| `h13-planner` | 82 | **+$0**, 0 discordant | — |
+| `h13-econ` / `h13-features` / `h13-market` / `h13-rest` | 36 | **+$0**, 0 discordant each | — |
+| `h13-all` | 120 | −$538 ± 433 | identical to `h13-weights` |
+
+`h13-all` reproducing `h13-weights` exactly proves the decomposition is complete: every other
+module is inert, including the 82 planner diff lines (comments and unreachable branches).
+
+The cause: `BANDIT_RULES = None` in `kagent/weights.py`. `premium_scale`/`carrot_day` survive as
+`KNOB_DEFAULTS`, so what was lost is the two **conditional** rules — champ-h6's cows 6 when no
+milk consumer (+$1,989 ± 551) and champ-h7's sheep 10 at day 12 on wool ≥ base (+$1,034 ± 151).
+They fire in ~40% of worlds, hence a −$538 pooled cost that shows up mainly as **9 net lost
+wins in 346**. Restored from the frozen champion. **`dev-exec` now gates +$0 with 0 discordant
+worlds vs `h12-ufh`** — the dev tree and the gated artifact are behaviourally identical and
+`tools/submit.sh` is safe to build from.
+
+**Stale cache, caught.** The first re-gate after restoring read −$2,058 ± 564 — `ladder_gate`'s
+cache keys on `(agent, n, seed)` and encodes neither the corpus nor the agent's BYTES, so a
+rebuilt bundle reuses the old agent's numbers. Second guise of the same failure. The cache now
+stamps a SHA-1 of `main.py` and recomputes on mismatch.
+
+### Melon fertilisation: +50pp capability, −$14,897
+
+`FERTILIZE.one_time` was the suite's worst rule (20% / 0% on every executor). Of its ten mined
+cases **5 are MELON at ages 6–8 and `want_fert` has no melon clause**; the rest are wheat/carrot
+blocked by the `fert_price < 40/50` guard. Adding
+`(crop == "MELON" and 6 <= age <= 8 and fert_price < 100)`:
+
+| | capability | rigid | ladder vs h12-ufh | win |
+| --- | --- | --- | --- | --- |
+| `p1-mel60` | 20% | 0% | **+$0**, 0 discordant | 0.303 |
+| `p1-mel100` | **70%** | **30%** | **−$14,897 ± 1,939 (z −7.68)** | **0.220**, p < 0.0001 |
+
+The largest single regression in this project. `p1-mel60` being a no-op shows fertilizer never
+drops below $60 inside a melon window, so the clause only fires near base — on 12–16 opening
+melon tiles across three days, i.e. up to ~48 FERTILIZE actions, each burning a ~$100 asset we
+otherwise sell, each a `P_TEND` turn taken from strawberry fertilisation (2 × ~$165), each
+inflating `plan.fert_reserve` so the stock is withheld from the market too. And the payoff was
+never there: melon `first_yield_day` is 10 and the engine refuses HARVEST before it, so
+reaching the cap at age 8 frees nothing — fertilizer buys only insurance against a missed
+watering, and in-window watering is already 92%.
+
+**Fifth instance of the recurring law, and the sharpest.** The 2000+ seats really do fertilise
+melons at ages 6–8 — that is where the cases came from — and copying it costs $15k a game. A
+20% capability score says the executor *cannot* do a thing; it never said the thing was worth
+doing.
+
+**So the planner work does not start from "what does the corpus do that we don't."** It starts
+from the knobs the transfer gate put back in scope — the arms whose champ-h8 effect was inside
+~2 se, the only ones the old executor could have been carrying: `straw_target 40`, the
+`wheat_engine` variants, `land2_margin`, `carrot_cap`, `straw_early`.
+
+New: `tools/make_swap_variant.py`, `tools/make_fert_variant.py`.
+
+## task.DIG 60% -> 80% — 2026-09-21 · a second scorer off-by-one, plus claim-order
+
+Three causes, one of them mine.
+
+1. **A second scorer off-by-one (1 of 4 cases).** `task.DIG` has `settle_days = 0`, so its
+   window is `[T, end of day]` — and the mined cases cluster late. `#05` is day 15 **hour 23**:
+   a one-turn window, on which the executor **did** DIG (`step 383, unit 2, DIG`; weed cleared
+   384). `done` was only evaluated inside the window, but an action on step S first shows up in
+   step S+1's observation, so every command obeyed on its last turn scored as a failure.
+   Fixed (`done` now checked to `settle_end + 1`, injection still stops at `settle_end`):
+   **DIG 60% → 70%**.
+2. **Claim-order on the tile you are standing on (1 more case).** The Part-8 underfoot branch
+   lives inside pass 1's per-unit loop, and `claimed` is set on the step *toward* a task, not on
+   arrival — so a low-index distant unit reserves the weed through its own-zone `pick` and the
+   unit already standing on it is refused (`#00`: unit 4 on the weed at 116, went SOUTH, dug at
+   129). `--hoist` runs the underfoot check as its own pass before any zone pick, skipping
+   animal carriers so `deliver.PLACE` keeps priority: **DIG 70% → 80%**.
+3. **Weeds are P_FILLER by design.** `weed_pri = P_GROW if len(empties) - cursor < 6 else
+   P_FILLER`, and the underfoot branch takes `pri < P_FILLER` only — deliberately, since
+   `v-tile` grabbed filler underfoot and gated −$4,907. Hence unprompted DIG 70% vs commanded
+   80%: the executor *can* dig on demand and declines when there is spare ground. That is an
+   economics question, not an execution one.
+
+| | champ-h8 | h11-uf | **h12-ufh** | match-all | a-commit |
+| --- | --- | --- | --- | --- | --- |
+| `task.DIG` | 60% | 70% | **80%** | 70% | 90% |
+| `task.BUILD_COOP` | 71% | **100%** | 86% | 86% | 100% |
+| `deliver.FERTILIZE` | 82% | 94% | **100%** | 82% | 88% |
+| **ALL** | **89%** | 95% | **96%** | 90% | 94% |
+
+**Gate:** `h12-ufh` +$1,281 ± 903 and +$480 ± 952 → pooled **+$880 ± 656 (z 1.34)**, wins 45 vs
+47; `h11-uf` pooled +$336 ± 658. Both positive in both blocks, neither clears 2 se. The hoist
+costs `task.BUILD_COOP` 100 → 86% and its money edge over h11-uf is inside noise — **landed in
+`kagent/scheduler.py` because it is the principled fix for the measured mechanism, not because
+the money resolved.** `kagent/` now reads obedience **96%**, DIG 80%, FERTILIZE 100%,
+`pytest tests/` 25 passed / 2 xfailed.
+
+**Third scorer bug in one instrument.** (1) `op[1]` IndexError crashed `build_tasks` into
+SafeAgent's all-PASS; (2) a `--cmd` run overwrote the full results file; (3) `done` missed the
+last turn. All three made the executor look worse than it is and none announced itself. The
+wrapper can no longer raise, failures land in `harness_error` and print a loud warning, subset
+runs merge. Lesson: a hook inside the agent's own call path sits inside `SafeAgent`'s blast
+radius, so it must be incapable of raising.
+
+## CORRECTION — 2026-09-21 · a harness bug understated every obedience number
+
+Found by reading the replays. `exec_commands.run_case` computed
+`case["_kind"] = (case.get("op") or [None,"GOOSE"])[1]`, which raises **IndexError for every
+argument-less op** (WATER, HARVEST, DIG, CARE, COLLECT_FERTILIZER, BUILD_*, DROP). The wrapper
+replaces `build_tasks`, which runs inside `policy.act`, and **SafeAgent catches everything and
+emits all-PASS** — so on the commanded turn the agent did nothing and the command was not
+injected until T+1. A crashed harness was indistinguishable from a refused order. A second
+instance (`plan.PLANT` reading the crop from `op[1]` on cases mined from `BUY_SEED`) hit 42
+more. Both fixed; the wrapper can no longer raise, failures land in `harness_error` and `run`
+prints a loud warning; subset runs now merge instead of truncating the results file.
+
+| | reported | **corrected** |
+| --- | --- | --- |
+| champ-h8 | 85% | **89%** |
+| `h11-uf` | 92% | **95%** |
+| `dev-exec` (`kagent/`) | 90% | **95%** |
+| `match-all` | 85% | **90%** |
+| `a-commit` | 87% | **92%** |
+| `h10-cmt` | 83% | **87%** |
+
+h11-uf fixes **15 of champ-h8's 24**, breaks 2, leaving **11**.
+
+**What changes.** `match-all` is NOT identical to champ-h8 — 90% vs 89%, and it lifts
+`task.DIG` 60→70% and `BUILD_COOP` 71→86%. The earlier "index-order claiming is refuted,
+identical on 213/217" was measured on contaminated runs and is too strong: claim order is a
+**minor** contributor, not a non-contributor. `plan.HIRE` and `plan.PLANT` are 100%, not 75%
+and 96% — the whole plan layer obeys perfectly.
+
+**What does not change.** Every ladder/money gate (the harness plays no part): the underfoot
+fix's +$337 ± 658, `h10-cmt` −$2,162, the knob transfer, the BC flip. Also the no-op audit and
+the entire unprompted rule suite — `rule_tests.py` injects nothing and never touched this path,
+so 79%→82% capability and 32%→51% rigid stand. Commitment still fixes nothing (87%, below
+baseline) and the zone partition was still the dominant cause.
+
+**The four replays that prompted it.** Three were the renderer's off-by-one, not bad tiles:
+(1,5) d27 was WHEAT dying that night and we DO water it; (4,1) d10 was empty, not a crop, and
+we build the coop 3 turns late; (9,1) d28 tomato was harvested 4 turns late. The fourth is
+real: (1,0) d16, a strawberry with `fertilized_until_day 18` on its production night — a unit
+stood on it and walked SOUTH. README Harvest Yields makes that a 2-unit yield instead of 1, so
+it costs a ~$165 unit.
+
+**Indexing.** `day` and `hour` are both 0-indexed (README; engine `obs0.hour = next_step %
+turns_per_day`), hour 0–23, so "turn 22" is the 23rd turn. The off-by-one is the renderer:
+`env.steps[t]`'s observation is the state AFTER step t's actions. `window_for()` now subtracts
+one and renders 2 in-game days of lead-in plus 10 turns of tail (~2–4 MB per case).
+
+## 4th executor + BC re-opened — 2026-09-21 · knobs transfer, BC does NOT
+
+### h11-uf as a fourth executor: the knob conclusion holds
+
+| knob | champ-h8 | match-all | a-commit | **h11-uf** |
+| --- | --- | --- | --- | --- |
+| geese 4 | −5,618 ± 885 | −4,952 ± 886 | −6,178 ± 881 | **−6,206 ± 953** |
+| carrot_standing 16 | −4,855 ± 854 | −4,705 ± 840 | −2,193 ± 885 | **−3,791 ± 904** |
+| hires_delta +2 | −3,194 ± 687 | −2,742 ± 696 | −372 ± 901 | **−3,548 ± 631** |
+
+**E0 vs E3 Spearman +0.94, sign 3/3 on every arm champ-h8 resolves.** The better-obeying
+executor agrees with champ-h8 more closely than any other pair except the near-identical
+E0/E1 — and `hires_delta`, whose magnitude collapsed on a-commit (−$3,194 → −$372), comes back
+to −$3,548. a-commit was the outlier, not "a better executor". Closed knob negatives at >2 se
+stay closed.
+
+### BC flips sign on the fixed executor — the premise holds HERE
+
+`exec_bc.py export --mode banded` swaps the learned ranker in for `pick`'s
+`(urgent, distance, priority)` score and changes nothing else. Same weights both times.
+
+| arm | base | money/game | z | win |
+| --- | --- | --- | --- | --- |
+| `bc-h8` | champ-h8 | **−$1,052 ± 902** | −1.17 | 0.295 → 0.277 |
+| `bc-h11` block 0 | h11-uf | +$888 ± 906 | 0.98 | 0.303 → 0.318 |
+| `bc-h11` block 1 | h11-uf | +$1,578 ± 880 | 1.79 | 0.301 → 0.327 |
+| **pooled, 692 worlds** | h11-uf | **+$1,233 ± 632** | **+1.95** | 60 c-only vs 46 b-only |
+
+**Same ranker, different executor: a $2,285/game swing.** The recorded BC null (z = +0.69 over
+4,800 worlds) was measured inside an executor that disobeys 15% of direct orders — the ranker
+picked better targets and the zone partition overruled it. Does not clear the bar yet
+(z 1.95 vs the ~2 se rule, McNemar p 0.21), but it is the only learned component in this
+project that has ever read positive, and it is now the strongest open lead. Next: a third
+block, then re-fit the ranker on candidate sets from the *fixed* `assign`.
+
+### Remaining executor failures: 18 of 217
+
+16 held over, 2 newly broken (`deliver.FEED#03`, `task.DIG#08`). All 14 tile cases still
+*arrive* on the tile and **10 of 14 are commanded at hours 18–23** — the residue is end-of-day
+logistics (section 6 sends loaded units to the shed from hour 21; the shuttle grabs units
+before every work pass), not zone blindness. Caveat: `ASSIGN_LABEL` still reports them as
+`zone` because the underfoot branch now lives inside pass 1, so the stage attribution is no
+longer separable — the hour concentration is the reliable signal. Replays for all 18 at
+`tests/replays/h11-uf-commands/<command>/`.
+
+## underfoot fix — 2026-09-21 · SHIPPED to kagent/scheduler.py · obedience 85% -> 92%
+
+The fix for the cause found above. One branch in pass 1, between the delivery check and the
+own-zone check: if there is an unclaimed task **on the tile I am standing on**, any zone,
+`pri < P_FILLER`, do it. Two narrowings, both because `v-tile` already gated −$4,907 — it runs
+*after* deliveries (so `deliver.PLACE` stays 100%), and it excludes FILLER.
+
+| | champ-h8 | `h11-uf` |
+| --- | --- | --- |
+| commands obeyed | 85% | **92%** |
+| median latency | 5–9 turns | **2** |
+| unprompted capability T3 | 79% | **82%** |
+| unprompted **rigid** T3 | 32% | **51%** |
+
+Per command: WATER 73→87, HARVEST 78→94, FERTILIZE 76→94, COLLECT_FERTILIZER 92→100,
+BUILD_COOP 71→86, FEED 58→75. DIG (60%) and HIRE (75%) unmoved.
+
+**Ladder, two blocks: +$454 ± 874 and +$219 ± 984; pooled +$337 ± 658 (z 0.51), wins 46 vs 44.**
+Null on money, null on wins, **positive in both blocks and negative in neither** — and it fixes
+the measured defect while breaking nothing. Not a money win; the honest claim is that the
+executor now does what it is told at no cost. Rigid agreement nearly doubling is the sharpest
+evidence the right thing changed. For contrast on the same instrument: `v-tile` −$4,907,
+`h10-cmt` −$2,162, `h9-carry` −$521.
+
+`h11-uf2` (pri < 2, urgent only) is strictly worse: 90% obeyed, +$19 ± 879, win 0.280.
+
+### Landed in `kagent/scheduler.py` — but `kagent/` is not the gated artifact
+
+Suites re-run from a bundle built out of the dev tree: obedience 85→**90%**, capability
+79→**82%**, rigid 32→**51%**, `pytest tests/` 25 passed / 2 xfailed.
+
+| arm | money vs champ-h8 | win |
+| --- | --- | --- |
+| `h11-uf` (frozen champ-h8 + this fix) | **+$454 ± 874** | 0.295 → 0.303 |
+| `dev-exec` (all of `kagent/`) | **−$777 ± 869** | 0.295 → **0.275** |
+
+Same fix, same block, opposite sign. The gap is everything else the dev tree has drifted by —
+planner, econ, market, features — never gated, currently ≈ **$1,200/game** worse than the
+frozen champion. `tools/submit.sh` rebuilds from `kagent/`, so **submitting from it today
+would ship a −$777 agent.** Gate the rest of the drift before any submission.
+
+New: `tools/make_underfoot_variant.py`. Result files are now per-agent
+(`rl/rule_results_<agent>.json`, `rl/exec_command_results_<agent>.json`) so a later run cannot
+clobber a baseline — it clobbered champ-h8's once before this was fixed.
+
+## the 28 unobeyed commands — 2026-09-21 · commitment REJECTED, the zone partition is the cause
+
+Three variants on the frozen champ-h8 bundle, gated on 346 held-out ladder worlds paired
+against champ-h8 and re-run through the 217-command obedience suite.
+
+| arm | change | money/game | z | obeyed | fixes / breaks |
+| --- | --- | --- | --- | --- | --- |
+| `h10-cmt` | commit to a P_SURVIVAL target across turns | **−$2,162 ± 572** | **−3.78** | 83% | **0 / 32, +4 broken** |
+| `h10-cmts` | + committed units exempt from the shed shuttle | **−$2,133 ± 571** | **−3.74** | 83% | **0 / 32, +4 broken** |
+| `h10-pad1` | route over unbought ground only at depth ≤ 1 | +$34 ± 20 | +1.71 | 85% | 0 / 0 |
+
+- **Commitment is refuted as the mechanism.** It fixes none of the 32 failures and costs
+  $2,162/game at z = −3.78. In hindsight it could not work: commitment only helps a unit that
+  already had the task assigned last turn, and the 27 failures are units that were **never
+  given the task** — they were standing on it. `--shield` rules the shed shuttle out too.
+  (`a-commit` fixes 16/32 but breaks 12 and replaces the whole three-pass assignment with a
+  value-density scorer, so its gain was never commitment.)
+- **The cause, measured.** `ASSIGN_LABEL` (the scheduler's own per-stage debug hook) says the
+  diverting stage is `zone` — pass 1, the own-zone round — **68%** of the time. Direct test:
+  the commanded tile is in a **FOREIGN zone 65%** of the time. Pass 1 searches
+  `zone_tasks[idx % n_zones]` only, so a unit physically standing on the tile is refused it
+  because the tile belongs to another worker's zone, and pass 1 sends it back to its own.
+  That is `executor_problems.md` **§4**, listed there as untried.
+- **Three mechanisms, three verdicts:** index-order claiming (§3) **refuted** — `match-all` is
+  identical on 213/217; re-deciding every turn (§2) **refuted** — `h10-cmt` above; the zone
+  partition (§4) **confirmed at 65%**. Nothing shipped: the nearest previously-tried fix,
+  `v-tile` (same-tile pass before the band passes), gated −$4,907, and §4's own note is that
+  planner and executor have to change together.
+- **Locked-ground padding.** Measured *before* building: 96.5% of locked-ground unit-turns are
+  already at depth 1 and only 25 moves per 4 games go deeper, so this makes a near-invariant
+  into an invariant. `h10-pad1` (multi-source BFS depth grid in `_step_toward`, cached on the
+  quadrant key) eliminates the single genuine deep excursion; the residual depth-2 turns are
+  all `(5,5)` at hour 0, where the engine's `_spawn_hand` places a hand regardless of locks.
+  +$34 ± 20, zero discordant worlds, nothing broken — free, and a guarantee rather than a win.
+  Locked tiles are passable, not obstacles, so the detour costs no distance; what it buys is
+  steps taken over workable ground (`actions per tile arrival`, ours 1.67 vs 2.10).
+- New: `tools/make_survcommit_variant.py`, `tools/make_pad_variant.py`,
+  `tests/test_locked_ground.py` (asserts: no tile op on LOCKED, shed ops only from
+  shed-access tiles, routing within the padding, no silently-voided PLANT or market order).
+
+## commanded intents + transfer gate — 2026-09-21 · it ARRIVES and walks away; the negatives stay closed
+
+Two follow-ups to the rule suite: attribute its 21% misses between planner and executor, and
+test the premise that nothing fitted on champ-h8 transfers.
+
+### `tools/exec_commands.py` — the executor disobeys 15% of direct orders
+
+Inject the intent into the SAME mined states and see if it lands. Three layers, all through
+the real machinery: a `Task` at `P_SURVIVAL` on a named tile (routing + execution), a `Task`
+whose `need` is only in the shed (provisioning + carry), and a `DayPlan` field re-asserted
+every turn (`build_tasks` + market controller). 217 commands, 15 intents.
+
+- **champ-h8 obeys 85%.** Every purely economic PLAN intent lands 100% — buy the quadrant,
+  build the coop, buy the animal — so `plan.COOP` at 100% obeyed against 41% unprompted means
+  the entire coop gap is **the planner never asking**. Same for `plan.BUY_LAND` (100/50),
+  `task.CARE` (100/83), `task.BUILD_PASTURE` (100/50).
+- **Every failure is a TASK on a named tile**, and `task.WATER` is *worse* commanded (73%)
+  than unprompted (87%) — the unprompted test accepts any qualifying tile, the command names
+  one. It waters *a* plant and steps off *the* one. `deliver.FEED` 58% vs 92%.
+- **27 of 27 unobeyed tile commands had a unit standing ON the tile**, which then emitted a
+  move. Never once did it fail to arrive. That is `executor_problems.md` §1 demonstrated at
+  `P_SURVIVAL`, where nothing outranks the order.
+- **Which executor change fixes it:** the same 217 commands on three executors sharing one
+  planner. `match-all` (global matching) is **indistinguishable** — identical latency on
+  213/217, the same 32 failures — which **refutes the claim-order explanation** (§3); if
+  index-order claiming were the cause, resolving claims cheapest-pair-first would fix it.
+  `a-commit` (cross-turn commitment, §2, listed as *untried*) does move it: WATER 73→87%,
+  FEED 58→75%, BUILD_COOP 71→86%, HARVEST 78→89%, overall 85→87% — and costs
+  `deliver.PLACE` 100→60%, because a committed unit will not divert to deliver the animal in
+  its pocket. `a-commit` gated null on money, so obedience and money are separable: treat the
+  obedience number as a diagnostic, never a gate.
+
+### `tools/knob_transfer.py` — "nothing transfers" is too strong on sign, right on magnitude
+
+6 knobs × 3 executors (champ-h8 / match-all / a-commit, one planner, `scheduler.py` only),
+each arm gated against **its own** executor on the same 180 held-out worlds.
+
+| knob | champ-h8 | match-all | a-commit |
+| --- | --- | --- | --- |
+| geese 4 | −5,618 ± 885 | −4,952 ± 886 | −6,178 ± 881 |
+| carrot_standing 16 | −4,855 ± 854 | −4,705 ± 840 | −2,193 ± 885 |
+| hires_delta +2 | −3,194 ± 687 | −2,742 ± 696 | −372 ± 901 |
+| straw_target 40 | −753 ± 602 | −440 ± 543 | −1,095 ± 719 |
+| wheat_engine 40 | +61 ± 359 | +156 ± 332 | −459 ± 210 |
+| melon_opening 16 | +0 ± 0 | +0 ± 0 | +0 ± 0 |
+
+Spearman +1.00 (E0/E1) and +0.71 (E0/E2, E1/E2); **sign agreement 3/3 on every arm champ-h8
+resolves at >2 se**. `melon_opening 16` is already the default, so its +$0 ± 0 across all
+three is a genuine zero control.
+
+- **Every resolved knob keeps its sign across a materially different executor** — a-commit
+  changes 144 of 217 commanded outcomes. Geese do not become good on a better executor; they
+  get worse. The single sign disagreement (`wheat_engine`) is +$61 ± 359 on champ-h8, i.e.
+  noise.
+- **Magnitudes do move**: `hires_delta` shrinks 9× (−$3,194 → −$372) and stops resolving at
+  all. So "hires +2 is catastrophic" was partly executor-carried; "hires +2 is bad" was not.
+- **Rule this buys**: reopen a closed experiment only if its effect was inside ~2 se. Geese,
+  standing carrots, ±2 hires, straw 21, carrot_day 18, premium 1.3 stay closed; the
+  borderline set (straw 40, wheat_engine variants, land2_margin, carrot_cap, straw_early)
+  goes back in scope.
+- **Not gated:** BC. A cloned policy couples to the executor far more tightly than a scalar
+  knob, so `exec_bc.py`'s null could still be executor-carried — re-run that one on `a-commit`
+  before deciding. Also: 6 knobs, one seed block, and all three executors share a planner.
+
+- **`tools/noop_audit.py` — the executor emits essentially no illegal actions.** 4 games,
+  27,328 ops emitted, **5 silent no-ops (0.02%)**, all `WATER: not_a_plant` (a same-turn race
+  where the tile stopped being a plant). **0** tile ops attempted on LOCKED ground, **0**
+  PLANT requests voided by the atomic-seed rule, **0** market orders past the cap. It also
+  *uses* both permissive locked-tile rules rather than avoiding locked ground — 895 moves
+  from a locked tile and 290 shed ops from a locked shed-access tile (a hand spawns on (5,4),
+  locked until NE is bought, and picks up from there anyway). This closes the cheapest
+  explanation for the 15% disobedience: it is not malformed orders, it is choosing a
+  different *valid* action.
+- Replays are now filed per action: `tests/replays/<agent>/<ACTION>/<case>.html`, with the
+  14.7 MB viewer shared once per agent directory.
+
+Replay filenames carry the target, day, turn and seat
+(`DIG.clears_a_weed-04-x4y9-d12-t20-p1.html`).
+
+## rule test suite — 2026-09-21 · TDD ground truth; the executor OMITS, it does not misfire
+
+`tools/rule_tests.py` turns README.md into a test suite. One rule per action; a case exists
+only where a **2000+ rated seat performed it** and the README precondition held, so the corpus
+defines correctness. Mid-game resume is unfaithful, so each case replays both recorded scripts
+from step 0 on the session's own seed, hands OUR executor the wheel at step T, judges it, then
+PASSes to the end; our agent is called on every step from 0 so its hour-0 day plans evolve
+along the recorded trajectory. **286 cases, 28 rules, 40 reference seats, six day bands.**
+
+Two verdicts — RIGID (exactly step T, exactly that tile) and CAPABILITY (any qualifying tile
+until the opportunity closes) — each at three tiers: emitted, accepted by the engine, and the
+README rule's **value materialised**.
+
+- **champ-h8: capability T3 79%, rigid T3 32%.**
+- **`T1 == T2 == T3` in 27 of 28 rules.** Whenever it emits an action where the precondition
+  holds, the engine accepts it *and* the value lands — 0 no-ops, 0 mistimings in 286 cases.
+  **Every failure is pure omission**: a state where it never emitted the action anywhere, all
+  day. That is a much narrower diagnosis than "the executor is faulty", and it reframes the
+  `moves/action` work: a worker that never proposes the task cannot be routed to it.
+- **The one exception is CARE** — 92% accepted against 83% paid. README Animal Care banks the
+  bonus only on a day the animal was *also* fed; one day-26 case cares an animal that then goes
+  unfed, spending the action for nothing. Same coupling `docs/executor_problems.md` §6 found
+  from the other side.
+- Worst: `BUILD_COOP` 14% (champ-h8 sets `geese = 0`, so it never builds one),
+  `FERTILIZE.one_time` 20%, then `BUILD_PASTURE` / `DIG` / `DROP` / `BUY_LAND` at 50%.
+  Clean 100%: `HARVEST.one_time_ripe`, `PICKUP`, `PLACE.animal_on_structure`, all four moves,
+  `COLLECT_FERTILIZER`, `HIRE`.
+- **Max yields, answered:** it gets every structural rule right and the *cap* rule wrong in
+  three places, all the same omission — it never compares `yield_units` to the cap before
+  pricing an action. Watering priority is window-membership only, so a melon gets `P_TEND`
+  waterings at ages 11–12 (9–12 fertilised) for zero units; `max_held` is read into a local and
+  never used, so a cared sheep's `4 + 4 -> min(6, 8)` destroys two wool and the bank that paid
+  for them (`HARVEST.animal_before_clip` missed on both late-game cases); and README's Object
+  Types "Time to Max Yield" (melon 10) is not the engine's `max_yield_day` (12), which the
+  executor uses for both the window and the ripeness test.
+- **Artifacts:** every case writes a watchable replay to `tests/replays/<agent>/` — a windowed
+  render around the test (1.4–4 MB) and, for failures, the whole season (~30 MB). 347 files,
+  2.3 GB. The 14.7 MB visualiser is externalised once per directory as a classic `defer`
+  script so the pages still open from `file://`; `tests/replays/serve.sh` serves them if a
+  browser objects.
+- **This is a capability test, not a value test.** 100% means the executor *can* do the thing
+  where a strong player did, not that doing it more earns money — four recorded cases say the
+  opposite. Find gaps here; decide with `tools/ladder_gate.py`.
+
+## animal chain vs README — 2026-09-21 · two inert fixes shipped, one refuted
+
+Audit of the `BUY_ANIMAL -> PICKUP -> walk -> PLACE` chain in champ-h8's executor against
+`README.md`. Four assumptions are genuinely false; **none of them is worth money**, and the
+one that changes behaviour makes the agent worse. Full write-up:
+[docs/animal_chain_audit.md](docs/animal_chain_audit.md).
+
+- **FA-1 / FA-2 — a head in a carrier's pocket is invisible to the planner.**
+  `make_champion_plan` reads `herd + shed` for the buy target and
+  `animal_buys + shed` for the structure pipeline, while `scheduler.build_tasks` counts
+  `shed + pockets` in `available`. The two halves of the chain disagree: the buy path orders a
+  $300–500 replacement for a head we already own, the build path never queues it a coop, and
+  README Terrain says `DIG` cannot recover the tile once an animal lands on it.
+  **Gated bit-identical: +$0, 0 discordant worlds of 346.** The day plan is rebuilt only at
+  hour 0 and the engine empties every inventory at midnight
+  (`private["inventories"] = [{}]`, kaggriculture.py:882), so the missing term is always zero.
+  Shipped into `kagent/` anyway — `tools/rollout_plan.py` and the MPC provider re-plan
+  off-cadence and would hit it.
+- **FA-4 — the shed-overflow drop can name an animal.** The block counts cargo *excluding*
+  `GOOSE/COW/SHEEP` and then picks `max(inv, key=inv.get)` over the *whole* inventory; README
+  resolves `PLACE`'s animal branch first, so on a matching empty structure that puts one head
+  on the tile and nothing in the shed. Reachable — the build queue sorts empties by distance
+  to the shed and all four shed-access tiles tie for the minimum (9 of 46 structures land on
+  them) — but latent: 0 occurrences in six traced games, **+$0, 0 discordant worlds**. Shipped
+  as a guard.
+- **FA-3 — `batch = 2` for animals. REFUTED, not shipped.** README Animals: `PLACE` "places
+  one animal ... The `n` argument is ignored", and the code's own comment two lines up says
+  "any unit may carry **one** to its pasture". The rule reading is right; the inference that
+  head #2 is dead weight is not. Two head in one pocket is **one** shed trip serving **two**
+  structures, which cluster by the shed. One head per carrier cost **12 extra PICKUP actions
+  per 3 games for the same 48 placements** and made midnight bounces *worse* (1 → 7). Gated
+  over **two blocks, 692 held-out ladder worlds**: money −$521 ± 601 (z −0.87, null) and
+  **wins 54 base-only vs 34 candidate-only, McNemar p = 0.042** — a replicated regression on
+  the metric the rating actually uses.
+- **Also measured and rejected:** capping the structure build at
+  `min(animal_buys, bank // cost, shed_room)` — the faithful reading of "BUY_ANIMAL is an
+  order that can be refused". The champion plan buys animals mid-day on wool/milk cash by
+  design, so hour-0 bank is near zero and the gate suppressed almost every build;
+  `stranded_shed_turns` doubled 107 → 216. Only 4 of 24 GOOSE orders actually go unfilled.
+- **Note for anyone reading the goose lead:** champ-h8 sets `knobs["geese"] = 0`, so the
+  COOP→GOOSE branch never executes in the shipped champion (0 `BUY_ANIMAL GOOSE` in 3 traced
+  games). `GEESE_TARGET = 32` and friends live in the *reactive* `make_day_plan`, which is
+  only the SafeAgent fallback. The chain measurements above use `g-goose6` to load it.
+- New: `tools/make_chain_variant.py`, `tests/test_animal_chain.py` (asserts the four README
+  rules against a bundle; the FA-3 pair is `xfail` with the refutation in the reason string).
+
 ## tape-sel — 2026-09-14 · SUBMITTED · day-6 selector, +$5.3k/+$4.9k over tape-v2
 
 Two arms over the 58-tape cluster, chosen at step 144: **a yarn store among the first two shops**

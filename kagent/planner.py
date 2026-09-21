@@ -10,6 +10,128 @@ from kagent.constants import (
 )
 from kagent import econ
 
+# --- forward market model ---------------------------------------------------
+# The bundle's econ module already forecasts DEMAND (town_drain_per_day,
+# forecast_drain) and has never forecast SUPPLY. The ablation in
+# tools/price_forecast.py says that is exactly the wrong half to have: drain
+# alone is WORSE than assuming the price never moves (k=5 MAE 25.5 vs 23.1),
+# and the model only beats persistence once both farms' boards are in it
+# (13.3, a 42% cut). Their shed is worth nothing even as an oracle.
+_RENTA = 1.0
+_RENT_HORIZON = 14
+_PLANTABLE = ("WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON")
+
+
+def _rent_board_supply(tiles, day, horizon):
+    out = [{} for _ in range(horizon + 1)]
+
+    def add(k, item, n):
+        if 0 <= k <= horizon and n:
+            out[k][item] = out[k].get(item, 0) + n
+
+    n_animals = 0
+    for row in tiles:
+        for t in row:
+            if not isinstance(t, dict):
+                continue
+            if t.get("kind") == "PLANT":
+                cd = CROPS[t["crop"]]
+                age = day - t["planted_day"]
+                held = t.get("yield_units", 0)
+                if not cd["ongoing"]:
+                    ws = (cd["max_yield_day"] + 1) // 2
+                    rem = max(0, cd["max_yield_day"] - max(age, ws - 1))
+                    add(cd["max_yield_day"] - age, t["crop"],
+                        min(cd["max_yield"], held + rem))
+                else:
+                    add(0, t["crop"], held)
+                    n_done = ((age - cd["first_yield_day"]) // cd["interval"] + 1
+                              if age >= cd["first_yield_day"] else 0)
+                    nxt = cd["first_yield_day"] + n_done * cd["interval"] - age
+                    while n_done < cd["max_yield"] and nxt <= horizon:
+                        add(nxt, t["crop"], 1)
+                        n_done += 1
+                        nxt += cd["interval"]
+            elif t.get("animal"):
+                n_animals += 1
+                a = ANIMALS[t["animal"]]
+                add(0, a["product"], t.get("yield_units", 0))
+                # CARE doubles output on a fed day; ignoring it under-predicted
+                # milk and wool by ~2x (price bias +$125 / +$88 at k=10)
+                rate = 2 if (t.get("pending_care_bonus", 0)
+                             or t.get("cared_today")) else 1
+                age = day - t["placed_day"]
+                nxt = (a["interval"] - max(0, age - a["first_yield_day"]) % a["interval"]
+                       if age >= a["first_yield_day"] else a["first_yield_day"] - age)
+                while nxt <= horizon:
+                    add(nxt, a["product"], rate)
+                    nxt += a["interval"]
+    for k in range(1, horizon + 1):
+        add(k, "FERTILIZER", n_animals)   # one per animal per night
+        add(k, "WHEAT", -n_animals)       # FEED eats one WHEAT per animal/day
+    return out
+
+
+def _rent_inventory(view, horizon):
+    """Projected market INVENTORY path, not price: the rent of a block has
+    to be priced against the inventory its own units will create."""
+    cur = dict(view.market_inv)
+    drain = econ.town_drain_per_day(view.unlocked_shops)
+    day = view.day
+    mine = _rent_board_supply(view.me.tiles, day, horizon)
+    opp = _rent_board_supply(view.opp.tiles, day, horizon)
+    path = {p: [cur[p]] for p in cur}
+    for k in range(1, horizon + 1):
+        for p in cur:
+            cur[p] += (mine[k].get(p, 0) + opp[k].get(p, 0)
+                       - drain.get(p, 0.0))
+            path[p].append(cur[p])
+    return path
+
+
+def _rent_pick(view, day, free):
+    """(crop, rent) with the highest $/tile-day at ITS OWN harvest price."""
+    if _RENTA <= 0 or free <= 0:
+        return None
+    try:
+        inv = _rent_inventory(view, _RENT_HORIZON)
+    except Exception:
+        return None
+    best = None
+    for crop in _PLANTABLE:
+        cd = CROPS[crop]
+        if cd["ongoing"]:
+            span = max(1, 29 - day)
+            if span <= cd["first_yield_day"]:
+                continue
+            k = min(_RENT_HORIZON, cd["first_yield_day"])
+            units = min(cd["max_yield"],
+                        (span - cd["first_yield_day"]) // cd["interval"] + 1)
+            occupies = span
+        else:
+            if day + cd["max_yield_day"] > 29:
+                continue
+            k = min(_RENT_HORIZON, cd["max_yield_day"])
+            units = cd["max_yield"]
+            occupies = cd["max_yield_day"] + 1
+        if units <= 0:
+            continue
+        # Price the WHOLE BLOCK against the inventory its own units create.
+        # Pricing at the marginal price instead is what made the first version
+        # pick tomato every day: tomato has the highest $/tile-day at our
+        # current (zero) volume and collapses past T=200 at scale.
+        total = int(round(units * free))
+        if total <= 0:
+            continue
+        rev = econ.sell_revenue(crop, int(round(inv[crop][k])), total)
+        rent = rev / float(free * occupies)
+        if best is None or rent > best[1]:
+            best = (crop, rent)
+    return best
+
+"""Day-level strategic planner: quotas, hiring, land, sell floors."""
+
+
 # ---- Tunables (arena-calibrated) -------------------------------------------
 
 # Total melon units (ours + opponent's projected) the market absorbs at a good
@@ -269,61 +391,8 @@ KNOB_DEFAULTS = {
 }
 
 
-# --- Demand book ------------------------------------------------------------
-# Production targets read off the shop draw, mined from 1,857 seats rated 2900+
-# in the 2026-09-12/13 official episodes (tools/mine_knobs.py report). The top
-# meta sizes EVERY product to the number of shops consuming it; we previously
-# conditioned only cows and sheep, and fixed the rest. Index is the number of
-# consumers of that product among the shops open on the decision day, capped at
-# two. Our realized prices already match theirs (wool 0.91 vs 0.71 of base, milk
-# 0.79 vs 0.57); the whole gap is volume, concentrated in the products whose
-# price ladders do not collapse.
-BOOK_HERD = False
-BOOK_CROPS = False
-BOOK_WHEAT = False
-DEMAND_BOOK = {
-    # product: (0 consumers, 1, 2)
-    "cows": (6, 9, 12),          # mined medians of cows held by day 18
-    "sheep": (5, 12, 18),        # by day 20
-    "geese": (2, 3, 5),          # by day 18
-    "straw_target": (21, 29, 35),  # standing strawberries by day 13
-    # Season totals mined were carrots 22/51/73 and tomatoes 4/9/14. Carrots are
-    # one-shot on a ~4-day cycle, so a season total spreads over ~5 rotations;
-    # tomatoes are ongoing, so the total IS the standing count.
-    "carrot_standing": (4, 10, 15),
-    "tomato_standing": (4, 9, 14),
-    "wheat_engine": (30, 32, 34),
-}
-BOOK_PRODUCT = {
-    "cows": "MILK", "sheep": "WOOL", "geese": "EGG", "straw_target": "STRAWBERRY",
-    "carrot_standing": "CARROT", "tomato_standing": "TOMATO", "wheat_engine": "WHEAT",
-}
-
-
-def _consumer_count(view, item):
-    """Shops open now that consume `item`, counting a single-product shop once."""
-    return sum(1 for s in view.unlocked_shops if item in SHOPS.get(s, ()))
-
-
-def _apply_demand_book(knobs, view):
-    groups = []
-    if BOOK_HERD:
-        groups += ["cows", "sheep", "geese"]
-    if BOOK_CROPS:
-        groups += ["straw_target", "carrot_standing", "tomato_standing"]
-    if BOOK_WHEAT:
-        groups += ["wheat_engine"]
-    for key in groups:
-        n = min(2, _consumer_count(view, BOOK_PRODUCT[key]))
-        knobs[key] = DEMAND_BOOK[key][n]
-    return knobs
-
-
-def _knobs(memory, view=None):
+def _knobs(memory):
     k = dict(KNOB_DEFAULTS)
-    if view is not None and view.day >= 6 and (BOOK_HERD or BOOK_CROPS or BOOK_WHEAT):
-        _apply_demand_book(k, view)
-    # Explicit bandit rules still win over the book.
     k.update(getattr(memory, "knobs", None) or {})
     return k
 
@@ -345,7 +414,7 @@ def make_champion_plan(view, memory):
     plan = DayPlan()
     day = view.day
     me = view.me
-    knobs = _knobs(memory, view)
+    knobs = _knobs(memory)
     plan.liquidation = day >= knobs["liquidation_day"]
     plan.feed_days = knobs["feed_days"]
 
@@ -383,18 +452,32 @@ def make_champion_plan(view, memory):
     # --- Animals: speculative herd, gated by cash only (feed is bought) --------
     plan.animal_buys = {}
     plan.structure_builds = {"COOP": 0, "PASTURE": 0}
+    # An animal in a carrier's pocket is bought, alive and homeless, and both
+    # lines below used to look straight past it -- they read `herd + shed`.
+    # It is counted on the other side of the chain (`scheduler.build_tasks`
+    # puts shed + pockets in `available` and hands it a PLACE task), so the
+    # two halves disagree: the buy target treats the head as still missing and
+    # orders a replacement, and the structure pipeline never queues it a
+    # coop. README Terrain: DIG cannot recover a structure once an animal is
+    # on it, so the tile commitment has to be right the first time.
+    _pocket = {}
+    for _i, _px, _py in me.units:
+        for _it, _n in view.unit_inv(_i).items():
+            _pocket[_it] = _pocket.get(_it, 0) + _n
     if not plan.liquidation:
         # Full deficits, not gated on hour-0 cash: the market controller buys
         # animals before seeds the turn money lands (wool/milk arrive mid-day),
         # so the herd wins the intra-day cash race the way champions' does.
         targets = _champ_herd_targets(day, knobs)
         for kind in ("SHEEP", "COW", "GOOSE"):  # wool lands first (day 6) and pays for land
-            want = targets[kind] - herd.get(kind, 0) - view.shed.get(kind, 0)
+            want = (targets[kind] - herd.get(kind, 0) - view.shed.get(kind, 0)
+                    - _pocket.get(kind, 0))
             n = max(0, min(want, 4))
             if n > 0:
                 plan.animal_buys[kind] = n
     for kind, structure in (("GOOSE", "COOP"), ("COW", "PASTURE"), ("SHEEP", "PASTURE")):
-        pipeline = plan.animal_buys.get(kind, 0) + view.shed.get(kind, 0)
+        pipeline = (plan.animal_buys.get(kind, 0) + view.shed.get(kind, 0)
+                    + _pocket.get(kind, 0))
         need = pipeline - empty_by_kind.get(structure, 0)
         if need > 0:
             plan.structure_builds[structure] += need
@@ -439,6 +522,13 @@ def make_champion_plan(view, memory):
                 wheat_target = 8
             else:
                 wheat_target = min(knobs["wheat_engine"], crops.get("WHEAT", 0) + free)
+            _best = _rent_pick(view, day, free)
+            if _RENTA > 0 and _best and _best[0] != "WHEAT":
+                _n = int(round(_RENTA * free))
+                if _n > 0:
+                    quota[_best[0]] = quota.get(_best[0], 0) + _n
+                    free = max(0, free - _n)
+                    wheat_target = min(wheat_target, crops.get("WHEAT", 0) + free)
             quota["WHEAT"] = max(0, wheat_target - crops.get("WHEAT", 0))
     plan.plant_quota = {k: v for k, v in quota.items() if v > 0}
 

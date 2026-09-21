@@ -164,3 +164,83 @@ The three papers most likely to generate a *new* idea rather than confirm an old
 one: **Search on the Replay Buffer** (1906.05253) for state-collision mining over
 all 21,517 sessions, **Brandfonbrener** (2206.01079) for why sequence models
 won't rescue us, and **Berman** (2605.18887) for why our screens keep lying.
+
+---
+
+## 6. Spatial world models and auxiliary signal — the line we have NOT passed
+
+Named 2026-09-21. Sections 1–5 cover stitching, RL-from-BC collapse,
+objectives, the earlier RL plan and routing. The board-state encoder / board
+CNN line (`docs/spatial_program.md`, `architecture_board_state.md`,
+`board_state_plan.md`, `capacity_channels_killed.md`) was written up in method
+detail with no citation anywhere; these are the papers behind it.
+
+The intended arc is **BC → RL → a Maia-style spatial policy**: a *distribution*
+over board representations that guides play, rather than a scalar head over
+aggregates. We have never got past the first arrow.
+
+- **Jaderberg et al., *Reinforcement Learning with Unsupervised Auxiliary
+  Tasks* (UNREAL)** — [arXiv:1611.05397](https://arxiv.org/pdf/1611.05397).
+  Auxiliary heads (pixel/feature control, reward prediction, value replay)
+  densify a sparse reward into many per-step signals sharing one encoder.
+  **Why it fits here:** our reward is one number at step 719 against a
+  per-world sd of $34,749 — the sparsest possible signal, and the measured
+  reason residual PPO collapsed (whole-episode credit over ~60 deviations).
+  The auxiliary targets are already built and already validated: the board
+  CNN predicts all eight standing-count kinds at +0.116/+0.137 R² over
+  ridge, and `tools/price_forecast.py` shows the market is an exact identity.
+  **What to watch:** UNREAL's claim is sample-efficiency on a shared encoder,
+  not a better policy. `docs/capacity_channels_killed.md` is the local
+  cautionary case — +0.0187 flow R² at p = 0.0001 bought 0% forecast MAE and
+  −44% out-of-distribution.
+
+- **Hafner et al., *Mastering Atari with Discrete World Models* (DreamerV2)**
+  — [arXiv:2010.02193](https://arxiv.org/pdf/2010.02193). Categorical latents,
+  policy trained entirely in imagination inside the learned model.
+  **Why it fits here:** the expensive thing in this project is the rollout —
+  every gate is whole-season re-simulation at ~1.3 s a game because
+  `Environment(steps=…)` cannot faithfully resume mid-game. A world model
+  good enough to imagine days 10→30 would turn a 30-minute gate into a
+  minute. **What to watch:** the engine is already an exact simulator; a
+  learned model can only be *cheaper*, never more accurate. So the gain is
+  compute, and it has to be validated against the real engine on a paired
+  gate — `tools/fast_env.py` already bought 1.70× bit-identically, which is
+  the honest baseline any learned model must beat by more than its own error.
+
+- **Maia-2 / the Maia line** — [arXiv:2409.20553](https://arxiv.org/abs/2409.20553),
+  already cited in section 3 for skill-conditioning. The unrealised piece is
+  the *spatial* one: a distribution over board representations conditioned on
+  the opponent's skill, rather than a value head over aggregates.
+
+### The specific use case: what is the opponent short of?
+
+Both farms sell into one `market["inventory"]`, and that single shared
+variable is worth **$52,652 a game** (`kaggriculture-market-congestion`).
+Their board is fully visible; their shed is not, and is worth 1.5% even as an
+oracle. So "what are they lacking, given the shop draw and their board" is
+computable from public state, and it is the highest-value unexploited signal
+we have measured.
+
+**But the simplest version of it already gated null.** `k-diff5` —
+`rent − λ × (their visible holding of that product)`, the direct
+game-theoretic contest proxy — scored **+$362 ± 1,136 (z = 0.32)** against
+champ-h8, while the plain rent rule it sits on is +$4,336 (z = 6.85). Pricing
+a tile at its own harvest-day price already absorbs most of what the
+opponent's board would tell you, because their supply lands in the same
+inventory the forecast uses.
+
+That is the bar any spatial opponent model has to clear: **not "does it
+predict their board" — the board CNN already does that at +0.116 R² — but
+"does it beat `k-diff5`'s null after the rent rule has taken its share".**
+
+### Workflow this line must follow
+
+    spec -> research (papers) -> use-case ideas -> experiment
+         -> evaluate/test -> commit -> train -> test (over baseline)
+
+The two steps this project has historically skipped are **evaluate/test
+before train** and **test over baseline** at the end. The standing rules:
+gate paired on identical worlds with `tools/ladder_gate.py`, read **win
+rate** and not margin, replicate on a second independent block, and treat a
+capability or accuracy score as a diagnostic only — `p1-mel100` moved
+capability +50pp and money −$14,897 on the same change.

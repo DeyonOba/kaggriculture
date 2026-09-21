@@ -1,0 +1,4345 @@
+[
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 56,
+  "day": 2,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#00"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 59,
+  "day": 2,
+  "x": 0,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#01"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 156,
+  "day": 6,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#02"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 78,
+  "day": 3,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#03"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-93641354.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 174,
+  "day": 7,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#04"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 225,
+  "day": 9,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#05"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 352,
+  "day": 14,
+  "x": 3,
+  "y": 0,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#06"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-101515878.json",
+  "seat": 1,
+  "rating": 2218.7,
+  "step": 331,
+  "day": 13,
+  "x": 2,
+  "y": 9,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#07"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 472,
+  "day": 19,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#08"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 514,
+  "day": 21,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#09"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 694,
+  "day": 28,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#10"
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 612,
+  "day": 25,
+  "x": 8,
+  "y": 4,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#11"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-95885531.json",
+  "seat": 1,
+  "rating": 2695.6,
+  "step": 56,
+  "day": 2,
+  "x": 1,
+  "y": 4,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#00"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 5,
+  "day": 0,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#01"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 164,
+  "day": 6,
+  "x": 7,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#02"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 112,
+  "day": 4,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#03"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 249,
+  "day": 10,
+  "x": 2,
+  "y": 2,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#04"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 250,
+  "day": 10,
+  "x": 1,
+  "y": 2,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#05"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 271,
+  "day": 11,
+  "x": 8,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#06"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 363,
+  "day": 15,
+  "x": 4,
+  "y": 6,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#07"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-103024916.json",
+  "seat": 1,
+  "rating": 2490.3,
+  "step": 414,
+  "day": 17,
+  "x": 8,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#08"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 387,
+  "day": 16,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#09"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 670,
+  "day": 27,
+  "x": 1,
+  "y": 5,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#10"
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 640,
+  "day": 26,
+  "x": 2,
+  "y": 8,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#11"
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 346,
+  "day": 14,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#00"
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-94456434.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 348,
+  "day": 14,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#01"
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 507,
+  "day": 21,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#02"
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 395,
+  "day": 16,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#03"
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-95885531.json",
+  "seat": 1,
+  "rating": 2695.6,
+  "step": 644,
+  "day": 26,
+  "x": 9,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#04"
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 559,
+  "day": 23,
+  "x": 7,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#05"
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 259,
+  "day": 10,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#00"
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 371,
+  "day": 15,
+  "x": 5,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#01"
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 347,
+  "day": 14,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#02"
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 427,
+  "day": 17,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#03"
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 402,
+  "day": 16,
+  "x": 8,
+  "y": 2,
+  "op": [
+   "FERTILIZE",
+   "FERTILIZER"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#04"
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-93641354.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 616,
+  "day": 25,
+  "x": 3,
+  "y": 8,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#05"
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-96339492.json",
+  "seat": 0,
+  "rating": 2453.6,
+  "step": 567,
+  "day": 23,
+  "x": 0,
+  "y": 8,
+  "op": [
+   "FERTILIZE",
+   "FERTILIZER"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#06"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 155,
+  "day": 6,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#00"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 158,
+  "day": 6,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#01"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 205,
+  "day": 8,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#02"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 181,
+  "day": 7,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#03"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 304,
+  "day": 12,
+  "x": 7,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#04"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 331,
+  "day": 13,
+  "x": 0,
+  "y": 4,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#05"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 444,
+  "day": 18,
+  "x": 0,
+  "y": 8,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#06"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 491,
+  "day": 20,
+  "x": 2,
+  "y": 8,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#07"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 581,
+  "day": 24,
+  "x": 6,
+  "y": 3,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#08"
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 616,
+  "day": 25,
+  "x": 3,
+  "y": 1,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#09"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 161,
+  "day": 6,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#00"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 110,
+  "day": 4,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#01"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-95885531.json",
+  "seat": 1,
+  "rating": 2695.6,
+  "step": 251,
+  "day": 10,
+  "x": 1,
+  "y": 2,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#02"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 249,
+  "day": 10,
+  "x": 3,
+  "y": 1,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#03"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-96339492.json",
+  "seat": 0,
+  "rating": 2453.6,
+  "step": 274,
+  "day": 11,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#04"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 278,
+  "day": 11,
+  "x": 8,
+  "y": 4,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#05"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 390,
+  "day": 16,
+  "x": 8,
+  "y": 2,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#06"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 472,
+  "day": 19,
+  "x": 3,
+  "y": 9,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#07"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-101179268.json",
+  "seat": 1,
+  "rating": 2676.2,
+  "step": 592,
+  "day": 24,
+  "x": 1,
+  "y": 9,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#08"
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 678,
+  "day": 28,
+  "x": 6,
+  "y": 2,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#09"
+ },
+ {
+  "rule": "HARVEST.ongoing_before_clip",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 690,
+  "day": 28,
+  "x": 9,
+  "y": 1,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.ongoing_before_clip#00"
+ },
+ {
+  "rule": "HARVEST.ongoing_before_clip",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 661,
+  "day": 27,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.ongoing_before_clip#01"
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 362,
+  "day": 15,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#00"
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 314,
+  "day": 13,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#01"
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 473,
+  "day": 19,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#02"
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 459,
+  "day": 19,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#03"
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 608,
+  "day": 25,
+  "x": 6,
+  "y": 4,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#04"
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 612,
+  "day": 25,
+  "x": 4,
+  "y": 9,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#05"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 11,
+  "day": 0,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#00"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 37,
+  "day": 1,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#01"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 149,
+  "day": 6,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#02"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-103024916.json",
+  "seat": 1,
+  "rating": 2490.3,
+  "step": 106,
+  "day": 4,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#03"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 181,
+  "day": 7,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#04"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-95664263.json",
+  "seat": 1,
+  "rating": 2686.6,
+  "step": 246,
+  "day": 10,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#05"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 276,
+  "day": 11,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#06"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 303,
+  "day": 12,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#07"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 411,
+  "day": 17,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#08"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 467,
+  "day": 19,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#09"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 614,
+  "day": 25,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#10"
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 633,
+  "day": 26,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#11"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 45,
+  "day": 1,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#00"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 63,
+  "day": 2,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#01"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 130,
+  "day": 5,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#02"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 89,
+  "day": 3,
+  "x": 1,
+  "y": 4,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#03"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 179,
+  "day": 7,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#04"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 189,
+  "day": 7,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#05"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 363,
+  "day": 15,
+  "x": 3,
+  "y": 4,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#06"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 348,
+  "day": 14,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#07"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 405,
+  "day": 16,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#08"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 469,
+  "day": 19,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "FEED",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#09"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 626,
+  "day": 26,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#10"
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-94456434.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 579,
+  "day": 24,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#11"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-99635068.json",
+  "seat": 1,
+  "rating": 2263.7,
+  "step": 52,
+  "day": 2,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#00"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 38,
+  "day": 1,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#01"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 157,
+  "day": 6,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#02"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-99635068.json",
+  "seat": 1,
+  "rating": 2263.7,
+  "step": 156,
+  "day": 6,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#03"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 170,
+  "day": 7,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#04"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 245,
+  "day": 10,
+  "x": 6,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#05"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 318,
+  "day": 13,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#06"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 340,
+  "day": 14,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#07"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 508,
+  "day": 21,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#08"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 493,
+  "day": 20,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#09"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-99635068.json",
+  "seat": 1,
+  "rating": 2263.7,
+  "step": 633,
+  "day": 26,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#10"
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 582,
+  "day": 24,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#11"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 5,
+  "day": 0,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#00"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101880123.json",
+  "seat": 0,
+  "rating": 2486.0,
+  "step": 9,
+  "day": 0,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#01"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 80,
+  "day": 3,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "PLACE",
+   "COW",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#02"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 79,
+  "day": 3,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "PLACE",
+   "COW",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#03"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 261,
+  "day": 10,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#04"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 234,
+  "day": 9,
+  "x": 3,
+  "y": 2,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#05"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 277,
+  "day": 11,
+  "x": 5,
+  "y": 0,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#06"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 308,
+  "day": 12,
+  "x": 3,
+  "y": 8,
+  "op": [
+   "PLACE",
+   "GOOSE"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#07"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 493,
+  "day": 20,
+  "x": 0,
+  "y": 6,
+  "op": [
+   "PLACE",
+   "SHEEP"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#08"
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 446,
+  "day": 18,
+  "x": 5,
+  "y": 7,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#09"
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 155,
+  "day": 6,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#00"
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 247,
+  "day": 10,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#01"
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 259,
+  "day": 10,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#02"
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 274,
+  "day": 11,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#03"
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 269,
+  "day": 11,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#04"
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 464,
+  "day": 19,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#05"
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 518,
+  "day": 21,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#06"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 3,
+  "day": 0,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#00"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 3,
+  "day": 0,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#01"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-101179268.json",
+  "seat": 1,
+  "rating": 2676.2,
+  "step": 105,
+  "day": 4,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#02"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 156,
+  "day": 6,
+  "x": 6,
+  "y": 4,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#03"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 177,
+  "day": 7,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#04"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 199,
+  "day": 8,
+  "x": 7,
+  "y": 4,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#05"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-95664263.json",
+  "seat": 1,
+  "rating": 2686.6,
+  "step": 266,
+  "day": 11,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#06"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 369,
+  "day": 15,
+  "x": 0,
+  "y": 6,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#07"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 467,
+  "day": 19,
+  "x": 1,
+  "y": 8,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#08"
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 401,
+  "day": 16,
+  "x": 5,
+  "y": 1,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#09"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 116,
+  "day": 4,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#00"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 109,
+  "day": 4,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#01"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-101179268.json",
+  "seat": 1,
+  "rating": 2676.2,
+  "step": 224,
+  "day": 9,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#02"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 224,
+  "day": 9,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#03"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 308,
+  "day": 12,
+  "x": 4,
+  "y": 9,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#04"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 383,
+  "day": 15,
+  "x": 4,
+  "y": 8,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#05"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 526,
+  "day": 21,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#06"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 496,
+  "day": 20,
+  "x": 3,
+  "y": 1,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#07"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 539,
+  "day": 22,
+  "x": 8,
+  "y": 0,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#08"
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 614,
+  "day": 25,
+  "x": 7,
+  "y": 3,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#09"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 34,
+  "day": 1,
+  "x": 1,
+  "y": 2,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#00"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 33,
+  "day": 1,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#01"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 131,
+  "day": 5,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "PLANT",
+   "STRAWBERRY"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#02"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 116,
+  "day": 4,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#03"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-94456434.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 260,
+  "day": 10,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#04"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 231,
+  "day": 9,
+  "x": 0,
+  "y": 5,
+  "op": [
+   "PLANT",
+   "STRAWBERRY"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#05"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 277,
+  "day": 11,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#06"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 329,
+  "day": 13,
+  "x": 9,
+  "y": 4,
+  "op": [
+   "PLANT",
+   "STRAWBERRY"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#07"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 465,
+  "day": 19,
+  "x": 4,
+  "y": 8,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#08"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 448,
+  "day": 18,
+  "x": 0,
+  "y": 4,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#09"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 632,
+  "day": 26,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "PLANT",
+   "CARROT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#10"
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 616,
+  "day": 25,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#11"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 24,
+  "day": 1,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   3
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#00"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 48,
+  "day": 2,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   4
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#01"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-95664263.json",
+  "seat": 1,
+  "rating": 2686.6,
+  "step": 120,
+  "day": 5,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   5
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#02"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 145,
+  "day": 6,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   1
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#03"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 169,
+  "day": 7,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   3
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#04"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 218,
+  "day": 9,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#05"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 312,
+  "day": 13,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   6
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#06"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 265,
+  "day": 11,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   6
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#07"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 409,
+  "day": 17,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   6
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#08"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 481,
+  "day": 20,
+  "x": 5,
+  "y": 5,
+  "op": [
+   "PICKUP",
+   "FERTILIZER",
+   2
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#09"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 602,
+  "day": 25,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   1
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#10"
+ },
+ {
+  "rule": "PICKUP.gets_what_it_asked_for",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 529,
+  "day": 22,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "PICKUP",
+   "WHEAT",
+   2
+  ],
+  "item": null,
+  "id": "PICKUP.gets_what_it_asked_for#11"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 71,
+  "day": 2,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#00"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 69,
+  "day": 2,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#01"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 92,
+  "day": 3,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#02"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-95664263.json",
+  "seat": 1,
+  "rating": 2686.6,
+  "step": 92,
+  "day": 3,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#03"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-96339492.json",
+  "seat": 0,
+  "rating": 2453.6,
+  "step": 253,
+  "day": 10,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#04"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-101179268.json",
+  "seat": 1,
+  "rating": 2676.2,
+  "step": 248,
+  "day": 10,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#05"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 377,
+  "day": 15,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#06"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-101179268.json",
+  "seat": 1,
+  "rating": 2676.2,
+  "step": 307,
+  "day": 12,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#07"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-99635068.json",
+  "seat": 1,
+  "rating": 2263.7,
+  "step": 523,
+  "day": 21,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#08"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 503,
+  "day": 20,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#09"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 715,
+  "day": 29,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#10"
+ },
+ {
+  "rule": "DROP.nothing_is_discarded",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 717,
+  "day": 29,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "DROP"
+  ],
+  "item": null,
+  "id": "DROP.nothing_is_discarded#11"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 55,
+  "day": 2,
+  "x": 3,
+  "y": 2,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#00"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 41,
+  "day": 1,
+  "x": 0,
+  "y": 1,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#01"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 99,
+  "day": 4,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#02"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 126,
+  "day": 5,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#03"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 254,
+  "day": 10,
+  "x": 3,
+  "y": 4,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#04"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-101880123.json",
+  "seat": 0,
+  "rating": 2486.0,
+  "step": 253,
+  "day": 10,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#05"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 343,
+  "day": 14,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#06"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 297,
+  "day": 12,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#07"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 412,
+  "day": 17,
+  "x": 6,
+  "y": 2,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#08"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 481,
+  "day": 20,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#09"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 638,
+  "day": 26,
+  "x": 9,
+  "y": 2,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#10"
+ },
+ {
+  "rule": "MOVE.north_is_not_off_board",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 549,
+  "day": 22,
+  "x": 8,
+  "y": 2,
+  "op": [
+   "NORTH"
+  ],
+  "item": null,
+  "id": "MOVE.north_is_not_off_board#11"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 9,
+  "day": 0,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#00"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 61,
+  "day": 2,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#01"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 109,
+  "day": 4,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#02"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 140,
+  "day": 5,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#03"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 258,
+  "day": 10,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#04"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 260,
+  "day": 10,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#05"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 315,
+  "day": 13,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#06"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-93641354.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 277,
+  "day": 11,
+  "x": 2,
+  "y": 5,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#07"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 471,
+  "day": 19,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#08"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 389,
+  "day": 16,
+  "x": 4,
+  "y": 6,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#09"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 599,
+  "day": 24,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#10"
+ },
+ {
+  "rule": "MOVE.south_is_not_off_board",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 575,
+  "day": 23,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "SOUTH"
+  ],
+  "item": null,
+  "id": "MOVE.south_is_not_off_board#11"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 17,
+  "day": 0,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#00"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 17,
+  "day": 0,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#01"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 157,
+  "day": 6,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#02"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 163,
+  "day": 6,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#03"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 252,
+  "day": 10,
+  "x": 6,
+  "y": 0,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#04"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 249,
+  "day": 10,
+  "x": 8,
+  "y": 2,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#05"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 314,
+  "day": 13,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#06"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 314,
+  "day": 13,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#07"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 421,
+  "day": 17,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#08"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 500,
+  "day": 20,
+  "x": 0,
+  "y": 0,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#09"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 638,
+  "day": 26,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#10"
+ },
+ {
+  "rule": "MOVE.east_is_not_off_board",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 571,
+  "day": 23,
+  "x": 3,
+  "y": 6,
+  "op": [
+   "EAST"
+  ],
+  "item": null,
+  "id": "MOVE.east_is_not_off_board#11"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 58,
+  "day": 2,
+  "x": 3,
+  "y": 0,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#00"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 56,
+  "day": 2,
+  "x": 3,
+  "y": 0,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#01"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 156,
+  "day": 6,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#02"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 122,
+  "day": 5,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#03"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-101515878.json",
+  "seat": 1,
+  "rating": 2218.7,
+  "step": 232,
+  "day": 9,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#04"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 223,
+  "day": 9,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#05"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 357,
+  "day": 14,
+  "x": 1,
+  "y": 9,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#06"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 290,
+  "day": 12,
+  "x": 5,
+  "y": 5,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#07"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 494,
+  "day": 20,
+  "x": 3,
+  "y": 1,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#08"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-94456434.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 525,
+  "day": 21,
+  "x": 1,
+  "y": 8,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#09"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-96339492.json",
+  "seat": 0,
+  "rating": 2453.6,
+  "step": 674,
+  "day": 28,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#10"
+ },
+ {
+  "rule": "MOVE.west_is_not_off_board",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 659,
+  "day": 27,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "WEST"
+  ],
+  "item": null,
+  "id": "MOVE.west_is_not_off_board#11"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 1,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "WHEAT",
+  "id": "SELL.above_the_floor#00"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 70,
+  "day": 2,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "FERTILIZER",
+  "id": "SELL.above_the_floor#01"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 151,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "WOOL",
+  "id": "SELL.above_the_floor#02"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 150,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "WOOL",
+  "id": "SELL.above_the_floor#03"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 250,
+  "day": 10,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "MELON",
+  "id": "SELL.above_the_floor#04"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 226,
+  "day": 9,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "WOOL",
+  "id": "SELL.above_the_floor#05"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-101880123.json",
+  "seat": 0,
+  "rating": 2486.0,
+  "step": 347,
+  "day": 14,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "WHEAT",
+  "id": "SELL.above_the_floor#06"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 361,
+  "day": 15,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "MILK",
+  "id": "SELL.above_the_floor#07"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 405,
+  "day": 16,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "WHEAT",
+  "id": "SELL.above_the_floor#08"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 443,
+  "day": 18,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "WHEAT",
+  "id": "SELL.above_the_floor#09"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-95664263.json",
+  "seat": 1,
+  "rating": 2686.6,
+  "step": 619,
+  "day": 25,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "WHEAT",
+  "id": "SELL.above_the_floor#10"
+ },
+ {
+  "rule": "SELL.above_the_floor",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 672,
+  "day": 28,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "SELL"
+  ],
+  "item": "FERTILIZER",
+  "id": "SELL.above_the_floor#11"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 0,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#00"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 13,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#01"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 151,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "STRAWBERRY",
+  "id": "BUY_SEED.gets_planted#02"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 73,
+  "day": 3,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "STRAWBERRY",
+  "id": "BUY_SEED.gets_planted#03"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 254,
+  "day": 10,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "MELON",
+  "id": "BUY_SEED.gets_planted#04"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 263,
+  "day": 10,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#05"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 264,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "STRAWBERRY",
+  "id": "BUY_SEED.gets_planted#06"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 360,
+  "day": 15,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#07"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 457,
+  "day": 19,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "CARROT",
+  "id": "BUY_SEED.gets_planted#08"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 517,
+  "day": 21,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#09"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 609,
+  "day": 25,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "CARROT",
+  "id": "BUY_SEED.gets_planted#10"
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 575,
+  "day": 23,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#11"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 0,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#00"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 1,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#01"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 96,
+  "day": 4,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#02"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 72,
+  "day": 3,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#03"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 216,
+  "day": 9,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#04"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 200,
+  "day": 8,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#05"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 264,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#06"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 337,
+  "day": 14,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#07"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 385,
+  "day": 16,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#08"
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 385,
+  "day": 16,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#09"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 68,
+  "day": 2,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#00"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 0,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#01"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 154,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#02"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-96339492.json",
+  "seat": 0,
+  "rating": 2453.6,
+  "step": 161,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#03"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 228,
+  "day": 9,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#04"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 252,
+  "day": 10,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#05"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 296,
+  "day": 12,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#06"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 267,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#07"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 396,
+  "day": 16,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#08"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 498,
+  "day": 20,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#09"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 656,
+  "day": 27,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#10"
+ },
+ {
+  "rule": "BUY_PRODUCT.wheat_is_fed_not_resold",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 596,
+  "day": 24,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_PRODUCT"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_PRODUCT.wheat_is_fed_not_resold#11"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 48,
+  "day": 2,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#00"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 0,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#01"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-93641354.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 96,
+  "day": 4,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#02"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 96,
+  "day": 4,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#03"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 192,
+  "day": 8,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#04"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 217,
+  "day": 9,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#05"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-101515878.json",
+  "seat": 1,
+  "rating": 2218.7,
+  "step": 336,
+  "day": 14,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#06"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 264,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#07"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 481,
+  "day": 20,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#08"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 457,
+  "day": 19,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#09"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 576,
+  "day": 24,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#10"
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 696,
+  "day": 29,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#11"
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 160,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "NE",
+  "id": "BUY_LAND.the_quadrant_gets_used#00"
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-101880123.json",
+  "seat": 0,
+  "rating": 2486.0,
+  "step": 150,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "NE",
+  "id": "BUY_LAND.the_quadrant_gets_used#01"
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 195,
+  "day": 8,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "SW",
+  "id": "BUY_LAND.the_quadrant_gets_used#02"
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 240,
+  "day": 10,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "SW",
+  "id": "BUY_LAND.the_quadrant_gets_used#03"
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 265,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "SW",
+  "id": "BUY_LAND.the_quadrant_gets_used#04"
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 265,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "SW",
+  "id": "BUY_LAND.the_quadrant_gets_used#05"
+ }
+]

@@ -48,6 +48,14 @@ def evaluate(agent, jobs, pool):
             for r in res}
 
 
+def _bundle_hash(agent):
+    p = os.path.join(REPO, "arena", "agents", agent, "main.py")
+    if not os.path.isfile(p):
+        return None
+    import hashlib
+    return hashlib.sha1(open(p, "rb").read()).hexdigest()[:12]
+
+
 def load_or_run(agent, jobs, pool, tag):
     """Cached results are reused ONLY if they cover the current world list.
 
@@ -66,16 +74,29 @@ def load_or_run(agent, jobs, pool, tag):
     # rather than opening 270 sessions.
     want = {(int(os.path.basename(pth).split("-")[1].split(".")[0]), 1 - side)
             for pth, side in jobs}
+    # The cache key is (agent, n, seed) and encodes neither the corpus nor
+    # the agent's BYTES. A rebuilt bundle under the same name would silently
+    # reuse the old agent's numbers -- which happened to `dev-exec` here, and
+    # read -$2,058 for a bundle that no longer existed. Stamp the hash.
+    h = _bundle_hash(agent)
     if os.path.exists(f):
-        got = {tuple(json.loads(k)): tuple(v)
-               for k, v in json.load(open(f)).items()}
+        raw = json.load(open(f))
+        stamp = raw.pop("__bundle__", None)
+        if stamp is not None and h is not None and stamp != h:
+            print(f"    cache for {agent} was built from a DIFFERENT bundle "
+                  f"({stamp} != {h}) -- recomputing", flush=True)
+            raw = {}
+        got = {tuple(json.loads(k)): tuple(v) for k, v in raw.items()}
         if want.issubset(got):
             return {k: got[k] for k in want}
         print(f"    cache for {agent} covers {len(want & set(got))}/{len(want)} "
               f"of the current worlds -- recomputing", flush=True)
     out = evaluate(agent, jobs, pool)
     os.makedirs(CACHE, exist_ok=True)
-    json.dump({json.dumps(list(k)): list(v) for k, v in out.items()}, open(f, "w"))
+    blob = {json.dumps(list(k)): list(v) for k, v in out.items()}
+    if h is not None:
+        blob["__bundle__"] = h
+    json.dump(blob, open(f, "w"))
     return out
 
 

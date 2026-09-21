@@ -16,6 +16,27 @@ arena/results/
 arena/agents/pub-*
 # Throwaway knob variants built by rl/export.py --freeze var-*
 arena/agents/var-*
+# Experiment bundles. Each is a ~115 KB frozen copy of a champion with one
+# patch; they are reproducible from their tools/make_*_variant.py builder, so
+# the builder is the artifact worth keeping, not the bundle.
+arena/agents/[abcfghkmorvwx]-*
+arena/agents/h9-*
+arena/agents/h1[0-3]-*
+arena/agents/g[0-9]*-*
+arena/agents/tE[0-9]-*
+arena/agents/p1-*
+arena/agents/n1-*
+arena/agents/bc-*
+arena/agents/cl-*
+arena/agents/d-*
+arena/agents/onm*
+arena/agents/dev-exec
+arena/agents/match-*
+arena/agents/tape-*
+
+# Rendered test replays: 3 GB of HTML, regenerate with tools/rule_tests.py
+tests/replays/
+# Throwaway chain-audit variants built by tools/make_chain_variant.py
 
 # Replay/debug artifacts
 kaggriculture.html
@@ -35,3 +56,4 @@ nohup.out
 
 # Rendered HTML replays (~46 MB each, regenerate with tools/render_game.py)
 replay-*.html
+

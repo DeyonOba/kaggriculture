@@ -1,0 +1,6340 @@
+[
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 56,
+  "day": 2,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#00",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 58,
+  "latency": 2,
+  "window": [
+   56,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 59,
+  "day": 2,
+  "x": 0,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#01",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 64,
+  "latency": 5,
+  "window": [
+   59,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 156,
+  "day": 6,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#02",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 162,
+  "latency": 6,
+  "window": [
+   156,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 6,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 78,
+  "day": 3,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#03",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 83,
+  "latency": 5,
+  "window": [
+   78,
+   95
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-93641354.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 174,
+  "day": 7,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#04",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 179,
+  "latency": 5,
+  "window": [
+   174,
+   191
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 225,
+  "day": 9,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#05",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 230,
+  "latency": 5,
+  "window": [
+   225,
+   239
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 352,
+  "day": 14,
+  "x": 3,
+  "y": 0,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#06",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   352,
+   359
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-101515878.json",
+  "seat": 1,
+  "rating": 2218.7,
+  "step": 331,
+  "day": 13,
+  "x": 2,
+  "y": 9,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#07",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   331,
+   335
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 472,
+  "day": 19,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#08",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   472,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 514,
+  "day": 21,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#09",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 519,
+  "latency": 5,
+  "window": [
+   514,
+   527
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 694,
+  "day": 28,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#10",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   694,
+   695
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.bonus_window",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 612,
+  "day": 25,
+  "x": 8,
+  "y": 4,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.bonus_window#11",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 621,
+  "latency": 9,
+  "window": [
+   612,
+   623
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-95885531.json",
+  "seat": 1,
+  "rating": 2695.6,
+  "step": 56,
+  "day": 2,
+  "x": 1,
+  "y": 4,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#00",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 67,
+  "latency": 11,
+  "window": [
+   56,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 5,
+  "day": 0,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#01",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 6,
+  "latency": 1,
+  "window": [
+   5,
+   23
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 164,
+  "day": 6,
+  "x": 7,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#02",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   164,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 112,
+  "day": 4,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#03",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 115,
+  "latency": 3,
+  "window": [
+   112,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 249,
+  "day": 10,
+  "x": 2,
+  "y": 2,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#04",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 259,
+  "latency": 10,
+  "window": [
+   249,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 250,
+  "day": 10,
+  "x": 1,
+  "y": 2,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#05",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 259,
+  "latency": 9,
+  "window": [
+   250,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 271,
+  "day": 11,
+  "x": 8,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#06",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 272,
+  "latency": 1,
+  "window": [
+   271,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 363,
+  "day": 15,
+  "x": 4,
+  "y": 6,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#07",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 370,
+  "latency": 7,
+  "window": [
+   363,
+   383
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-103024916.json",
+  "seat": 1,
+  "rating": 2490.3,
+  "step": 414,
+  "day": 17,
+  "x": 8,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#08",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 427,
+  "latency": 13,
+  "window": [
+   414,
+   431
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 13,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 387,
+  "day": 16,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#09",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 396,
+  "latency": 9,
+  "window": [
+   387,
+   407
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 670,
+  "day": 27,
+  "x": 1,
+  "y": 5,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#10",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   670,
+   671
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.survival",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 640,
+  "day": 26,
+  "x": 2,
+  "y": 8,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.survival#11",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 642,
+  "latency": 2,
+  "window": [
+   640,
+   647
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 346,
+  "day": 14,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#00",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 356,
+  "latency": 10,
+  "window": [
+   346,
+   359
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-94456434.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 348,
+  "day": 14,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#01",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 355,
+  "latency": 7,
+  "window": [
+   348,
+   359
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 507,
+  "day": 21,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#02",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 520,
+  "latency": 13,
+  "window": [
+   507,
+   527
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 13,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 395,
+  "day": 16,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#03",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   395,
+   407
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 13,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-95885531.json",
+  "seat": 1,
+  "rating": 2695.6,
+  "step": 644,
+  "day": 26,
+  "x": 9,
+  "y": 1,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#04",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   644,
+   647
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "WATER.fertilised_production",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 559,
+  "day": 23,
+  "x": 7,
+  "y": 3,
+  "op": [
+   "WATER"
+  ],
+  "item": null,
+  "id": "WATER.fertilised_production#05",
+  "cmd": "task.WATER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 569,
+  "latency": 10,
+  "window": [
+   559,
+   575
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 161,
+  "day": 6,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#00",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 162,
+  "latency": 1,
+  "window": [
+   161,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 110,
+  "day": 4,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#01",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 115,
+  "latency": 5,
+  "window": [
+   110,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-95885531.json",
+  "seat": 1,
+  "rating": 2695.6,
+  "step": 251,
+  "day": 10,
+  "x": 1,
+  "y": 2,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#02",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 262,
+  "latency": 11,
+  "window": [
+   251,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 249,
+  "day": 10,
+  "x": 3,
+  "y": 1,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#03",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 254,
+  "latency": 5,
+  "window": [
+   249,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-96339492.json",
+  "seat": 0,
+  "rating": 2453.6,
+  "step": 274,
+  "day": 11,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#04",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 283,
+  "latency": 9,
+  "window": [
+   274,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 278,
+  "day": 11,
+  "x": 8,
+  "y": 4,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#05",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 285,
+  "latency": 7,
+  "window": [
+   278,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 390,
+  "day": 16,
+  "x": 8,
+  "y": 2,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#06",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 392,
+  "latency": 2,
+  "window": [
+   390,
+   407
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 472,
+  "day": 19,
+  "x": 3,
+  "y": 9,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#07",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   472,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-101179268.json",
+  "seat": 1,
+  "rating": 2676.2,
+  "step": 592,
+  "day": 24,
+  "x": 1,
+  "y": 9,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#08",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   592,
+   599
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.one_time_ripe",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 678,
+  "day": 28,
+  "x": 6,
+  "y": 2,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.one_time_ripe#09",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 689,
+  "latency": 11,
+  "window": [
+   678,
+   695
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.ongoing_before_clip",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 690,
+  "day": 28,
+  "x": 9,
+  "y": 1,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.ongoing_before_clip#00",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 695,
+  "latency": 5,
+  "window": [
+   690,
+   695
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.ongoing_before_clip",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 661,
+  "day": 27,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.ongoing_before_clip#01",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   661,
+   671
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 362,
+  "day": 15,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#00",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 366,
+  "latency": 4,
+  "window": [
+   362,
+   383
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 314,
+  "day": 13,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#01",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 319,
+  "latency": 5,
+  "window": [
+   314,
+   335
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 473,
+  "day": 19,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#02",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 474,
+  "latency": 1,
+  "window": [
+   473,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 459,
+  "day": 19,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#03",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 460,
+  "latency": 1,
+  "window": [
+   459,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 608,
+  "day": 25,
+  "x": 6,
+  "y": 4,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#04",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 617,
+  "latency": 9,
+  "window": [
+   608,
+   623
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "HARVEST.animal_before_clip",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 612,
+  "day": 25,
+  "x": 4,
+  "y": 9,
+  "op": [
+   "HARVEST"
+  ],
+  "item": null,
+  "id": "HARVEST.animal_before_clip#05",
+  "cmd": "task.HARVEST",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 620,
+  "latency": 8,
+  "window": [
+   612,
+   623
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 116,
+  "day": 4,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#00",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   116,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 109,
+  "day": 4,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#01",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 112,
+  "latency": 3,
+  "window": [
+   109,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-101179268.json",
+  "seat": 1,
+  "rating": 2676.2,
+  "step": 224,
+  "day": 9,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#02",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 233,
+  "latency": 9,
+  "window": [
+   224,
+   239
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 224,
+  "day": 9,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#03",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 233,
+  "latency": 9,
+  "window": [
+   224,
+   239
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 308,
+  "day": 12,
+  "x": 4,
+  "y": 9,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#04",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   308,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 383,
+  "day": 15,
+  "x": 4,
+  "y": 8,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#05",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   383,
+   383
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 526,
+  "day": 21,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#06",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   526,
+   527
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 496,
+  "day": 20,
+  "x": 3,
+  "y": 1,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#07",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 501,
+  "latency": 5,
+  "window": [
+   496,
+   503
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 539,
+  "day": 22,
+  "x": 8,
+  "y": 0,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#08",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 548,
+  "latency": 9,
+  "window": [
+   539,
+   551
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "DIG.clears_a_weed",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 614,
+  "day": 25,
+  "x": 7,
+  "y": 3,
+  "op": [
+   "DIG"
+  ],
+  "item": null,
+  "id": "DIG.clears_a_weed#09",
+  "cmd": "task.DIG",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 620,
+  "latency": 6,
+  "window": [
+   614,
+   623
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 6,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 11,
+  "day": 0,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#00",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 21,
+  "latency": 10,
+  "window": [
+   11,
+   23
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 37,
+  "day": 1,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#01",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 41,
+  "latency": 4,
+  "window": [
+   37,
+   47
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 149,
+  "day": 6,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#02",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 152,
+  "latency": 3,
+  "window": [
+   149,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-103024916.json",
+  "seat": 1,
+  "rating": 2490.3,
+  "step": 106,
+  "day": 4,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#03",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 111,
+  "latency": 5,
+  "window": [
+   106,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 181,
+  "day": 7,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#04",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 186,
+  "latency": 5,
+  "window": [
+   181,
+   191
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-95664263.json",
+  "seat": 1,
+  "rating": 2686.6,
+  "step": 246,
+  "day": 10,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#05",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 250,
+  "latency": 4,
+  "window": [
+   246,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 276,
+  "day": 11,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#06",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 280,
+  "latency": 4,
+  "window": [
+   276,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 303,
+  "day": 12,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#07",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 310,
+  "latency": 7,
+  "window": [
+   303,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 411,
+  "day": 17,
+  "x": 5,
+  "y": 4,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#08",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 414,
+  "latency": 3,
+  "window": [
+   411,
+   431
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 467,
+  "day": 19,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#09",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 468,
+  "latency": 1,
+  "window": [
+   467,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 614,
+  "day": 25,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#10",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 621,
+  "latency": 7,
+  "window": [
+   614,
+   623
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "CARE.banks_a_bonus",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 633,
+  "day": 26,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "CARE"
+  ],
+  "item": null,
+  "id": "CARE.banks_a_bonus#11",
+  "cmd": "task.CARE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 640,
+  "latency": 7,
+  "window": [
+   633,
+   647
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-99635068.json",
+  "seat": 1,
+  "rating": 2263.7,
+  "step": 52,
+  "day": 2,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#00",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 57,
+  "latency": 5,
+  "window": [
+   52,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 38,
+  "day": 1,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#01",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 42,
+  "latency": 4,
+  "window": [
+   38,
+   47
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 157,
+  "day": 6,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#02",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 164,
+  "latency": 7,
+  "window": [
+   157,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-99635068.json",
+  "seat": 1,
+  "rating": 2263.7,
+  "step": 156,
+  "day": 6,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#03",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 157,
+  "latency": 1,
+  "window": [
+   156,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 170,
+  "day": 7,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#04",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 174,
+  "latency": 4,
+  "window": [
+   170,
+   191
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 245,
+  "day": 10,
+  "x": 6,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#05",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 255,
+  "latency": 10,
+  "window": [
+   245,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 318,
+  "day": 13,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#06",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 319,
+  "latency": 1,
+  "window": [
+   318,
+   335
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 340,
+  "day": 14,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#07",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 343,
+  "latency": 3,
+  "window": [
+   340,
+   359
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 508,
+  "day": 21,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#08",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 513,
+  "latency": 5,
+  "window": [
+   508,
+   527
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 493,
+  "day": 20,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#09",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 497,
+  "latency": 4,
+  "window": [
+   493,
+   503
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-99635068.json",
+  "seat": 1,
+  "rating": 2263.7,
+  "step": 633,
+  "day": 26,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#10",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 640,
+  "latency": 7,
+  "window": [
+   633,
+   647
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "COLLECT_FERTILIZER.use_it_or_lose_it",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 582,
+  "day": 24,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "COLLECT_FERTILIZER"
+  ],
+  "item": null,
+  "id": "COLLECT_FERTILIZER.use_it_or_lose_it#11",
+  "cmd": "task.COLLECT_FERTILIZER",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 590,
+  "latency": 8,
+  "window": [
+   582,
+   599
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 155,
+  "day": 6,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#00",
+  "cmd": "task.BUILD_COOP",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 158,
+  "latency": 3,
+  "window": [
+   155,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 247,
+  "day": 10,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#01",
+  "cmd": "task.BUILD_COOP",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 258,
+  "latency": 11,
+  "window": [
+   247,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 259,
+  "day": 10,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#02",
+  "cmd": "task.BUILD_COOP",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   259,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 274,
+  "day": 11,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#03",
+  "cmd": "task.BUILD_COOP",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   274,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 14,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 269,
+  "day": 11,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#04",
+  "cmd": "task.BUILD_COOP",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 272,
+  "latency": 3,
+  "window": [
+   269,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 464,
+  "day": 19,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#05",
+  "cmd": "task.BUILD_COOP",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 471,
+  "latency": 7,
+  "window": [
+   464,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 518,
+  "day": 21,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#06",
+  "cmd": "task.BUILD_COOP",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 519,
+  "latency": 1,
+  "window": [
+   518,
+   527
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 3,
+  "day": 0,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#00",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 5,
+  "latency": 2,
+  "window": [
+   3,
+   23
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 3,
+  "day": 0,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#01",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 5,
+  "latency": 2,
+  "window": [
+   3,
+   23
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-101179268.json",
+  "seat": 1,
+  "rating": 2676.2,
+  "step": 105,
+  "day": 4,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#02",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 106,
+  "latency": 1,
+  "window": [
+   105,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-104835293.json",
+  "seat": 0,
+  "rating": 2244.9,
+  "step": 156,
+  "day": 6,
+  "x": 6,
+  "y": 4,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#03",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 159,
+  "latency": 3,
+  "window": [
+   156,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 177,
+  "day": 7,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#04",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 184,
+  "latency": 7,
+  "window": [
+   177,
+   191
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 199,
+  "day": 8,
+  "x": 7,
+  "y": 4,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#05",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 203,
+  "latency": 4,
+  "window": [
+   199,
+   215
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-95664263.json",
+  "seat": 1,
+  "rating": 2686.6,
+  "step": 266,
+  "day": 11,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#06",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 268,
+  "latency": 2,
+  "window": [
+   266,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 369,
+  "day": 15,
+  "x": 0,
+  "y": 6,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#07",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 380,
+  "latency": 11,
+  "window": [
+   369,
+   383
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 467,
+  "day": 19,
+  "x": 1,
+  "y": 8,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#08",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 475,
+  "latency": 8,
+  "window": [
+   467,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_PASTURE.for_stock_we_hold",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 401,
+  "day": 16,
+  "x": 5,
+  "y": 1,
+  "op": [
+   "BUILD_PASTURE"
+  ],
+  "item": null,
+  "id": "BUILD_PASTURE.for_stock_we_hold#09",
+  "cmd": "task.BUILD_PASTURE",
+  "layer": "task",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 405,
+  "latency": 4,
+  "window": [
+   401,
+   407
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 155,
+  "day": 6,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#00",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 157,
+  "latency": 2,
+  "window": [
+   155,
+   167
+  ],
+  "carried_at_T": 5,
+  "fetched": false,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 158,
+  "day": 6,
+  "x": 1,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#01",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 160,
+  "latency": 2,
+  "window": [
+   158,
+   167
+  ],
+  "carried_at_T": 4,
+  "fetched": false,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 205,
+  "day": 8,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#02",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 214,
+  "latency": 9,
+  "window": [
+   205,
+   215
+  ],
+  "carried_at_T": 8,
+  "fetched": false,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 181,
+  "day": 7,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#03",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 189,
+  "latency": 8,
+  "window": [
+   181,
+   191
+  ],
+  "carried_at_T": 8,
+  "fetched": false,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 304,
+  "day": 12,
+  "x": 7,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#04",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 305,
+  "latency": 1,
+  "window": [
+   304,
+   311
+  ],
+  "carried_at_T": 7,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 331,
+  "day": 13,
+  "x": 0,
+  "y": 4,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#05",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 335,
+  "latency": 4,
+  "window": [
+   331,
+   335
+  ],
+  "carried_at_T": 8,
+  "fetched": false,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 444,
+  "day": 18,
+  "x": 0,
+  "y": 8,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#06",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   444,
+   455
+  ],
+  "carried_at_T": 13,
+  "fetched": false,
+  "injected_turns": 12,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 491,
+  "day": 20,
+  "x": 2,
+  "y": 8,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#07",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   491,
+   503
+  ],
+  "carried_at_T": 16,
+  "fetched": false,
+  "injected_turns": 13,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 581,
+  "day": 24,
+  "x": 6,
+  "y": 3,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#08",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 595,
+  "latency": 14,
+  "window": [
+   581,
+   599
+  ],
+  "carried_at_T": 13,
+  "fetched": false,
+  "injected_turns": 14,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.one_time",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 616,
+  "day": 25,
+  "x": 3,
+  "y": 1,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.one_time#09",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 618,
+  "latency": 2,
+  "window": [
+   616,
+   623
+  ],
+  "carried_at_T": 21,
+  "fetched": false,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 259,
+  "day": 10,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#00",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 260,
+  "latency": 1,
+  "window": [
+   259,
+   263
+  ],
+  "carried_at_T": 10,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 371,
+  "day": 15,
+  "x": 5,
+  "y": 0,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#01",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 379,
+  "latency": 8,
+  "window": [
+   371,
+   383
+  ],
+  "carried_at_T": 9,
+  "fetched": false,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 347,
+  "day": 14,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#02",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 349,
+  "latency": 2,
+  "window": [
+   347,
+   359
+  ],
+  "carried_at_T": 12,
+  "fetched": true,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 427,
+  "day": 17,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#03",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 428,
+  "latency": 1,
+  "window": [
+   427,
+   431
+  ],
+  "carried_at_T": 11,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 402,
+  "day": 16,
+  "x": 8,
+  "y": 2,
+  "op": [
+   "FERTILIZE",
+   "FERTILIZER"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#04",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 406,
+  "latency": 4,
+  "window": [
+   402,
+   407
+  ],
+  "carried_at_T": 14,
+  "fetched": true,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-93641354.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 616,
+  "day": 25,
+  "x": 3,
+  "y": 8,
+  "op": [
+   "FERTILIZE"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#05",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 618,
+  "latency": 2,
+  "window": [
+   616,
+   623
+  ],
+  "carried_at_T": 18,
+  "fetched": false,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "FERTILIZE.ongoing",
+  "session": "session-96339492.json",
+  "seat": 0,
+  "rating": 2453.6,
+  "step": 567,
+  "day": 23,
+  "x": 0,
+  "y": 8,
+  "op": [
+   "FERTILIZE",
+   "FERTILIZER"
+  ],
+  "item": null,
+  "id": "FERTILIZE.ongoing#06",
+  "cmd": "deliver.FERTILIZE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   567,
+   575
+  ],
+  "carried_at_T": 14,
+  "fetched": false,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 45,
+  "day": 1,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#00",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   45,
+   47
+  ],
+  "carried_at_T": 1,
+  "fetched": true,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-97673820.json",
+  "seat": 1,
+  "rating": 2095.7,
+  "step": 63,
+  "day": 2,
+  "x": 4,
+  "y": 3,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#01",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 68,
+  "latency": 5,
+  "window": [
+   63,
+   71
+  ],
+  "carried_at_T": 2,
+  "fetched": true,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 130,
+  "day": 5,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#02",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 140,
+  "latency": 10,
+  "window": [
+   130,
+   143
+  ],
+  "carried_at_T": 7,
+  "fetched": true,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 89,
+  "day": 3,
+  "x": 1,
+  "y": 4,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#03",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 93,
+  "latency": 4,
+  "window": [
+   89,
+   95
+  ],
+  "carried_at_T": 7,
+  "fetched": false,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-93818936.json",
+  "seat": 1,
+  "rating": 2790.4,
+  "step": 179,
+  "day": 7,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#04",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 185,
+  "latency": 6,
+  "window": [
+   179,
+   191
+  ],
+  "carried_at_T": 4,
+  "fetched": true,
+  "injected_turns": 6,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 189,
+  "day": 7,
+  "x": 4,
+  "y": 2,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#05",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   189,
+   191
+  ],
+  "carried_at_T": 3,
+  "fetched": false,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-109057756.json",
+  "seat": 1,
+  "rating": 3026.8580444596714,
+  "step": 363,
+  "day": 15,
+  "x": 3,
+  "y": 4,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#06",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 366,
+  "latency": 3,
+  "window": [
+   363,
+   383
+  ],
+  "carried_at_T": 23,
+  "fetched": true,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 348,
+  "day": 14,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#07",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 359,
+  "latency": 11,
+  "window": [
+   348,
+   359
+  ],
+  "carried_at_T": 6,
+  "fetched": true,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 405,
+  "day": 16,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#08",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   405,
+   407
+  ],
+  "carried_at_T": 11,
+  "fetched": false,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 469,
+  "day": 19,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "FEED",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#09",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": false,
+  "done_step": null,
+  "latency": null,
+  "window": [
+   469,
+   479
+  ],
+  "carried_at_T": 8,
+  "fetched": true,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 626,
+  "day": 26,
+  "x": 4,
+  "y": 4,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#10",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 631,
+  "latency": 5,
+  "window": [
+   626,
+   647
+  ],
+  "carried_at_T": 14,
+  "fetched": true,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "FEED.keeps_it_alive",
+  "session": "session-94456434.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 579,
+  "day": 24,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "FEED"
+  ],
+  "item": null,
+  "id": "FEED.keeps_it_alive#11",
+  "cmd": "deliver.FEED",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 590,
+  "latency": 11,
+  "window": [
+   579,
+   599
+  ],
+  "carried_at_T": 28,
+  "fetched": true,
+  "injected_turns": 11,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 5,
+  "day": 0,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#00",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 6,
+  "latency": 1,
+  "window": [
+   5,
+   23
+  ],
+  "carried_at_T": 1,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101880123.json",
+  "seat": 0,
+  "rating": 2486.0,
+  "step": 9,
+  "day": 0,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#01",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 15,
+  "latency": 6,
+  "window": [
+   9,
+   23
+  ],
+  "carried_at_T": 1,
+  "fetched": false,
+  "injected_turns": 6,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 80,
+  "day": 3,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "PLACE",
+   "COW",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#02",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 90,
+  "latency": 10,
+  "window": [
+   80,
+   95
+  ],
+  "carried_at_T": 1,
+  "fetched": true,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 79,
+  "day": 3,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "PLACE",
+   "COW",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#03",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 80,
+  "latency": 1,
+  "window": [
+   79,
+   95
+  ],
+  "carried_at_T": 1,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 261,
+  "day": 10,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#04",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 262,
+  "latency": 1,
+  "window": [
+   261,
+   263
+  ],
+  "carried_at_T": 1,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 234,
+  "day": 9,
+  "x": 3,
+  "y": 2,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#05",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 235,
+  "latency": 1,
+  "window": [
+   234,
+   239
+  ],
+  "carried_at_T": 1,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 277,
+  "day": 11,
+  "x": 5,
+  "y": 0,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#06",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 278,
+  "latency": 1,
+  "window": [
+   277,
+   287
+  ],
+  "carried_at_T": 1,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 308,
+  "day": 12,
+  "x": 3,
+  "y": 8,
+  "op": [
+   "PLACE",
+   "GOOSE"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#07",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 309,
+  "latency": 1,
+  "window": [
+   308,
+   311
+  ],
+  "carried_at_T": 1,
+  "fetched": true,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 493,
+  "day": 20,
+  "x": 0,
+  "y": 6,
+  "op": [
+   "PLACE",
+   "SHEEP"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#08",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 494,
+  "latency": 1,
+  "window": [
+   493,
+   503
+  ],
+  "carried_at_T": 1,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 446,
+  "day": 18,
+  "x": 5,
+  "y": 7,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#09",
+  "cmd": "deliver.PLACE",
+  "layer": "deliver",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 447,
+  "latency": 1,
+  "window": [
+   446,
+   455
+  ],
+  "carried_at_T": 1,
+  "fetched": false,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 160,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "NE",
+  "id": "BUY_LAND.the_quadrant_gets_used#00",
+  "cmd": "plan.BUY_LAND",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 161,
+  "latency": 1,
+  "window": [
+   160,
+   215
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-101880123.json",
+  "seat": 0,
+  "rating": 2486.0,
+  "step": 150,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "NE",
+  "id": "BUY_LAND.the_quadrant_gets_used#01",
+  "cmd": "plan.BUY_LAND",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 153,
+  "latency": 3,
+  "window": [
+   150,
+   215
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 195,
+  "day": 8,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "SW",
+  "id": "BUY_LAND.the_quadrant_gets_used#02",
+  "cmd": "plan.BUY_LAND",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 198,
+  "latency": 3,
+  "window": [
+   195,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-94346364.json",
+  "seat": 1,
+  "rating": 2453.6,
+  "step": 240,
+  "day": 10,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "SW",
+  "id": "BUY_LAND.the_quadrant_gets_used#03",
+  "cmd": "plan.BUY_LAND",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 241,
+  "latency": 1,
+  "window": [
+   240,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 265,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "SW",
+  "id": "BUY_LAND.the_quadrant_gets_used#04",
+  "cmd": "plan.BUY_LAND",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 266,
+  "latency": 1,
+  "window": [
+   265,
+   335
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_LAND.the_quadrant_gets_used",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 265,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_LAND"
+  ],
+  "item": "SW",
+  "id": "BUY_LAND.the_quadrant_gets_used#05",
+  "cmd": "plan.BUY_LAND",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 266,
+  "latency": 1,
+  "window": [
+   265,
+   335
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 34,
+  "day": 1,
+  "x": 1,
+  "y": 2,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#00",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 34,
+  "latency": 0,
+  "window": [
+   34,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 33,
+  "day": 1,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#01",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 58,
+  "latency": 25,
+  "window": [
+   33,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 25,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 131,
+  "day": 5,
+  "x": 1,
+  "y": 3,
+  "op": [
+   "PLANT",
+   "STRAWBERRY"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#02",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 132,
+  "latency": 1,
+  "window": [
+   131,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 116,
+  "day": 4,
+  "x": 1,
+  "y": 1,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#03",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 116,
+  "latency": 0,
+  "window": [
+   116,
+   143
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-94456434.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 260,
+  "day": 10,
+  "x": 2,
+  "y": 0,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#04",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 260,
+  "latency": 0,
+  "window": [
+   260,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 231,
+  "day": 9,
+  "x": 0,
+  "y": 5,
+  "op": [
+   "PLANT",
+   "STRAWBERRY"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#05",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 231,
+  "latency": 0,
+  "window": [
+   231,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 277,
+  "day": 11,
+  "x": 2,
+  "y": 1,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#06",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 277,
+  "latency": 0,
+  "window": [
+   277,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-96403345.json",
+  "seat": 0,
+  "rating": 2737.0,
+  "step": 329,
+  "day": 13,
+  "x": 9,
+  "y": 4,
+  "op": [
+   "PLANT",
+   "STRAWBERRY"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#07",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 329,
+  "latency": 0,
+  "window": [
+   329,
+   359
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 465,
+  "day": 19,
+  "x": 4,
+  "y": 8,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#08",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 465,
+  "latency": 0,
+  "window": [
+   465,
+   503
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 448,
+  "day": 18,
+  "x": 0,
+  "y": 4,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#09",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 448,
+  "latency": 0,
+  "window": [
+   448,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 632,
+  "day": 26,
+  "x": 2,
+  "y": 3,
+  "op": [
+   "PLANT",
+   "CARROT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#10",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 632,
+  "latency": 0,
+  "window": [
+   632,
+   671
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "PLANT.survives_its_first_night",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 616,
+  "day": 25,
+  "x": 0,
+  "y": 2,
+  "op": [
+   "PLANT",
+   "WHEAT"
+  ],
+  "item": null,
+  "id": "PLANT.survives_its_first_night#11",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 616,
+  "latency": 0,
+  "window": [
+   616,
+   647
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 0,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#00",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 7,
+  "latency": 7,
+  "window": [
+   0,
+   47
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 13,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#01",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 13,
+  "latency": 0,
+  "window": [
+   13,
+   47
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 151,
+  "day": 6,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "STRAWBERRY",
+  "id": "BUY_SEED.gets_planted#02",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 156,
+  "latency": 5,
+  "window": [
+   151,
+   191
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 73,
+  "day": 3,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "STRAWBERRY",
+  "id": "BUY_SEED.gets_planted#03",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 78,
+  "latency": 5,
+  "window": [
+   73,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 254,
+  "day": 10,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "MELON",
+  "id": "BUY_SEED.gets_planted#04",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 254,
+  "latency": 0,
+  "window": [
+   254,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 263,
+  "day": 10,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#05",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 263,
+  "latency": 0,
+  "window": [
+   263,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-105060538.json",
+  "seat": 0,
+  "rating": 2563.8,
+  "step": 264,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "STRAWBERRY",
+  "id": "BUY_SEED.gets_planted#06",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 266,
+  "latency": 2,
+  "window": [
+   264,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-104945147.json",
+  "seat": 0,
+  "rating": 2154.7,
+  "step": 360,
+  "day": 15,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#07",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 368,
+  "latency": 8,
+  "window": [
+   360,
+   407
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 457,
+  "day": 19,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "CARROT",
+  "id": "BUY_SEED.gets_planted#08",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 492,
+  "latency": 35,
+  "window": [
+   457,
+   503
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 35,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 517,
+  "day": 21,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#09",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 517,
+  "latency": 0,
+  "window": [
+   517,
+   551
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 609,
+  "day": 25,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "CARROT",
+  "id": "BUY_SEED.gets_planted#10",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 610,
+  "latency": 1,
+  "window": [
+   609,
+   647
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_SEED.gets_planted",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 575,
+  "day": 23,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_SEED"
+  ],
+  "item": "WHEAT",
+  "id": "BUY_SEED.gets_planted#11",
+  "cmd": "plan.PLANT",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 575,
+  "latency": 0,
+  "window": [
+   575,
+   599
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 0,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-105641873.json",
+  "seat": 0,
+  "rating": 2191.0,
+  "step": 155,
+  "day": 6,
+  "x": 5,
+  "y": 3,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#00",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 158,
+  "latency": 3,
+  "window": [
+   155,
+   191
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-100736678.json",
+  "seat": 1,
+  "rating": 2313.3,
+  "step": 247,
+  "day": 10,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#01",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 261,
+  "latency": 14,
+  "window": [
+   247,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 14,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-106686874.json",
+  "seat": 0,
+  "rating": 2591.9,
+  "step": 259,
+  "day": 10,
+  "x": 4,
+  "y": 1,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#02",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 260,
+  "latency": 1,
+  "window": [
+   259,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 274,
+  "day": 11,
+  "x": 4,
+  "y": 0,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#03",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 281,
+  "latency": 7,
+  "window": [
+   274,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 269,
+  "day": 11,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#04",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 272,
+  "latency": 3,
+  "window": [
+   269,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-94794855.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 464,
+  "day": 19,
+  "x": 3,
+  "y": 5,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#05",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 471,
+  "latency": 7,
+  "window": [
+   464,
+   503
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "BUILD_COOP.for_a_goose_we_hold",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 518,
+  "day": 21,
+  "x": 5,
+  "y": 2,
+  "op": [
+   "BUILD_COOP"
+  ],
+  "item": null,
+  "id": "BUILD_COOP.for_a_goose_we_hold#06",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 521,
+  "latency": 3,
+  "window": [
+   518,
+   551
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 0,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#00",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 4,
+  "latency": 4,
+  "window": [
+   0,
+   47
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 1,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#01",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 5,
+  "latency": 4,
+  "window": [
+   1,
+   47
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 96,
+  "day": 4,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#02",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 105,
+  "latency": 9,
+  "window": [
+   96,
+   143
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 72,
+  "day": 3,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#03",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 77,
+  "latency": 5,
+  "window": [
+   72,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 216,
+  "day": 9,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#04",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 226,
+  "latency": 10,
+  "window": [
+   216,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 200,
+  "day": 8,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#05",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 207,
+  "latency": 7,
+  "window": [
+   200,
+   239
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 264,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#06",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 266,
+  "latency": 2,
+  "window": [
+   264,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 337,
+  "day": 14,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#07",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 341,
+  "latency": 4,
+  "window": [
+   337,
+   383
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 4,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 385,
+  "day": 16,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#08",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 394,
+  "latency": 9,
+  "window": [
+   385,
+   431
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 385,
+  "day": 16,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#09",
+  "cmd": "plan.COOP",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 423,
+  "latency": 38,
+  "window": [
+   385,
+   431
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 38,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-96569586.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 0,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#00",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 3,
+  "latency": 3,
+  "window": [
+   0,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 3,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 1,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#01",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 9,
+  "latency": 8,
+  "window": [
+   1,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 8,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 96,
+  "day": 4,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#02",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 115,
+  "latency": 19,
+  "window": [
+   96,
+   167
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 19,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 72,
+  "day": 3,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#03",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 81,
+  "latency": 9,
+  "window": [
+   72,
+   143
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 9,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 216,
+  "day": 9,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#04",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 222,
+  "latency": 6,
+  "window": [
+   216,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 6,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 200,
+  "day": 8,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#05",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 213,
+  "latency": 13,
+  "window": [
+   200,
+   263
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 13,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 264,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#06",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 271,
+  "latency": 7,
+  "window": [
+   264,
+   335
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 337,
+  "day": 14,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "COW",
+  "id": "BUY_ANIMAL.reaches_a_structure#07",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 344,
+  "latency": 7,
+  "window": [
+   337,
+   407
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 7,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-108795527.json",
+  "seat": 1,
+  "rating": 3014.412904925677,
+  "step": 385,
+  "day": 16,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#08",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 416,
+  "latency": 31,
+  "window": [
+   385,
+   455
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 31,
+  "harness_error": null
+ },
+ {
+  "rule": "BUY_ANIMAL.reaches_a_structure",
+  "session": "session-99954645.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 385,
+  "day": 16,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "BUY_ANIMAL"
+  ],
+  "item": "SHEEP",
+  "id": "BUY_ANIMAL.reaches_a_structure#09",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 390,
+  "latency": 5,
+  "window": [
+   385,
+   455
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 5,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 5,
+  "day": 0,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#00",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 7,
+  "latency": 2,
+  "window": [
+   5,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 2,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101880123.json",
+  "seat": 0,
+  "rating": 2486.0,
+  "step": 9,
+  "day": 0,
+  "x": 3,
+  "y": 3,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#01",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 15,
+  "latency": 6,
+  "window": [
+   9,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 6,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-93479545.json",
+  "seat": 1,
+  "rating": 2370.1,
+  "step": 80,
+  "day": 3,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "PLACE",
+   "COW",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#02",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 90,
+  "latency": 10,
+  "window": [
+   80,
+   143
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 10,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-95947165.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 79,
+  "day": 3,
+  "x": 2,
+  "y": 4,
+  "op": [
+   "PLACE",
+   "COW",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#03",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 80,
+  "latency": 1,
+  "window": [
+   79,
+   143
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-98953064.json",
+  "seat": 0,
+  "rating": 2918.9,
+  "step": 261,
+  "day": 10,
+  "x": 4,
+  "y": 5,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#04",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 262,
+  "latency": 1,
+  "window": [
+   261,
+   311
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 234,
+  "day": 9,
+  "x": 3,
+  "y": 2,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#05",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 235,
+  "latency": 1,
+  "window": [
+   234,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 277,
+  "day": 11,
+  "x": 5,
+  "y": 0,
+  "op": [
+   "PLACE",
+   "COW"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#06",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 278,
+  "latency": 1,
+  "window": [
+   277,
+   335
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-101411020.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 308,
+  "day": 12,
+  "x": 3,
+  "y": 8,
+  "op": [
+   "PLACE",
+   "GOOSE"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#07",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 309,
+  "latency": 1,
+  "window": [
+   308,
+   359
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 493,
+  "day": 20,
+  "x": 0,
+  "y": 6,
+  "op": [
+   "PLACE",
+   "SHEEP"
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#08",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 494,
+  "latency": 1,
+  "window": [
+   493,
+   551
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "PLACE.animal_on_structure",
+  "session": "session-96214189.json",
+  "seat": 0,
+  "rating": 2158.0,
+  "step": 446,
+  "day": 18,
+  "x": 5,
+  "y": 7,
+  "op": [
+   "PLACE",
+   "SHEEP",
+   1
+  ],
+  "item": null,
+  "id": "PLACE.animal_on_structure#09",
+  "cmd": "plan.BUY_ANIMAL",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 447,
+  "latency": 1,
+  "window": [
+   446,
+   503
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-104174525.json",
+  "seat": 0,
+  "rating": 2863.6,
+  "step": 48,
+  "day": 2,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#00",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 49,
+  "latency": 1,
+  "window": [
+   48,
+   71
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-99169912.json",
+  "seat": 1,
+  "rating": 2885.5,
+  "step": 0,
+  "day": 0,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#01",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 1,
+  "latency": 1,
+  "window": [
+   0,
+   23
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-93641354.json",
+  "seat": 0,
+  "rating": 2866.3,
+  "step": 96,
+  "day": 4,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#02",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 97,
+  "latency": 1,
+  "window": [
+   96,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-98139282.json",
+  "seat": 1,
+  "rating": 2737.0,
+  "step": 96,
+  "day": 4,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#03",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 97,
+  "latency": 1,
+  "window": [
+   96,
+   119
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-93555328.json",
+  "seat": 0,
+  "rating": 2684.6,
+  "step": 192,
+  "day": 8,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#04",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 193,
+  "latency": 1,
+  "window": [
+   192,
+   215
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-94081610.json",
+  "seat": 1,
+  "rating": 2707.2,
+  "step": 217,
+  "day": 9,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#05",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 218,
+  "latency": 1,
+  "window": [
+   217,
+   239
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-101515878.json",
+  "seat": 1,
+  "rating": 2218.7,
+  "step": 336,
+  "day": 14,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#06",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 337,
+  "latency": 1,
+  "window": [
+   336,
+   359
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-105524174.json",
+  "seat": 0,
+  "rating": 2095.7,
+  "step": 264,
+  "day": 11,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#07",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 265,
+  "latency": 1,
+  "window": [
+   264,
+   287
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-94138728.json",
+  "seat": 1,
+  "rating": 2804.6,
+  "step": 481,
+  "day": 20,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#08",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 482,
+  "latency": 1,
+  "window": [
+   481,
+   503
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-101204350.json",
+  "seat": 0,
+  "rating": 2954.9,
+  "step": 457,
+  "day": 19,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#09",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 458,
+  "latency": 1,
+  "window": [
+   457,
+   479
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-108354770.json",
+  "seat": 0,
+  "rating": 2885.5,
+  "step": 576,
+  "day": 24,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#10",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 577,
+  "latency": 1,
+  "window": [
+   576,
+   599
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ },
+ {
+  "rule": "HIRE.the_hand_does_work",
+  "session": "session-101426684.json",
+  "seat": 1,
+  "rating": 2831.0,
+  "step": 696,
+  "day": 29,
+  "x": -1,
+  "y": -1,
+  "op": [
+   "HIRE"
+  ],
+  "item": "HAND",
+  "id": "HIRE.the_hand_does_work#11",
+  "cmd": "plan.HIRE",
+  "layer": "plan",
+  "agent": "champ-h8",
+  "obeyed": true,
+  "done_step": 697,
+  "latency": 1,
+  "window": [
+   696,
+   718
+  ],
+  "carried_at_T": null,
+  "fetched": null,
+  "injected_turns": 1,
+  "harness_error": null
+ }
+]

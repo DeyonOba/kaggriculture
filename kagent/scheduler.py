@@ -301,8 +301,17 @@ def assign(view, plan, tasks):
                 actions[idx] = ["DROP"]
                 shed_room = max(0, shed_room - total)
             else:
-                item = max(inv, key=inv.get)
-                n = min(inv[item], shed_room)
+                # README: PLACE resolves the animal-placement branch FIRST
+                # when the unit stands on a matching empty structure, so
+                # naming an animal here puts ONE animal on the tile and
+                # nothing in the shed. Ship only what `total` counted as
+                # cargo -- animals were deliberately excluded from it.
+                cargo = {k: v for k, v in inv.items()
+                         if k not in ("GOOSE", "COW", "SHEEP")}
+                if not cargo:
+                    continue
+                item = max(cargo, key=cargo.get)
+                n = min(cargo[item], shed_room)
                 if n <= 0:
                     continue
                 actions[idx] = ["PLACE", item, n]
@@ -478,11 +487,51 @@ def assign(view, plan, tasks):
         key=lambda t: (t.pri, t.y, t.x),
     )
 
-    # Pass 1 — own zone, real work (below filler): animal deliveries first.
+    # Work underfoot, regardless of whose zone the tile belongs to. `pick`
+    # below only searches zone_tasks[idx % n_zones], and measured, the unit
+    # standing on an unserved task tile is in a FOREIGN zone 65% of the time,
+    # so it is refused the task and walks back to its own zone.
+    _uf = {}
+    for _t in all_tasks + global_tasks:
+        if _t.pri < P_FILLER:
+            _uf.setdefault((_t.x, _t.y), []).append(_t)
+
+    def _underfoot(idx):
+        _x, _y = units[idx]
+        _inv = view.unit_inv(idx)
+        _best = None
+        for _t in _uf.get((_x, _y), ()):
+            if (_t.x, _t.y, _t.op[0]) in claimed:
+                continue
+            if _t.need and _inv.get(_t.need, 0) < 1:
+                continue
+            if _best is None or _t.pri < _best.pri:
+                _best = _t
+        return _best
+
+    # Pass 0 — the tile underfoot, ALL units, before anyone picks by zone.
+    # Doing this inside pass 1's per-unit loop is not enough: `sorted(free)`
+    # lets a DISTANT unit reach the task first through its own-zone pick,
+    # claim it (`claimed` is set on the step TOWARD a task, not on arrival),
+    # and the unit already standing on the tile is then refused. Measured on
+    # the DIG residue: a unit stood on the weed at T, walked off, and the weed
+    # was dug 14-37 turns later. Carriers are skipped so an animal in a pocket
+    # still reaches its structure first.
+    _hold = {i for i, _, _ in me.units
+             if any(view.unit_inv(i).get(_a, 0)
+                    for _a in ("GOOSE", "COW", "SHEEP"))}
+    for idx in sorted(free - _hold):
+        _t = _underfoot(idx)
+        if _t is not None and try_execute(idx, _t):
+            free.discard(idx)
+
+    # Pass 1 — deliveries, then the tile underfoot, then the unit's own zone.
     for idx in sorted(free):
         inv = view.unit_inv(idx)
         deliveries = [t for t in need_tasks if inv.get(t.need, 0) >= 1]
         task = pick(idx, deliveries, P_SURVIVAL, P_FILLER) if deliveries else None
+        if task is None:
+            task = _underfoot(idx)
         if task is None:
             task = pick(idx, zone_tasks.get(idx % n_zones, []), P_SURVIVAL, P_FILLER)
         if task is not None and try_execute(idx, task):
