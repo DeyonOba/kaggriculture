@@ -1,125 +1,105 @@
-"""Block a planting whose harvest lands after that product's market gluts.
+"""Risk = how hard the price falls when you SELL, not how the shop draw lands.
 
-Measured motivation, not a hunch. Instrumenting `_rent_pick` over six games:
-it picks MELON on days 11, 12 and 13 and nowhere else -- 7 of 117 freed-tile
-decisions. Melon's `max_yield_day` is 12, so those plantings complete on days
-23-25, and the clock (`tools/market_clock.py`) puts melon's glut at day 11.
-Every one of them matures a dozen days into a crashed market.
+`k-comp5`'s `_RISK_SD` is computed by `tools/volatility.py` from the shop
+draw -- eight uniform draws every three days -- so it measures **demand
+uncertainty**. Ranked against the actual glut curve it is inverted:
 
-The constraint is a BOOLEAN GATE on the candidate list, not a price. That
-matters: S4's forecast head failed through `econ.sell_revenue`, which is
-convex, so a smoothed prediction was biased exactly at the threshold. A gate
-never passes through that function.
+    crop         shops   base   P(I0+T)   glut drop   k-comp5 sd
+    MELON            0    250        $1        100%         0.00   <- least risky
+    STRAWBERRY       4    120        $1         99%         0.16
+    CARROT           3     35       $10         71%         1.07
+    TOMATO           2     60       $24         60%         1.60   <- most risky
+    WHEAT            5     25       $20         20%         0.09
 
-Per product, from `tools/glut_target.py`:
-    MELON               ridge, R2 0.986, decision error 0.13% at m=12, and
-                        ALL of it in the safe direction (0.00% "too late")
-    CARROT, TOMATO      glut in 8% / 3% of 15-day windows -> hard-coded never
-    FERTILIZER          gluts day 1 always, but is never planted
-    WHEAT, STRAWBERRY   no head yet, so no constraint
+Melon is the one plantable crop in **no shop at all** (README Town Buildings:
+bakery/pizza/brunch/yarn/ice-cream/pet-cafe/smoothie/farmers-market -- melon
+is in none of them), so its only demand is the town centre's flat 1 unit a
+day. Zero shop demand means zero shop-draw variance, which is why the fitted
+model calls it risk-free -- and zero shop demand is exactly what makes it
+dangerous. It carries the steepest glut curve in the game (`sq` at
+`above_target` 3.60) and hits the $1 floor inside one field's production.
 
-    PYTHONPATH=. uv run python tools/make_glut_variant.py --name r-glut --glut /tmp/glut.py
+So this replaces the sd with the **structural glut coefficient**: the
+fractional price drop after selling one 5x5 field's worth (T units),
+computed from MARKET_PARAMS. No fitting -- it is arithmetic on the price
+function, which is the only thing that has ever paid here.
+
+Mode `glut` also drops the `0.35 + 0.65 * shops_left` decay that `computed`
+applies. That decay says risk resolves as the season's draws land; glut risk
+does not resolve, and for melon it cannot -- no draw can ever add a melon
+shop.
+
+    PYTHONPATH=. uv run python tools/make_glut_variant.py --name x-glut50 --lam 0.5
 """
 import argparse
+import ast
 import os
+import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-from tools.rollout_plan import _split_bundle   # noqa: E402
-
-ANCHOR = '''        else:
-            if day + cd["max_yield_day"] > 29:
-                continue
-            k = min(_RENT_HORIZON, cd["max_yield_day"])
-            units = cd["max_yield"]
-            occupies = cd["max_yield_day"] + 1'''
-
-REPL = '''        else:
-            if day + cd["max_yield_day"] > 29:
-                continue
-            if not _glut_ok(crop, cd["max_yield_day"]):
-                continue
-            k = min(_RENT_HORIZON, cd["max_yield_day"])
-            units = cd["max_yield"]
-            occupies = cd["max_yield_day"] + 1'''
-
-CALL_ANCHOR = "    knobs = _knobs(memory)\n"
-CALL_REPL = ('    knobs = _knobs(memory)\n'
-             '    _GLUT_OBS["o"] = getattr(memory, "last_raw_obs", None)\n')
-
-GLUE = '''
-
-# --- glut gate --------------------------------------------------------------
-_GLUT_OBS = {"o": None}
-_GLUT_CACHE = {"day": -2, "melon": None}
 
 
-def _glut_ok(crop, matures_in):
-    """False when this planting would ripen after its market has glutted."""
-    if crop in _GLUT_NEVER:
-        return True
-    if crop != "MELON":
-        return True
-    o = _GLUT_OBS.get("o")
-    if o is None:
-        return True
-    try:
-        d = o.get("day", -1)
-        if _GLUT_CACHE["day"] != d:
-            _GLUT_CACHE["day"] = d
-            _GLUT_CACHE["melon"] = _glut_melon_days(o)
-        return _GLUT_CACHE["melon"] >= matures_in
-    except Exception:
-        return True          # any failure falls back to r-mrg100 behaviour
-
-'''
+def glut_table():
+    """Fractional price drop after T units of supply, per product."""
+    from kagent.constants import MARKET_PARAMS
+    from kagent import econ
+    out = {}
+    for p, mp in MARKET_PARAMS.items():
+        base, at_T = mp["base"], econ.price(p, mp["I0"] + mp["T"])
+        out[p] = round((base - at_T) / float(base), 3)
+    return out
 
 
-def encoder_source():
-    enc = open(os.path.join(REPO, "tools", "board_tensor.py")).read()
-    enc = enc.replace("from kagent.constants import MARKET_PARAMS",
-                      "pass  # MARKET_PARAMS is a bundle global")
-    enc = enc.replace("FIRST_YIELD", "_BT_FIRST_YIELD")
-    i = enc.find("def counts(obs, seat=0):")
-    j = enc.find("\nN_COUNT = ", i)
-    if i > 0 and j > i:
-        enc = enc[:i] + enc[enc.find("\n", j + 1) + 1:]
-    return "import numpy as _np\n" + enc
+def build(base, name, lam):
+    table = glut_table()
+    src_path = os.path.join(REPO, "arena", "agents", base, "main.py")
+    src = open(src_path).read()
+    i = src.index("_SOURCES = ")
+    j = src.index("\n_G = {", i)
+    head, mods, tail = src[:i], ast.literal_eval(src[i + len("_SOURCES = "):j]), src[j:]
+
+    out, hits = [], 0
+    for mod, text in mods:
+        if mod == "planner" and "_RISK_SD" in text:
+            text, n1 = re.subn(r'_RISK_MODE = "[a-z]+"', '_RISK_MODE = "glut"', text, count=1)
+            text, n2 = re.subn(r"_RISK_LAM = [0-9.]+", f"_RISK_LAM = {lam}", text, count=1)
+            text, n3 = re.subn(r"_RISK_SD = \{[^}]*\}", "_RISK_SD = " + repr(table), text, count=1)
+            hits = n1 + n2 + n3
+            if hits != 3:
+                raise SystemExit(f"expected 3 substitutions, made {hits}")
+        out.append((mod, text))
+    if not hits:
+        raise SystemExit(f"{base} carries no _RISK_SD -- build it from a risk bundle")
+
+    dst_dir = os.path.join(REPO, "arena", "agents", name)
+    os.makedirs(dst_dir, exist_ok=True)
+    dst = os.path.join(dst_dir, "main.py")
+    with open(dst, "w") as f:
+        f.write(head + "_SOURCES = " + repr(out) + tail)
+    rules = os.path.join(REPO, "arena", "agents", base, "rules.json")
+    if os.path.isfile(rules):
+        import shutil
+        shutil.copyfile(rules, os.path.join(dst_dir, "rules.json"))
+
+    text = open(dst).read()
+    compile(text, dst, "exec")
+    g = {"__name__": "probe"}
+    exec(compile(text, dst, "exec"), g)
+    if not callable(g.get("agent")):
+        raise SystemExit("bundle exec'd but defines no callable `agent`")
+    print(f"wrote {dst}  ({os.path.getsize(dst)/1024:.0f} KiB)  lam={lam}")
+    print(f"  glut sd: " + "  ".join(f"{k} {v}" for k, v in sorted(table.items())))
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default="r-mrg100")
+    ap.add_argument("--base", default="x-riskfx")
     ap.add_argument("--name", required=True)
-    ap.add_argument("--glut", required=True)
+    ap.add_argument("--lam", type=float, default=0.5)
     args = ap.parse_args()
-
-    src = open(os.path.join(REPO, "arena", "agents", args.base, "main.py")).read()
-    head, mods, tail = _split_bundle(src)
-    mod = encoder_source() + "\n\n" + open(args.glut).read()
-
-    out, done = [], False
-    for name, text in mods:
-        if name == "planner":
-            if ANCHOR not in text or CALL_ANCHOR not in text:
-                raise SystemExit("rent anchors not found; is the base r-mrg100?")
-            text = text.replace(ANCHOR, REPL, 1)
-            text = text.replace(CALL_ANCHOR, CALL_REPL, 1)
-            text = GLUE + text
-            done = True
-        out.append((name, text))
-    if not done:
-        raise SystemExit("no planner module in bundle")
-    out.insert(1, ("glutmod", mod))
-
-    d = os.path.join(REPO, "arena", "agents", args.name)
-    os.makedirs(d, exist_ok=True)
-    p = os.path.join(d, "main.py")
-    code = head + "_SOURCES = " + repr(out) + tail
-    open(p, "w").write(code)
-    compile(code, p, "exec")
-    print(f"{args.name}: {args.base} + glut gate ({os.path.getsize(p)/1000:.0f} kB)")
+    build(args.base, args.name, args.lam)
 
 
 if __name__ == "__main__":

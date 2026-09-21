@@ -22,6 +22,7 @@ whether past results survive an executor swap at all.
 - [Part 13 — old planner weights on the fixed executor](#part-13--the-old-planner-weights-on-the-fixed-executor)
 - [Part 14 — risk is settled null; the rent rule is +$4,336](#part-14--the-risk-analysis-was-already-applied-what-it-sat-on-was-never-shipped)
 - [Part 15 — hiring rollout: money clears, wins do not](#part-15--the-hiring-rollout-money-clears-wins-do-not)
+- [Part 16 — melon risk: right diagnosis, refuted fix](#part-16--melon-risk-the-diagnosis-was-right-the-fix-is-refuted)
 
 ---
 
@@ -1535,3 +1536,79 @@ that the per-day hiring schedule is worth about a quarter of what the
 in-sample number says.
 
 `x-hirefx` is built and gated; `kagent/` is unchanged.
+
+---
+
+# Part 16 — melon risk: the diagnosis was right, the fix is refuted
+
+## The existing risk model ranks melon exactly backwards
+
+`k-comp5`'s `_RISK_SD` comes from `tools/volatility.py`, which computes
+variance from the **shop draw**. Against the actual glut curve it is
+inverted:
+
+| crop | shops | base | P(I0+T) | glut drop | `k-comp5` sd |
+| --- | --- | --- | --- | --- | --- |
+| **MELON** | **0** | 250 | **$1** | **100%** | **0.00** ← ranked least risky |
+| STRAWBERRY | 4 | 120 | $1 | 99% | 0.16 |
+| CARROT | 3 | 35 | $10 | 71% | 1.07 |
+| TOMATO | 2 | 60 | $24 | 60% | **1.60** ← ranked most risky |
+| WHEAT | 5 | 25 | $20 | 20% | 0.09 |
+
+Melon is the one plantable crop in **no shop at all** — README Town Buildings
+lists bakery, pizza, brunch, yarn, ice-cream, pet cafe, smoothie and farmers
+market, and melon is in none of them. Its only demand is the town centre's
+flat 1 unit a day, which never ramps.
+
+Zero shop demand means zero shop-draw variance, which is why a model fitted
+on the shop draw calls melon risk-free. **Zero shop demand is exactly what
+makes it dangerous**: nothing can ever add melon demand, and it carries the
+steepest glut curve in the game (`sq` at `above_target` 3.60), hitting the $1
+floor inside one field's production.
+
+So the measured critique is correct and stronger than "one shop consumes it":
+it is **no** shop, and the risk model had the sign of melon's risk wrong.
+
+## Replacing shop-draw variance with the glut coefficient loses money
+
+`tools/make_glut_variant.py` swaps `_RISK_SD` for the structural glut
+coefficient — the fractional price drop after one 5×5 field's worth of
+supply, computed from `MARKET_PARAMS`, no fitting — and drops the
+`0.35 + 0.65 × shops_left` decay, since glut risk does not resolve as draws
+land and for melon cannot.
+
+| arm | block 0 | block 1 | **pooled, 692 worlds** | win |
+| --- | --- | --- | --- | --- |
+| `x-glut25` (λ 0.25) | −$393 ± 644 | −$766 ± 552 | **−$580 ± 424** (z −1.37) | 0.350 / 0.358 |
+| `x-glut50` (λ 0.50) | −$1,033 ± 765 | −$1,426 ± 704 | **−$1,230 ± 520** (z −2.37) | 0.355 / 0.335 |
+
+**Monotone in λ** — 0 → $0, 0.25 → −$580, 0.50 → −$1,230 — which is the
+signature of a real effect rather than noise, and the effect is harmful.
+
+## Why: the rent rule already charges for glut
+
+`_rent_pick` prices the whole block against **the inventory its own units
+create**:
+
+```python
+rev  = econ.sell_revenue(crop, int(round(inv[crop][k])), total)
+rent = rev / float(free * occupies)
+```
+
+`sell_revenue` walks the price down unit by unit along `above_func`, so a
+melon block is *already* valued at the collapsed price it will actually
+realise. Melon's 100% glut coefficient is not missing information — it is
+the same information, and the penalty charges it twice. Halving the rent of
+the $250-base crop the champion opening is built around is simply a tax on
+the best tile in the game.
+
+That also explains the original result this came from: `k-comp5 − r-mrg100`
+was z = 0.54 on 1,131 worlds. Any risk term bolted onto a rent that already
+prices self-impact is near-redundant; the only question is how much damage
+the redundancy does, and the answer scales with λ.
+
+**Sixth instance of the recurring law.** The observation is correct — the sd
+table really is inverted, and melon really is the highest-glut-risk crop.
+The intervention is refuted. What would *not* be redundant is the half the
+rent rule cannot see: the **opponent's** future supply into the same pool.
+That is `k-diff`, and it gated +$362 ± 1,136 (z 0.32).

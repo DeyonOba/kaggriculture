@@ -4,6 +4,44 @@ All agent versions for the Kaggle **Kaggriculture** competition, newest first.
 Detailed per-version documentation: [docs/VERSIONS.md](docs/VERSIONS.md).
 Benchmarks are arena results on fresh seeds, both player positions, unless noted.
 
+## melon glut risk — 2026-09-21 · the sd table IS inverted, and fixing it loses money
+
+The critique is right and stronger than stated: melon is in **no shop at all** (README Town
+Buildings — bakery/pizza/brunch/yarn/ice-cream/pet-cafe/smoothie/farmers-market, melon in none),
+so its only demand is the town centre's flat 1/day. `k-comp5`'s `_RISK_SD` is fitted on the
+**shop draw**, so zero shop demand reads as zero variance:
+
+| crop | shops | base | P(I0+T) | glut drop | k-comp5 sd |
+| --- | --- | --- | --- | --- | --- |
+| **MELON** | **0** | 250 | **$1** | **100%** | **0.00** ← least risky |
+| STRAWBERRY | 4 | 120 | $1 | 99% | 0.16 |
+| CARROT | 3 | 35 | $10 | 71% | 1.07 |
+| TOMATO | 2 | 60 | $24 | 60% | **1.60** ← most risky |
+| WHEAT | 5 | 25 | $20 | 20% | 0.09 |
+
+Exactly inverted. `tools/make_glut_variant.py` replaces the sd with the structural glut
+coefficient (fractional price drop after one field's supply, computed from `MARKET_PARAMS`, no
+fitting) and drops the shop-draw decay, since glut risk never resolves and for melon cannot.
+
+| arm | pooled, 692 worlds | z | win |
+| --- | --- | --- | --- |
+| `x-glut25` (λ 0.25) | **−$580 ± 424** | −1.37 | 0.350 / 0.358 |
+| `x-glut50` (λ 0.50) | **−$1,230 ± 520** | −2.37 | 0.355 / 0.335 |
+
+**Monotone in λ** (0 → $0, 0.25 → −$580, 0.50 → −$1,230) — a real effect, and harmful.
+
+**Why: `_rent_pick` already charges for glut.** It prices the whole block against the inventory
+its own units create (`econ.sell_revenue(crop, inv[crop][k], total)`), walking the price down
+unit by unit along `above_func`. Melon's 100% coefficient is not missing information, it is the
+same information — the penalty charges it twice, and halving the rent of the $250-base crop the
+opening is built around is a tax on the best tile in the game. This also explains
+`k-comp5 − r-mrg100` = z 0.54 on 1,131 worlds: any risk term bolted onto a rent that already
+prices self-impact is near-redundant, and the damage scales with λ.
+
+Sixth instance of the recurring law — observation correct, intervention refuted. The half the
+rent rule genuinely cannot see is the **opponent's** future supply into the same pool; that is
+`k-diff`, and it gated +$362 ± 1,136 (z 0.32).
+
 ## hiring rollout ported + gated — 2026-09-21 · money +$1,215 (z 2.76), wins FLAT -> hold
 
 Re-rolled on `x-rentfx` rather than champ-h8 (a schedule is only meaningful for the stack it
