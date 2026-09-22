@@ -86,17 +86,32 @@ class Panel:
         self.win = np.asarray(blob["W"], dtype=np.float64)
         self.names: List[str] = [str(s) for s in blob["names"]]
         n_days = len(set(self.day.tolist()))
-        if len(self.X) % n_days:
-            raise ValueError(
-                f"{path}: {len(self.X)} rows is not a whole number of "
-                f"{n_days}-day games -- the game grouping would be wrong")
-        self.game = np.arange(len(self.X)) // n_days
-        # M and W are recorded once per game and repeated down its rows.
-        for arr, label in ((self.margin, "margin"), (self.win, "win")):
-            per_game = arr.reshape(-1, n_days)
-            if not np.allclose(per_game, per_game[:, :1]):
-                raise ValueError(f"{path}: {label} varies within a game; "
-                                 f"the row->game mapping is wrong")
+        if "G" in blob.files:
+            # Explicit groups. `tools/ladder_panel.py` emits BOTH seats of a
+            # session, which share a world, so the split must keep them
+            # together or the "held-out" games are half-seen.
+            g = np.asarray(blob["G"], dtype=int)
+            uniq = {v: i for i, v in enumerate(sorted(set(g.tolist())))}
+            self.game = np.array([uniq[v] for v in g], dtype=int)
+            self.seat = (np.asarray(blob["S"], dtype=int)
+                         if "S" in blob.files else np.zeros(len(g), int))
+            self.rating = (np.asarray(blob["R"], dtype=float)
+                           if "R" in blob.files else
+                           np.full(len(g), np.nan))
+        else:
+            if len(self.X) % n_days:
+                raise ValueError(
+                    f"{path}: {len(self.X)} rows is not a whole number of "
+                    f"{n_days}-day games -- the game grouping would be wrong")
+            self.game = np.arange(len(self.X)) // n_days
+            self.seat = np.zeros(len(self.X), int)
+            self.rating = np.full(len(self.X), np.nan)
+            # M and W are recorded once per game and repeated down its rows.
+            for arr, label in ((self.margin, "margin"), (self.win, "win")):
+                per_game = arr.reshape(-1, n_days)
+                if not np.allclose(per_game, per_game[:, :1]):
+                    raise ValueError(f"{path}: {label} varies within a game; "
+                                     f"the row->game mapping is wrong")
         self.n_days = n_days
 
     @property
