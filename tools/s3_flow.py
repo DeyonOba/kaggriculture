@@ -388,6 +388,29 @@ def ablate(args):
           f"seeds\n")
     print(f"    {'arm':<18}{'ch':>4}{'seed':>6}{'val MSE':>10}"
           f"{'held-out R2 on 10-day flow':>28}")
+    def _mean_r2(Yv, P, rows=None):
+        """Mean R2 over products that actually VARY in these rows.
+
+        `max(1e-9, denom)` is not a guard, it is a way to print -4e11: a
+        product with no spread in a band slice (seven of nine have zero gross
+        buys, and a small band can be flat in a sell column too) divides a
+        real residual by 1e-9. Such a product is not predicted badly, it is
+        undefined -- so it is dropped, and a band with nothing left is
+        skipped entirely rather than reported.
+        """
+        out = []
+        for pi in range(n_p):
+            c = [j * n_p + pi for j in range(H)]
+            y = Yv[c] if Yv.ndim == 1 else Yv[:, c].sum(1)
+            q = P[c] if P.ndim == 1 else P[:, c].sum(1)
+            if rows is not None:
+                y, q = y[rows], q[rows]
+            denom = float(((y - y.mean()) ** 2).sum())
+            if denom <= 1e-6 * max(1.0, float((y ** 2).sum())) or len(y) < 2:
+                continue
+            out.append(1 - float(((y - q) ** 2).sum()) / denom)
+        return (float(np.mean(out)) if out else float("nan")), len(out)
+
     res, per_band = {}, {}
     for arm in ARMS:
         cols = arm_channels(arm)
@@ -412,13 +435,7 @@ def ablate(args):
             va = np.isin(G, gids[:max(1, len(gids) // 5)])
             P = predict(net, stats, Ti[va])
             Yv = F[va]
-            r2s = []
-            for pi in range(n_p):
-                c = [j * n_p + pi for j in range(H)]
-                y, q = Yv[:, c].sum(1), P[:, c].sum(1)
-                r2s.append(1 - ((y - q) ** 2).sum()
-                           / max(1e-9, ((y - y.mean()) ** 2).sum()))
-            m = float(np.mean(r2s))
+            m, _n_live = _mean_r2(Yv, P)
             res.setdefault(arm, []).append(m)
             if RATING is not None:
                 rv = RATING[va]
@@ -426,14 +443,10 @@ def ablate(args):
                     bm = (rv >= lo) & (rv < hi)
                     if bm.sum() < 30:
                         continue
-                    rb = []
-                    for pi in range(n_p):
-                        c = [j * n_p + pi for j in range(H)]
-                        y, q = Yv[bm][:, c].sum(1), P[bm][:, c].sum(1)
-                        rb.append(1 - ((y - q) ** 2).sum()
-                                  / max(1e-9, ((y - y.mean()) ** 2).sum()))
-                    per_band.setdefault(arm, {}).setdefault(bi, []).append(
-                        float(np.mean(rb)))
+                    rv2, n_live = _mean_r2(Yv, P, rows=bm)
+                    if n_live == 0 or not np.isfinite(rv2):
+                        continue
+                    per_band.setdefault(arm, {}).setdefault(bi, []).append(rv2)
             print(f"    {arm:<18}{len(cols):>4}{seed:>6}{stats['val_mse']:>10.4f}"
                   f"{m:>28.4f}", flush=True)
     # PAIRED, because the design is paired and reading it unpaired both
@@ -473,7 +486,7 @@ def ablate(args):
     if per_band:
         print(f"\n    PER BAND, paired vs {ref} (held-out games only)\n")
         hdr = f"    {'arm':<18}" + "".join(
-            f"{f'{lo}-{hi:.0f}' if hi < 1e8 else '2500+':>12}"
+            f"{f'{lo}-{hi:.0f}' if hi < 1e8 else '2500+':>13}"
             for lo, hi in BANDS)
         print(hdr)
         for arm in ARMS:
@@ -485,11 +498,11 @@ def ablate(args):
                 if not v:
                     cells.append(f"{'--':>12}"); continue
                 if arm == ref:
-                    cells.append(f"{np.mean(v):>12.4f}")
+                    cells.append(f"{np.mean(v):>13.4f}")
                 else:
                     bb = per_band[ref].get(bi)
-                    cells.append(f"{np.mean(v) - np.mean(bb):>+12.4f}"
-                                 if bb else f"{'--':>12}")
+                    cells.append(f"{np.mean(v) - np.mean(bb):>+13.4f}"
+                                 if bb else f"{'--':>13}")
             print(f"    {arm:<18}" + "".join(cells))
         print(f"\n    {ref} row is absolute R2; the rest are deltas against "
               f"it in the same band.")
