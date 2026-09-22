@@ -69,6 +69,7 @@ def replay(spec):
     from kaggle_environments import make
     import tools.early_metrics as em
     import tools.phase_metrics as pm
+    import tools.missing_features as mf
 
     try:
         with open(path) as fh:
@@ -103,7 +104,8 @@ def replay(spec):
             for side, pv in ((0, o0.private), (1, o1.private)):
                 rows.append(np.concatenate([em.features(o0, side, pv),
                                             pm.mid_features(o0, side, pv),
-                                            pm.end_features(o0, side, pv)]))
+                                            pm.end_features(o0, side, pv),
+                                            mf.features(o0, side, pv)]))
                 days.append(d)
                 seats.append(side)
         t = o0["step"]
@@ -121,9 +123,11 @@ def replay(spec):
 def names() -> List[str]:
     import tools.early_metrics as em
     import tools.phase_metrics as pm
+    import tools.missing_features as mf
     return (["E:" + n for n in em.NAMES]
             + ["M:" + n for n in pm.MID_NAMES]
-            + ["D:" + n for n in pm.END_NAMES])
+            + ["D:" + n for n in pm.END_NAMES]
+            + ["X:" + n for n in mf.NAMES])
 
 
 def pick_sessions(n: int, stratify: bool, seed: int,

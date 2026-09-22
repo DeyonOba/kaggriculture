@@ -88,16 +88,62 @@ def per_day_fit(X: np.ndarray, y: np.ndarray, day: np.ndarray, game: np.ndarray,
         a = pick_alpha(Xtr, y[m_tr], game[m_tr], folds, seed + int(d))
         Ztr, Zte = _zscore(Xtr, Xte)
         w, b = ridge(Ztr, y[m_tr], a)
-        pred[m_te] = Zte @ w + b
+        # Clamp to the range the fit actually SAW, widened by half. A linear
+        # model extrapolates without limit, and a column that barely moved in
+        # training can arrive far outside that range at test time -- measured
+        # once at 3,677 sigmas, and again here as R^2 -1.683 in the smallest
+        # band. Without this the harness reports a feature as catastrophic
+        # when the catastrophe is the harness.
+        tr_pred = Ztr @ w + b
+        lo, hi = float(tr_pred.min()), float(tr_pred.max())
+        pad = 0.5 * (hi - lo)
+        pred[m_te] = np.clip(Zte @ w + b, lo - pad, hi + pad)
     return pred
 
 
+# The audited-but-unencoded channels (tools/missing_features.py), grouped by
+# the reason each was expected to matter. Ablating the groups says WHICH gap
+# pays, which a single all-or-nothing arm cannot.
+GROUPS = {
+    "clocks": ("X:lifespan_left", "X:dying_3d", "X:unfed_streak",
+               "X:starving", "X:animal_age"),
+    "banked": ("X:pending_care", "X:care_cover", "X:fert_active",
+               "X:fert_days_left"),
+    "opp": ("X:opp_money", "X:hires_today", "X:opp_hires_today", "X:opp_hands"),
+    "seeds": tuple(f"X:seed_{c}" for c in
+                   ("wheat", "carrot", "tomato", "strawberry", "melon")),
+    "shops": None,       # every X:shop_* column
+    "minv": None,        # every X:minv_* column
+}
+
+
+def feature_arms(p: Panel):
+    base = [i for i, n in enumerate(p.names) if not n.startswith("X:")]
+    idx = {n: i for i, n in enumerate(p.names)}
+    arms = {f"base ({len(base)})": np.array(base)}
+    for g, cols in GROUPS.items():
+        if cols is None:
+            sel = [i for i, n in enumerate(p.names) if n.startswith(f"X:{g}_")]
+        else:
+            sel = [idx[c] for c in cols if c in idx]
+        if sel:
+            arms[f"+{g} ({len(base)+len(sel)})"] = np.array(sorted(base + sel))
+    allx = [i for i, n in enumerate(p.names) if n.startswith("X:")]
+    arms[f"+ALL ({len(base)+len(allx)})"] = np.array(sorted(base + allx))
+    return arms
+
+
 def report(p: Panel, args) -> None:
-    Xl, ok = lagged(p)
-    c = p.X.shape[1]
-    arms = {"now only (48)": (np.arange(c), ok),
-            "now + d1 (96)": (np.arange(2 * c), ok),
-            "now + d1 + d2 (144)": (np.arange(3 * c), ok)}
+    if args.mode == "features":
+        ok = np.ones(len(p.X), bool)
+        Xl = p.X.astype(np.float64)
+        arms = {k: (v, ok) for k, v in feature_arms(p).items()}
+    else:
+        Xl, ok = lagged(p)
+        c = p.X.shape[1]
+        arms = {"now only (48)": (np.arange(c), ok),
+                "now + d1 (96)": (np.arange(2 * c), ok),
+                "now + d1 + d2 (144)": (np.arange(3 * c), ok)}
     band_of = np.full(len(p.X), -1)
     for bi, (_, lo, hi) in enumerate(BANDS):
         band_of[(p.rating >= lo) & (p.rating < hi)] = bi
@@ -143,7 +189,7 @@ def report(p: Panel, args) -> None:
          f"{np.mean([x[1] for x in day10[k]]):8.3f}") if day10[k] else f"{'--':>21}"
         for k in arms))
 
-    base = "now only (48)"
+    base = list(arms)[0]
     print(f"\nDELTA against `{base}` -- the kill criteria in "
           f"docs/state_capture_spec.md S6\n")
     print(f"  {'band':>11} " + " ".join(f"{k:>21}" for k in arms if k != base))
@@ -180,6 +226,9 @@ def main() -> None:
     ap.add_argument("--folds", type=int, default=4)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--train-frac", type=float, default=0.7)
+    ap.add_argument("--mode", choices=("lags", "features"), default="lags",
+                    help="`features` ablates the audited missing channels "
+                         "instead of appending temporal lags")
     args = ap.parse_args()
     p = Panel(args.panel)
     print(f"{args.panel}: {p.n_games} sessions, {len(p.X):,} rows, "

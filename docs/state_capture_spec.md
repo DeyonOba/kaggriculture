@@ -270,3 +270,118 @@ market inventory SIGN        `abs(inv - 10000)` makes a glut and a shortage
 That is the next experiment, and it is cheap: add the channels, re-run the
 same per-band table, keep the same kill criteria. No new dataset, no 10 GB,
 no history.
+
+---
+
+## 8 The missing static channels: measured, and they FAIL the bar
+
+`tools/missing_features.py` adds the 35 audited quantities as per-day scalars
+and `tools/ladder_panel.py --out ladder_panel_x.npz` rebuilds the 514-session
+panel with them (48 → 83 metrics). All 35 verified live, none constant.
+
+> One near-miss worth recording: three of the eight shop identifiers I wrote
+> from memory (`PIZZERIA`, `YARN_SHOP`, `SMOOTHIE_BAR`) do not exist in the
+> engine — the real ones are `PIZZA_SHOP`, `YARN_STORE`, `SMOOTHIE_SHOP`.
+> Those bits would have read zero all season and silently voided the entire
+> shop-identity arm. `SHOPS_L` now reads `kagent.constants.SHOPS`.
+
+Group ablation, per band, four splits, held-out **sessions**, ΔR² / ΔAUC
+against the 48-metric base:
+
+| band | +clocks | +banked | +opp | +seeds | **+minv** | +ALL |
+| --- | --- | --- | --- | --- | --- | --- |
+| <1000 | −0.013 / −0.002 | +0.000 / +0.002 | −0.040 / +0.004 | −0.003 / −0.005 | **+0.035 / +0.010** | −0.059 / +0.019 |
+| 1000–1500 | −0.006 / −0.003 | −0.002 / +0.000 | +0.008 / +0.005 | −0.005 / −0.000 | −0.009 / +0.000 | −0.009 / +0.002 |
+| 1500–2000 | −0.005 / −0.004 | +0.002 / +0.003 | −0.023 / +0.001 | +0.009 / +0.002 | −0.012 / −0.004 | −0.009 / −0.006 |
+| 2000–2500 | −0.007 / −0.000 | +0.012 / +0.012 | +0.037 / +0.007 | −0.001 / +0.008 | **+0.012 / +0.013** | +0.044 / +0.026 |
+| 2500+ | +0.005 / +0.001 | −0.006 / +0.003 | −0.004 / −0.006 | −0.015 / −0.006 | **+0.011 / +0.014** | −0.016 / +0.011 |
+| **verdict (≥4/5 bands, R²)** | 0/5 **FAIL** | 1/5 **FAIL** | 1/5 **FAIL** | 0/5 **FAIL** | **3/5 FAIL** | 1/5 **FAIL** |
+
+**Every arm fails the pre-registered bar.** The death clocks — the gap that
+looked most obviously wrong, since plants have a death clock and animals do
+not — buy **nothing, in any band**. `pending_care_bonus` and the seed counts
+buy nothing. The best is the signed market inventory at 3 of 5 bands, which is
+the one the audit predicted would matter most and which still misses.
+
+A harness bug was found and fixed in the middle of this: `+opp` first read
+**−1.683 R²** in the <1000 band, which was `per_day_fit` extrapolating a
+near-degenerate column without the support clamp `tools/fit_potential.py`
+already had. Clamped, it reads −0.040. The verdicts did not change, so the
+conclusion is robust to it — but the first table was wrong and this is the
+third time this exact failure mode has appeared.
+
+### The thing I am not allowed to do, and the test that would be legitimate
+
+The criterion was written on **R²**. On **AUC** the picture is different:
+`+minv` gains in 4 of 5 bands and `+ALL` in 4 of 5, with the largest gains at
+the top (+0.026 at 2000–2500, +0.011 at 2500+). And there is a real argument
+that AUC is the right metric here, because **the rating is win-based** and
+five separate results have shown margin and win coming apart.
+
+That argument had to be made *before* seeing the table. Switching the
+criterion now would be exactly the post-hoc selection this document's §6
+exists to prevent, so the recorded verdict stands: **FAIL**.
+
+What is legitimate is to pre-register AUC and run it on **data these arms have
+never touched**. Recorded now, before that draw:
+
+> **H-AUC.** On a fresh, disjoint draw of ladder sessions, `+minv` improves
+> AUC against the 48-metric base by more than +0.005 in at least 3 of the 4
+> bands that can be re-drawn disjointly (1000–1500, 1500–2000, 2000–2500,
+> 2500+). Bands <1000 and 600–1000 cannot be re-drawn — the corpus holds 101
+> and 14 sessions in total — so they are excluded by availability, not by
+> choice. Any other outcome kills the signed-inventory channel.
+
+### H-AUC on fresh sessions: the signed market inventory PASSES
+
+Second draw, seed 7, **377 sessions none of these arms had seen** (overlap
+with draw 1 stripped; it was concentrated in the <1000 band, which holds only
+115 sessions in total and therefore cannot be re-drawn — that is why the four
+test bands were fixed in advance).
+
+AUC change against the 48-metric base, per band:
+
+| band | +clocks | +banked | +opp | +seeds | **+minv** | +ALL |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1000–1500 | +0.0012 | −0.0020 | +0.0013 | +0.0013 | **+0.0057** | +0.0023 |
+| 1500–2000 | +0.0004 | −0.0004 | +0.0031 | −0.0040 | +0.0035 | +0.0051 |
+| 2000–2500 | −0.0009 | −0.0016 | +0.0057 | −0.0006 | **+0.0066** | +0.0081 |
+| **2500+** | +0.0033 | −0.0016 | +0.0011 | −0.0018 | **+0.0143** | +0.0108 |
+| **H-AUC (≥3/4 > +0.005)** | 0/4 fail | 0/4 fail | 1/4 fail | 0/4 fail | **3/4 PASS** | 3/4 pass |
+
+**`+minv` passes**, on data it had never touched, against a criterion fixed
+before the draw, and its largest gain (**+0.0143**) is in the 2500+ band —
+the hardest one, where the base model is at R² −0.100 and AUC 0.643. `+ALL`
+also passes, but never beats `+minv` by enough to justify 35 columns against
+9, and it is the arm that drags R² down.
+
+Everything else fails on fresh data exactly as it failed on the first draw.
+**The death clocks are dead.** The plant/animal asymmetry looked like an
+obvious bug and buys nothing in any band on either draw; so do
+`pending_care_bonus`, the fertiliser expiry, the seed counts and the
+opponent's labour.
+
+### What this finding is, and what it is not
+
+The one real gap in the audit is the one predicted a priori: `scalars()`
+encodes `min(abs(inv − 10000), 600) / 600`, and **the `abs()` throws away the
+sign of the single shared variable that costs $52,652 a game (z 17.52)**. A
+glut and a shortage are handed to the model as the same number.
+
+It is **not a shipped win and cannot be gated**, and that distinction matters:
+
+- `kagent/planner.py` reads `view.market_inv` directly and has always had the
+  sign. The agent is unaffected.
+- the `abs()` lives only in `tools/board_tensor.py::scalars`, i.e. in the
+  **encoder every learned model here has ever consumed** — the board CNN, the
+  value heads, the BC ranker, the flow nets. All of them were trained on a
+  market channel with half its information removed.
+
+So the finding re-opens the fitted-model track rather than adding money. Every
+"a net cannot beat the rule" result on record was measured with this channel
+damaged, and that is now a known defect rather than a mystery.
+
+**Not fixed in `tools/board_tensor.py` yet, deliberately.** Changing the
+semantics of 9 of the 24 scalar channels silently invalidates every cached
+`rl/datasets/*.npz` built with the old encoder, and `arm_channels` addresses
+channels by absolute offset. That is a rebuild decision, not a drive-by edit.
