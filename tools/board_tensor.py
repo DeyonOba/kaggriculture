@@ -39,6 +39,13 @@ structure we can hand to the kernel directly.
 
 import numpy as np
 
+# Bump whenever a channel's SEMANTICS change, not just its count. Datasets
+# stamp it (`ENC` in the npz) and readers refuse a mismatch, because a
+# silently-reinterpreted channel is indistinguishable from a real result.
+#   1  original
+#   2  2026-09-22  market inventory carries its SIGN (was abs()), tanh@1500
+ENCODER_VERSION = 2
+
 N_CH = 24
 CROPS_L = ["WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON"]
 ANIMALS_L = ["GOOSE", "COW", "SHEEP"]
@@ -120,7 +127,18 @@ def scalars(obs, seat=0):
               "EGG", "MILK", "WOOL", "FERTILIZER"]:
         base = MARKET_PARAMS[p]["base"]
         v.append(min(float(px.get(p, base)) / base, 3.0) / 3.0)
-        v.append(min(abs(float(inv.get(p, 10000)) - 10000), 600) / 600.0)
+        # ENCODER v2. This was `min(abs(inv - 10000), 600) / 600`, and the
+        # abs() handed the model a GLUT and a SHORTAGE as the same number --
+        # on the one shared variable that costs $52,652 a game (z 17.52).
+        # The 600 clip also saturated long before a real glut does. Measured
+        # signed, on a tanh at 1500, it gains AUC in 3 of 4 held-out rating
+        # bands on sessions the arm had never seen, largest at 2500+
+        # (+0.0143): docs/state_capture_spec.md S8.
+        #
+        # Every net trained here -- board CNN, value heads, BC ranker, flow
+        # nets -- consumed the damaged channel. Their results are not
+        # evidence about what a net can do on this game.
+        v.append(float(np.tanh((float(inv.get(p, 10000)) - 10000.0) / 1500.0)))
     return np.asarray(v, dtype="float32")
 
 

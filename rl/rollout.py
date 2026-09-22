@@ -16,6 +16,30 @@ from kagent.nnpolicy import NeuralPolicy
 from kagent.policy import HeuristicPolicy
 from kagent import features
 
+# LIVE board state for RL. The policy has only ever seen `kagent.features`
+# day-level aggregates (168 numbers); `tools/board_tensor.py` was built for
+# offline flow nets and never entered the training loop. With KAGG_BOARD=1
+# every recorded decision also carries the board tensor for the CURRENT
+# state, so a conv trunk can be trained end to end on states the policy
+# actually visits instead of on a frozen corpus snapshot.
+#
+# float16 because it is a 91x10x10 of mostly zeros and ones: 18 KB a decision,
+# ~35 MB an iteration at 64 episodes x 30 decisions, which survives the Pool.
+_BOARD = os.environ.get("KAGG_BOARD", "") not in ("", "0")
+
+
+def _board(obs, seat):
+    """(91, 10, 10) float16 for THIS seat, or None when the hook is off.
+
+    `board_pair_full` reads `obs["day"]` and `obs["farms"]`, both of which the
+    seat-1 observation carries -- only `step` is missing there, and this path
+    does not use it.
+    """
+    if not _BOARD:
+        return None
+    from tools.board_tensor import board_pair_full
+    return board_pair_full(obs, seat).astype("float16")
+
 _WEIGHTS_CACHE = {}
 KNOB_DAY = 6  # shops revealed on days 3 and 6
 DECISION_DAYS = (6, 9, 12, 15)  # contexts recorded for conditional arms
@@ -223,6 +247,7 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
                         "masks": m,
                         "choices": choices,
                         "pv": portfolio_value(view),
+                        "board": _board(obs, view.player),
                     }
                 )
                 mem.day_plan = plan
@@ -253,6 +278,7 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
                     "value": value,
                     "pv": portfolio_value(view),
                     "stock": stock_value(view),
+                    "board": _board(obs, view.player),
                 }
             )
         return action

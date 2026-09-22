@@ -88,13 +88,64 @@ def _rating_ok(v, floor):
         return min(sc) >= floor
     return floor <= 0
 
-def _pick(n, min_rating, seed, skip=0):
+BANDS = [(0, 1000), (1000, 1500), (1500, 2000), (2000, 2500), (2500, 1e9)]
+
+
+def _pick(n, min_rating, seed, skip=0, bands=False):
+    """Session paths. `bands` draws EQUALLY per rating band instead of using a
+    floor.
+
+    The floor is the default only for reproducing old builds. 14,211 of the
+    corpus's 21,054 sessions sit in the 2500+ band, so `--min-rating 2000` is
+    in practice "top games only" -- and the 2500+ band is the HARDEST to
+    predict of all of them (R^2 -0.100 against +0.334 at <1000). Every arm
+    this project ever compared was drawn that way.
+    """
     import random
     idx = _load_index()
-    paths = [v["path"] for v in idx.values()
-             if _rating_ok(v, min_rating)]
-    random.Random(seed).shuffle(paths)
-    return paths[skip: skip + n]
+    if not bands:
+        paths = [v["path"] for v in idx.values() if _rating_ok(v, min_rating)]
+        random.Random(seed).shuffle(paths)
+        return paths[skip: skip + n]
+
+    pool = {i: [] for i in range(len(BANDS))}
+    for v in idx.values():
+        sc = [x for x in (v.get("scores") or []) if x is not None]
+        if not sc or not v.get("path"):
+            continue
+        r = max(sc)
+        b = next(i for i, (lo, hi) in enumerate(BANDS) if lo <= r < hi)
+        pool[b].append(v["path"])
+    rng = random.Random(seed)
+    per, out = max(1, n // len(BANDS)), []
+    for b in range(len(BANDS)):
+        rng.shuffle(pool[b])
+        take = pool[b][skip: skip + per]
+        out += take
+        print(f"  band {BANDS[b][0]}-{BANDS[b][1]:.0f}: "
+              f"{len(pool[b]):5d} available, {len(take)} drawn")
+    return out
+
+
+_RATING_BY_PATH = None
+
+
+def _session_rating(path):
+    """max rating of the two seats, or nan -- stored per row for per-band eval.
+
+    From the INDEX, not from the session file: `scores` sits after the two
+    720-step action scripts, i.e. megabytes into the JSON, so reading a 4 KB
+    head returns nothing and every rating comes back NaN.
+    """
+    import math
+    global _RATING_BY_PATH
+    if _RATING_BY_PATH is None:
+        _RATING_BY_PATH = {}
+        for v in _load_index().values():
+            sc = [x for x in (v.get("scores") or []) if x is not None]
+            if v.get("path"):
+                _RATING_BY_PATH[v["path"]] = max(sc) if sc else math.nan
+    return _RATING_BY_PATH.get(path, math.nan)
 
 
 def cap_series(dawn):
@@ -194,15 +245,27 @@ def job(path):
         D.append(day)
     if not T:
         return None
-    return (np.stack(T), np.stack(F), np.stack(A), np.asarray(D),
+    # float16: T is 177x10x10 of normalised values and indicator bits, and at
+    # 1,000+ sessions a float32 return buffered by pool.map is ~1.5 GB in the
+    # PARENT, which is what broke the pipe on the first band-stratified build.
+    return (np.stack(T).astype("float16"), np.stack(F), np.stack(A), np.asarray(D),
             np.asarray(S, dtype="float32"), np.stack(C), np.stack(B))
 
 
 def build(args):
-    paths = _pick(args.n, args.min_rating, args.seed)
+    paths = _pick(args.n, args.min_rating, args.seed, bands=args.bands)
     print(f"replaying {len(paths)} sessions ...", flush=True)
+    raw = []
     with mp.Pool(args.procs) as pool:
-        out = [o for o in pool.map(job, paths) if o]
+        for i, o in enumerate(pool.imap(job, paths), 1):
+            raw.append(o)
+            if i % 100 == 0:
+                print(f"    {i}/{len(paths)} replayed", flush=True)
+    # Keep the path alongside its result: `job` returns None for a session
+    # that does not run a full season, so filtering first and zipping after
+    # silently pairs each rating with the wrong game.
+    pairs = [(p_, o) for p_, o in zip(paths, raw) if o]
+    out = [o for _, o in pairs]
     T = np.concatenate([o[0] for o in out])
     F = np.concatenate([o[1] for o in out])
     A = np.concatenate([o[2] for o in out])
@@ -210,8 +273,14 @@ def build(args):
     C = np.concatenate([o[5] for o in out])
     B = np.concatenate([o[6] for o in out])
     G = np.concatenate([np.full(len(o[0]), i) for i, o in enumerate(out)])
+    from tools.board_tensor import ENCODER_VERSION
+    R = np.concatenate([np.full(len(o[0]), _session_rating(p_), dtype="float32")
+                        for p_, o in pairs])
     dest = args.data_out or DATA
-    np.savez_compressed(dest, T=T, F=F, A=A, G=G, S=S, C=C, B=B)
+    np.savez_compressed(dest, T=T, F=F, A=A, G=G, S=S, C=C, B=B, R=R,
+                        ENC=np.asarray([ENCODER_VERSION]))
+    print(f"-> {dest}  encoder v{ENCODER_VERSION}, {len(T):,} rows, "
+          f"{len(set(G.tolist()))} sessions")
     print(f"{len(T):,} samples from {len(out)} games   tensor {T.shape[1:]}   "
           f"flow {F.shape[1]} outputs ({H} days x {len(PRODUCTS)} products)   "
           f"-> {dest} ({os.path.getsize(dest)/1e6:.0f} MB)")
@@ -240,7 +309,7 @@ def train(args):
     from tools.boardnet import fit, predict, save
     from tools.board_tensor import arm_channels
     d = np.load(args.data or DATA)
-    T, F, A, G = d["T"], d["F"], d["A"], d["G"]
+    T, F, A, G = d["T"].astype("float32"), d["F"], d["A"], d["G"]
     if args.arm:
         cols = arm_channels(args.arm)
         T = np.ascontiguousarray(T[:, cols])
@@ -283,7 +352,7 @@ def ablate(args):
     from tools.board_tensor import ARMS, arm_channels
     from tools.boardnet import fit, predict
     d = np.load(args.data or DATA)
-    T, F, A, G = d["T"], d["F"], d["A"], d["G"]
+    T, F, A, G = d["T"].astype("float32"), d["F"], d["A"], d["G"]
     S = d["S"] if "S" in d.files else None
     n_p = len(PRODUCTS)
 
@@ -508,6 +577,9 @@ def evaluate(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--build", action="store_true")
+    ap.add_argument("--bands", action="store_true",
+                    help="draw EQUALLY per rating band instead of using a "
+                         "rating floor (see _pick)")
     ap.add_argument("--train", action="store_true")
     ap.add_argument("--eval", action="store_true")
     ap.add_argument("--ablate", action="store_true")

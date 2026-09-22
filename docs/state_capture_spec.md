@@ -385,3 +385,85 @@ damaged, and that is now a known defect rather than a mystery.
 semantics of 9 of the 24 scalar channels silently invalidates every cached
 `rl/datasets/*.npz` built with the old encoder, and `arm_channels` addresses
 channels by absolute offset. That is a rebuild decision, not a drive-by edit.
+
+---
+
+## 9 Encoder v2, the rebuild, and putting the board inside the RL loop
+
+Three changes, in the order they have to happen.
+
+**1. `scalars()` carries the sign.** `tools/board_tensor.py`:
+
+```python
+# was:  min(abs(inv - 10000), 600) / 600      glut and shortage IDENTICAL
+# now:  tanh((inv - 10000) / 1500)            opposite signs, no hard clip
+```
+
+Verified: inventory 8,500 → **−0.762**, inventory 11,500 → **+0.762**. Under
+v1 both read 0.60.
+
+`ENCODER_VERSION = 2` is now a module constant, every built dataset stamps it
+as `ENC`, and the bump rule is written down: **bump when a channel's semantics
+change, not when its count does.** A silently-reinterpreted channel is
+indistinguishable from a real result, and that is the failure this guards.
+
+**2. The dataset is rebuilt band-stratified, not behind a floor.**
+`tools/s3_flow.py --bands` draws equally per rating band and stores the
+session rating per row so every evaluation can be split by band.
+
+```
+rl/datasets/s3_flow_v2band.npz   encoder v2, 21,500 rows, 1,075 sessions
+  band      0-1000    2,300 rows    115 sessions   (the whole corpus has 115)
+  band   1000-1500    4,800 rows    240
+  band   1500-2000    4,800 rows    240
+  band   2000-2500    4,800 rows    240
+  band       2500+    4,800 rows    240
+  ratings 197-3203, median 1945
+```
+
+Against the old `--min-rating` builds, whose median sat in the 2500+ band.
+
+Two build bugs fixed on the way, both of which produced silent wrong data:
+
+- `_session_rating` read the first 4 KB of the session file for `"scores"`.
+  `scores` sits **after** the two 720-step action scripts, i.e. megabytes in,
+  so every rating came back `NaN` and the per-band split would have been
+  empty. It now reads the index.
+- `pool.map` buffered every worker's `(n, 177, 10, 10)` float32 in the parent
+  — ~1.5 GB at 1,075 sessions — and broke the pipe. Workers now return
+  float16 and `build` streams with `imap`.
+
+**3. The board now enters RL training, and is learned there.**
+
+The policy had never seen it. `rl/rollout.py` recorded only
+`kagent.features` day-level aggregates — 168 numbers in which the board is a
+set of counts — while `tools/board_tensor.py` sat offline feeding flow nets.
+
+- `rl/rollout.py`: with `KAGG_BOARD=1` every recorded decision also carries
+  `board_pair_full(obs, seat)` as float16, (91, 10, 10), ~18 KB a decision and
+  ~35 MB an iteration at 64 episodes. Off by default, verified inert when off.
+- `rl/common.py`: `BoardTrunk` (two 3×3 convs, mean **and** max pooling, 48-d
+  output, 38,736 parameters) and `PlannerNet(n_features, board=True)`, which
+  concatenates the trunk output onto the feature vector and raises rather than
+  silently dropping the board if it is missing.
+
+It is trained **end to end with the policy**, not pretrained and frozen. A
+frozen trunk fitted on a corpus is a self-play potential by another name, and
+that scored **−0.398 R²** out of distribution. The representation has to move
+with the states the policy actually visits — which is the whole point of
+putting the encoder in the loop rather than in a dataset.
+
+Mean-and-max pooling because several channels matter as **existence** rather
+than as a count: one ripe melon, one starving cow.
+
+### Why this reopens the RL track rather than decorating it
+
+Every learned model here — the board CNN, the four value heads, the BC
+ranker, the flow nets — consumed a market channel with its sign removed, and
+was evaluated on a sample drawn behind a rating floor from a corpus that is
+two-thirds top games. Both defects were ours. Neither is evidence about what a
+model can do on this game, and the recorded verdicts that rest on them
+("V-ranking is CLOSED", "capacity channels KILLED", "BC gated null") are
+**suspect for reasons that have nothing to do with the models**.
+
+That does not make them wrong. It makes them untested.
