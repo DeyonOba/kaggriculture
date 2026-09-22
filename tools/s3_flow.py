@@ -365,8 +365,12 @@ def ablate(args):
         print("    (no R column: pooled only -- rebuild with --build --bands "
               "for the per-band table)\n")
     enc = int(d["ENC"][0]) if "ENC" in d.files else 1
-    import torch as _t
-    print(f"    torch threads {_t.get_num_threads()} -> pinned by boardnet.fit")
+    # The value fit() WILL pin, not the value torch happens to hold here --
+    # the pin happens inside fit(), so reading get_num_threads() at this
+    # point prints whatever torch chose at import and reads like the pin
+    # failed.
+    print(f"    torch threads {os.environ.get('KAGG_THREADS', '1')} "
+          f"(pinned in boardnet.fit for cross-process reproducibility)")
     print(f"    encoder v{enc}"
           + ("" if enc >= 2 else "  <- v1 market channel is abs(), see "
                                  "docs/state_capture_spec.md S9"))
