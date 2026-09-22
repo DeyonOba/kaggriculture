@@ -110,3 +110,83 @@ melon's median sell day correlating +0.136 with winning while `x-mel100`
 
 They are, in other words, a third independent confirmation of the one market
 timing rule this project has established: **sell later than feels right.**
+
+---
+
+## 3 Correction to §2: `build_done` was normalised, and overstated the gap
+
+`build_done` is "first day occupancy reaches **90% of that seat's own season
+max**", which is not comparable between seats whose maxima differ. champ-h8
+tops out at 0.99 so it must pass 0.89; the ladder tops out at 0.96 so it only
+needs 0.86. That normalisation alone is most of the "day 10 vs day 2".
+
+Against a **fixed** bar (`build_abs`, occupancy ≥ 0.85) and on the raw curves:
+
+| landmark | ladder | 2500+ | M & M & P & Q | champ-h8 | Spearman vs rating |
+| --- | --- | --- | --- | --- | --- |
+| `build_abs` (fixed bar) | 1.0 | 1.0 | 1.0 (40th pct) | **8.0** | −0.111 |
+| `build_done` (normalised) | 2.0 | 1.0 | 1.0 | 10.0 | −0.019 |
+| **`peak_board`** | 9.0 | 9.0 | 9.0 (43rd pct) | **21.0** | **−0.361** |
+| `peak_stock` | 21.0 | 19.5 | 18.0 (45th pct) | 23.0 | −0.042 |
+| `first_sell` | 12.0 | 9.0 | **16.0 (90th pct)** | 20.0 | −0.085 |
+
+Median occupancy of owned ground, day by day:
+
+```
+day        0     1     2     3     5     7     9    12    20
+ladder   0.48  0.92  0.92  0.96  0.88  0.78  0.96  0.93  0.96
+MMPQ     0.36  0.96  1.00  1.00  1.00  0.88  0.87  0.96  0.98
+champ-h8 0.28  0.68  0.80  0.80  0.76  0.72  0.92  0.97  0.99
+```
+
+So the honest statement is **not** "eight days of empty ground". It is: we are
+0.12–0.24 of occupancy behind on days 1–5 and level by day 9; invested capital
+tracks the ladder within 0.06 the whole way. The real outlier is `peak_board`
+— day 21 against a field median of 9 — and that landmark is an argmax of the
+raw curve, carries no normalisation, and is the only one that correlates with
+rating (−0.361 against −0.02 to −0.11 for the rest). **That is the finding.**
+
+## 4 The closed-loop phase-B schedule: built, gated, REFUTED
+
+`tools/make_clsched_variant.py`. The planner's hiring is an open-loop calendar
+with a ceiling — `min(CHAMP_HIRES[day] + delta, workload // 3)` — where
+`workload` counts work that already exists, and `empty_tiles` is computed three
+lines above and never read. The arm adds, in days 7–17 only, hands for work
+that is *arriving*: crops within 2 days of `max_yield_day` plus, at half
+weight, ground still to fill. Arithmetic on quantities the planner already
+has, no fitted model anywhere in it, one scalar β.
+
+β = 0 verified **bit-identical** to the base (+$0, 0 discordant worlds over
+144), so the patch is a clean pure addition and every effect below is the
+treatment.
+
+| arm | β | money vs `x-fut10` | z | win | McNemar |
+| --- | --- | --- | --- | --- | --- |
+| base `x-fut10` | — | — | — | 0.367 | — |
+| `x-clb25` | 0.25 | **−$10,665 ± 501** | −21.30 | **0.269** | 36 b-only / 2 c-only |
+| `x-clb50` | 0.50 | **−$11,029 ± 497** | −22.21 | 0.263 | 38 / 2 |
+| `x-clb100` | 1.00 | **−$11,227 ± 494** | −22.71 | 0.260 | 39 / 2 |
+
+346 held-out ladder worlds. Monotone in β, losing on wins as hard as on money
+(0.367 → 0.26), and catastrophic at the smallest β tested. Refuted.
+
+**Why.** `budget = max(150, money * 0.25)` lets hiring spend a quarter of cash
+*every day*, and the `min(..., workload // 3)` cap only binds when the calendar
+is the smaller term — so raising the calendar entry removes the only thing
+holding hiring down, on every day of phase B. The constant version of this
+lever was already refuted monotonically (+2 hands −$5,229, +4 −$19,344); β=0.25
+adds on the order of ten.
+
+**What it refutes and what it does not.** It refutes the *inference* — that
+hiring is the lever behind the timing gap. It does not touch the
+*observation*: `peak_board` day 21 vs 9 stands, and the day-1 occupancy gap
+stands. Two candidate explanations were checked and one is dead:
+
+- **the 10-order market cap is NOT the throttle.** Instrumented over 6 games:
+  the planner issues 0.46–1.14 market orders per turn on days 0–9 and touches
+  the `MAX_MARKET_ORDERS = 10` ceiling in **1 turn out of 144** on days 7–9.
+  There is no cap to relieve.
+- **so the early fill rate is limited by the buying decision itself**, not by
+  order bandwidth and not by hands. At ~0.5 orders/turn on days 0–5 we are
+  simply not ordering. That is the next thing to look at, and it is a
+  measurement, not a variant.

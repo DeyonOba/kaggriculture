@@ -46,7 +46,16 @@ sys.path.insert(0, REPO)
 
 from tools.fit_potential import Panel  # noqa: E402
 
-LANDMARKS = ("build_done", "peak_board", "peak_stock", "first_sell")
+LANDMARKS = ("build_abs", "build_done", "peak_board", "peak_stock", "first_sell")
+
+# `build_done` is normalised to each seat's OWN season max, which makes it
+# incomparable between seats whose maxima differ: a player who eventually
+# reaches 0.99 occupancy must pass 0.89 to count as built, while one who tops
+# out at 0.96 only needs 0.86. Measured, that alone moved champ-h8's
+# build_done from day 2 to day 10 while its actual day-2 occupancy (0.80) was
+# within 0.12 of the ladder median (0.92). `build_abs` is the same question
+# against a fixed bar and is the one to quote.
+BUILD_BAR = 0.85
 
 
 def seat_curves(p: Panel) -> List[Tuple[int, int, Dict[str, np.ndarray], float, float, float]]:
@@ -74,6 +83,8 @@ def landmarks(cur: Dict[str, np.ndarray]) -> Dict[str, float]:
     lo, hi = float(occ.min()), float(occ.max())
     thr = lo + 0.9 * (hi - lo)
     build = int(np.argmax(occ >= thr)) if hi > lo else float("nan")
+    build_abs = (int(np.argmax(occ >= BUILD_BAR)) if (occ >= BUILD_BAR).any()
+                 else float("nan"))
 
     pk_board = int(np.argmax(board))
     pk_stock = int(np.argmax(stock))
@@ -85,7 +96,8 @@ def landmarks(cur: Dict[str, np.ndarray]) -> Dict[str, float]:
         if stock[d] < stock[d - 1] and board[d] >= 0.9 * bmax:
             first = d
             break
-    return {"build_done": float(build), "peak_board": float(pk_board),
+    return {"build_abs": float(build_abs),
+            "build_done": float(build), "peak_board": float(pk_board),
             "peak_stock": float(pk_stock), "first_sell": first}
 
 
