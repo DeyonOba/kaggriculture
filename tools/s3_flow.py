@@ -355,6 +355,19 @@ def ablate(args):
     T, F, A, G = d["T"].astype("float32"), d["F"], d["A"], d["G"]
     S = d["S"] if "S" in d.files else None
     n_p = len(PRODUCTS)
+    # Per-band evaluation. Pooled R2 is the number that hid the problem:
+    # 14,211 of 21,054 corpus sessions sit in the 2500+ band, so a pooled
+    # score from a floor-drawn build is a top-games score wearing a general
+    # label -- and the 2500+ band is the HARDEST of the five. Datasets built
+    # by `--build --bands` carry the session rating per row as `R`.
+    RATING = d["R"] if "R" in d.files else None
+    if RATING is None:
+        print("    (no R column: pooled only -- rebuild with --build --bands "
+              "for the per-band table)\n")
+    enc = int(d["ENC"][0]) if "ENC" in d.files else 1
+    print(f"    encoder v{enc}"
+          + ("" if enc >= 2 else "  <- v1 market channel is abs(), see "
+                                 "docs/state_capture_spec.md S9"))
 
     # ARMS[0] is the reference for both the baseline and the seed-noise floor,
     # so a subset always keeps it however the user spells the request.
@@ -375,7 +388,7 @@ def ablate(args):
           f"seeds\n")
     print(f"    {'arm':<18}{'ch':>4}{'seed':>6}{'val MSE':>10}"
           f"{'held-out R2 on 10-day flow':>28}")
-    res = {}
+    res, per_band = {}, {}
     for arm in ARMS:
         cols = arm_channels(arm)
         if max(cols) >= T.shape[1]:
@@ -407,6 +420,20 @@ def ablate(args):
                            / max(1e-9, ((y - y.mean()) ** 2).sum()))
             m = float(np.mean(r2s))
             res.setdefault(arm, []).append(m)
+            if RATING is not None:
+                rv = RATING[va]
+                for bi, (lo, hi) in enumerate(BANDS):
+                    bm = (rv >= lo) & (rv < hi)
+                    if bm.sum() < 30:
+                        continue
+                    rb = []
+                    for pi in range(n_p):
+                        c = [j * n_p + pi for j in range(H)]
+                        y, q = Yv[bm][:, c].sum(1), P[bm][:, c].sum(1)
+                        rb.append(1 - ((y - q) ** 2).sum()
+                                  / max(1e-9, ((y - y.mean()) ** 2).sum()))
+                    per_band.setdefault(arm, {}).setdefault(bi, []).append(
+                        float(np.mean(rb)))
             print(f"    {arm:<18}{len(cols):>4}{seed:>6}{stats['val_mse']:>10.4f}"
                   f"{m:>28.4f}", flush=True)
     # PAIRED, because the design is paired and reading it unpaired both
@@ -443,6 +470,29 @@ def ablate(args):
         t = d.mean() / se if se > 0 else float("inf")
         print(f"    {arm:<18}{v.mean():>10.4f}{sd:>9.4f}"
               f"{d.mean():>+10.4f}{se:>9.4f}{t:>+8.2f}")
+    if per_band:
+        print(f"\n    PER BAND, paired vs {ref} (held-out games only)\n")
+        hdr = f"    {'arm':<18}" + "".join(
+            f"{f'{lo}-{hi:.0f}' if hi < 1e8 else '2500+':>12}"
+            for lo, hi in BANDS)
+        print(hdr)
+        for arm in ARMS:
+            if arm not in per_band:
+                continue
+            cells = []
+            for bi, _ in enumerate(BANDS):
+                v = per_band[arm].get(bi)
+                if not v:
+                    cells.append(f"{'--':>12}"); continue
+                if arm == ref:
+                    cells.append(f"{np.mean(v):>12.4f}")
+                else:
+                    bb = per_band[ref].get(bi)
+                    cells.append(f"{np.mean(v) - np.mean(bb):>+12.4f}"
+                                 if bb else f"{'--':>12}")
+            print(f"    {arm:<18}" + "".join(cells))
+        print(f"\n    {ref} row is absolute R2; the rest are deltas against "
+              f"it in the same band.")
     if nseed < 3:
         print(f"\n    {nseed} seeds gives no usable se. Re-run with "
               f"--seeds 0 1 2 3 4 5 before believing any of it.")

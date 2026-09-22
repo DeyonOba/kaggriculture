@@ -467,3 +467,59 @@ model can do on this game, and the recorded verdicts that rest on them
 **suspect for reasons that have nothing to do with the models**.
 
 That does not make them wrong. It makes them untested.
+
+---
+
+## 10 The temporal arms on the repaired dataset: both positive, and not yet believable
+
+`tools/s3_flow.py --ablate` on `s3_flow_v2band.npz` (encoder v2,
+band-stratified, 21,500 rows / 1,075 sessions), paired within seed on
+identical held-out games.
+
+| seed | `E_full_83` | `T_temporal_95` | Δ | `T_crop_103` | Δ |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 0.8155 | 0.8152 | **−0.0003** | 0.8219 | **+0.0064** |
+| 1 | 0.8035 | 0.8202 | **+0.0167** | 0.8096 | **+0.0061** |
+| **mean** | **0.8095** | **0.8177** | **+0.0082** | **0.8157** | **+0.0062** |
+
+Recorded verdict before this: `T_temporal_95` **−0.0058**, `T_crop_103`
+**−0.0029**. **Both arms have changed sign.**
+
+### Why that is not yet a result
+
+**Two seeds give no usable standard error, and the tool says so itself.** The
+`t = +34.10` the table prints for `T_crop_103` comes from two paired
+differences that happen to agree to four decimals (+0.0064, +0.0061). At one
+degree of freedom that is a coincidence of two numbers, not evidence. The
+honest reading is: `T_crop_103` is **consistent** across both seeds;
+`T_temporal_95` is **not** (−0.0003 then +0.0167), and its mean is carried
+entirely by one seed.
+
+**Two things changed at once, and the comparison to the old verdict is
+therefore confounded.** The old numbers came from a dataset that was
+floor-drawn *and* encoder v1. This one is band-stratified *and* encoder v2,
+on different sessions. So the sign flip cannot be attributed to the market
+channel repair — that would need v1 and v2 built over the *same* sessions,
+which is one more build and is the clean test.
+
+**No per-band table.** This run predates the per-band reporting now wired into
+`ablate`; it reports pooled R² only, which is the exact shape of number that
+hid the problem in the first place.
+
+### What the run does establish
+
+The absolute level: **held-out R² ≈ 0.81 on 10-day opponent flow**, on
+band-stratified data spanning ratings 197–3203. Whatever the arms do relative
+to each other, the encoder predicts the opponent's market flow well across the
+whole ladder and not only at the top.
+
+### The test that would settle it
+
+```
+--ablate --arms E_full_83 T_temporal_95 T_crop_103 --seeds 0 1 2 3 4 5
+```
+
+six seeds for a usable se, plus the per-band table, on this dataset. ~18 fits
+at ~17 minutes. And separately, a v1-encoder build over the **same 1,075
+sessions**, which is the only way to attribute anything to the `abs()` repair
+rather than to the sampling change.
