@@ -37,6 +37,7 @@ what convolution is for, and a transformer over 100 tokens would cost more for
 structure we can hand to the kernel directly.
 """
 
+import os
 import numpy as np
 
 # Bump whenever a channel's SEMANTICS change, not just its count. Datasets
@@ -44,7 +45,12 @@ import numpy as np
 # silently-reinterpreted channel is indistinguishable from a real result.
 #   1  original
 #   2  2026-09-22  market inventory carries its SIGN (was abs()), tanh@1500
-ENCODER_VERSION = 2
+# `KAGG_ENC=1` reproduces v1 EXACTLY, so the two encoders can be built over
+# the SAME sessions and the market-channel repair can be attributed. It is
+# read from the environment rather than set in code because the dataset
+# builders spawn workers, which re-import this module and would not see a
+# parent-process assignment.
+ENCODER_VERSION = int(os.environ.get("KAGG_ENC", "2"))
 
 N_CH = 24
 CROPS_L = ["WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON"]
@@ -138,7 +144,10 @@ def scalars(obs, seat=0):
         # Every net trained here -- board CNN, value heads, BC ranker, flow
         # nets -- consumed the damaged channel. Their results are not
         # evidence about what a net can do on this game.
-        v.append(float(np.tanh((float(inv.get(p, 10000)) - 10000.0) / 1500.0)))
+        if ENCODER_VERSION < 2:
+            v.append(min(abs(float(inv.get(p, 10000)) - 10000), 600) / 600.0)
+        else:
+            v.append(float(np.tanh((float(inv.get(p, 10000)) - 10000.0) / 1500.0)))
     return np.asarray(v, dtype="float32")
 
 
