@@ -104,8 +104,35 @@ def fit(T, Y, G, A=None, S=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
     the same board, so a sample-wise split leaks and every number becomes a
     fantasy. Returns (model, stats, history).
     """
+    import os
     import torch
     import torch.nn as nn
+
+    # DETERMINISM ACROSS PROCESSES, not just within one.
+    #
+    # `torch.manual_seed` already made a fit reproducible inside a single
+    # process. It is not enough: the CPU kernels reduce in thread order, so
+    # the answer depends on how many threads torch picked at import, which
+    # depends on what else the machine was doing. Measured: 2 threads gives
+    # val 0.6473742127 and 1 thread 0.6473741531 on the same seed -- 6e-8,
+    # which then amplifies through 60 epochs of early stopping with a 1e-4
+    # improvement threshold until a different epoch wins.
+    #
+    # The damage that caused: the same arm at the same seed scored val_mse
+    # 0.3328 in one run and 0.3349 in the next, on all six pairs measured,
+    # while `ablate` differences arms WITHIN a seed and calls the result
+    # paired. A pairing that does not pair reports a standard error far
+    # tighter than the truth -- which is how two runs of the same experiment
+    # returned T_crop_103 at +0.0062 and then -0.0018.
+    #
+    # Pinned to one thread by default: measured at 26 s against 28 s for two
+    # on a 3,000-row fit, so reproducibility here costs nothing. KAGG_THREADS
+    # can raise it, at the price of that guarantee.
+    torch.set_num_threads(int(os.environ.get("KAGG_THREADS", "1")))
+    try:
+        torch.use_deterministic_algorithms(True, warn_only=True)
+    except Exception:
+        pass
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
 
