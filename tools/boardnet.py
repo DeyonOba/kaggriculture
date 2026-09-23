@@ -97,7 +97,7 @@ def build(in_ch, n_out, width=64, blocks=3, aux=True, n_shed=0):
 
 def fit(T, Y, G, A=None, S=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
         batch=256, val_frac=0.2, patience=8, seed=0, aux_w=0.3,
-        shed_w=0.3, verbose=True):
+        shed_w=0.3, col_w=None, verbose=True):
     """Train on games outside the validation split, early-stopped on it.
 
     Splitting BY GAME, not by sample: consecutive days of one game are nearly
@@ -153,6 +153,17 @@ def fit(T, Y, G, A=None, S=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
     opt = torch.optim.Adam(net.parameters(), lr=lr)
     sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5,
                                                        patience=3)
+    # Per-output loss weight. Y is z-scored per column, so an unweighted MSE
+    # counts every (day, product) cell equally IN VARIANCE UNITS -- WHEAT
+    # moves 4,481,777 gross sells in this corpus and CARROT 138,841, and
+    # after z-scoring they contribute identically. `col_w` restores whatever
+    # units the caller wants; see tools/flow_weight_arm.py, which sets it to
+    # sd x base price so the residual is measured in DOLLARS.
+    Wc = (torch.from_numpy(np.asarray(col_w, dtype="float32"))
+          if col_w is not None else None)
+    if Wc is not None and Wc.numel() != Y.shape[1]:
+        raise ValueError(f"col_w has {Wc.numel()} entries, target has "
+                         f"{Y.shape[1]} outputs")
     Xtr, Ytr = torch.from_numpy(T[tr]), torch.from_numpy(Yz[tr])
     Xva, Yva = torch.from_numpy(T[va]), torch.from_numpy(Yz[va])
     Atr = torch.from_numpy(A[tr]) if A is not None else None
@@ -168,7 +179,8 @@ def fit(T, Y, G, A=None, S=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
             b = perm[i:i + batch]
             opt.zero_grad()
             out, a, sh = net(Xtr[b])
-            loss = nn.functional.mse_loss(out, Ytr[b])
+            loss = (nn.functional.mse_loss(out, Ytr[b]) if Wc is None
+                    else nn.functional.mse_loss(out * Wc, Ytr[b] * Wc))
             if Atr is not None:
                 loss = loss + aux_w * nn.functional.binary_cross_entropy_with_logits(
                     a.squeeze(1), Atr[b])
@@ -178,7 +190,11 @@ def fit(T, Y, G, A=None, S=None, *, width=64, blocks=3, epochs=60, lr=2e-3,
             opt.step()
         net.eval()
         with torch.no_grad():
-            v = nn.functional.mse_loss(net(Xva)[0], Yva).item()
+            _pv = net(Xva)[0]
+            # Early stopping must watch the SAME quantity the loss optimises,
+            # or a weighted run is selected on an unweighted criterion.
+            v = (nn.functional.mse_loss(_pv, Yva) if Wc is None
+                 else nn.functional.mse_loss(_pv * Wc, Yva * Wc)).item()
         sched.step(v)
         hist.append(v)
         if v < best - 1e-4:
