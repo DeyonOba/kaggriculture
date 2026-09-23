@@ -132,12 +132,34 @@ def main() -> None:
     print(f"{len(paths):,} sessions from {src}", flush=True)
     paths = band_order(paths, args.seed)
 
-    # Outcomes from the index; a session without finals is skipped rather than
-    # trained on a NaN target.
-    with open(os.path.join(REPO, "rl", "datasets", "session_index.json")) as fh:
-        idx = json.load(fh)
-    fin = {os.path.basename(v["path"]): v.get("finals")
-           for v in idx.values() if v.get("path")}
+    # Outcomes WITHOUT the index. The index is generated, not tracked, so
+    # push.sh (git ls-files) never ships it and the kernel does not have it --
+    # which is exactly how the first run died 0.1 min in, having already found
+    # all 21,517 sessions. `finals` sits in the first 4 KB of a session file,
+    # ahead of the two 720-step action scripts, so a head read is enough.
+    # (`scores` does NOT, which is why band ordering still needs the index and
+    # degrades to a flat shuffle without it.)
+    fin = {}
+    idx_path = os.path.join(REPO, "rl", "datasets", "session_index.json")
+    if os.path.exists(idx_path):
+        with open(idx_path) as fh:
+            idx = json.load(fh)
+        fin = {os.path.basename(v["path"]): v.get("finals")
+               for v in idx.values() if v.get("path")}
+        print(f"  outcomes from the index ({len(fin):,})", flush=True)
+    else:
+        t_h = time.time()
+        for q in paths:
+            try:
+                with open(q, "rb") as fh:
+                    head = fh.read(4096).decode("utf8", "ignore")
+                i = head.index('"finals"')
+                seg = head[i:head.index("]", i) + 1]
+                fin[os.path.basename(q)] = json.loads(seg.split(":", 1)[1])
+            except Exception:
+                continue
+        print(f"  outcomes head-read from {len(fin):,} session files "
+              f"({time.time()-t_h:.0f}s)", flush=True)
 
     def outcome(p):
         f = fin.get(os.path.basename(p)) or []

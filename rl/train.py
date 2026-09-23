@@ -72,6 +72,19 @@ KL_STOP = 0.03       # per-iteration early stop on policy drift
 WARMUP_ITERS = 3     # value-head-only updates while advantages are garbage
 
 
+def _boards(records):
+    """(B, C, 10, 10) float32, or None when the board hook is off.
+
+    Recorded as float16 to survive the Pool; cast once here rather than per
+    forward pass.
+    """
+    if not records or records[0].get("board") is None:
+        return None
+    import numpy as np
+    return torch.from_numpy(
+        np.stack([r["board"] for r in records]).astype("float32"))
+
+
 def _tensor_batch(records):
     x = torch.tensor([r["x"] for r in records], dtype=torch.float32)
     masks = torch.tensor(
@@ -96,8 +109,8 @@ def _sample_weights(records):
     return torch.tensor(w, dtype=torch.float32)
 
 
-def _joint_logprob_entropy(net, x, masks, choices):
-    logits = net(x)
+def _joint_logprob_entropy(net, x, masks, choices, b=None):
+    logits = net(x, b) if b is not None else net(x)
     dists = masked_dists(logits, masks)
     lp = torch.zeros(x.shape[0])
     ent = torch.zeros(x.shape[0])
@@ -126,6 +139,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         print(f"   + {len(extra)} champion day-decisions (harvested replays)")
 
     x, masks, choices = _tensor_batch(records)
+    boards = _boards(records)
     weights = _sample_weights(records)
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
     n = x.shape[0]
@@ -134,14 +148,16 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         total, correct, seen = 0.0, 0, 0
         for s in range(0, n, 512):
             idx = perm[s : s + 512]
-            lp, _ = _joint_logprob_entropy(net, x[idx], masks[idx], choices[idx])
+            lp, _ = _joint_logprob_entropy(net, x[idx], masks[idx], choices[idx],
+                                           None if boards is None else boards[idx])
             loss = -(lp * weights[idx]).sum() / weights[idx].sum()
             opt.zero_grad()
             loss.backward()
             opt.step()
             total += loss.item() * len(idx)
             with torch.no_grad():
-                logits = net(x[idx])
+                logits = (net(x[idx]) if boards is None
+                          else net(x[idx], boards[idx]))
                 dists = masked_dists(logits, masks[idx])
                 hit = torch.ones(len(idx), dtype=torch.bool)
                 for h, d in enumerate(dists):
@@ -155,6 +171,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         # Fine-tune on champion data only (AlphaStar Unplugged: train on the
         # full dataset, then FT on the high-quality subset).
         fx, fm, fc = _tensor_batch(list(extra))
+        fb = _boards(list(extra))
         fw = _sample_weights(list(extra))
         fopt = torch.optim.Adam(net.parameters(), lr=3e-4)
         fn = fx.shape[0]
@@ -163,7 +180,8 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
             total = 0.0
             for s in range(0, fn, 256):
                 idx = perm[s : s + 256]
-                lp, _ = _joint_logprob_entropy(net, fx[idx], fm[idx], fc[idx])
+                lp, _ = _joint_logprob_entropy(net, fx[idx], fm[idx], fc[idx],
+                                               None if fb is None else fb[idx])
                 loss = -(lp * fw[idx]).sum() / fw[idx].sum()
                 fopt.zero_grad()
                 loss.backward()
@@ -357,6 +375,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             all_ret.extend(ret)
 
         x, masks, choices = _tensor_batch(all_recs)
+        boards = _boards(all_recs)
         old_lp = torch.tensor([r["logprob"] for r in all_recs], dtype=torch.float32)
         adv_t = torch.tensor(all_adv, dtype=torch.float32)
         adv_t = (adv_t - adv_t.mean()) / (adv_t.std() + 1e-6)
@@ -398,7 +417,9 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                     # is decoupled, so this cannot touch the policy at all.
                     loss = VF_COEF * vloss
                 else:
-                    lp, ent = _joint_logprob_entropy(net, x[idx], masks[idx], choices[idx])
+                    lp, ent = _joint_logprob_entropy(
+                        net, x[idx], masks[idx], choices[idx],
+                        None if boards is None else boards[idx])
                     approx_kl = (old_lp[idx] - lp).mean()
                     if approx_kl > KL_STOP:
                         stop = True
@@ -414,8 +435,12 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                         # RL): keep the policy close to the BC prior so
                         # exploration is a few offsets per game, not twenty.
                         with torch.no_grad():
-                            p_dists = masked_dists(prior_net(x[idx]), masks[idx])
-                        c_dists = masked_dists(net(x[idx]), masks[idx])
+                            p_dists = masked_dists(
+                                prior_net(x[idx]) if boards is None
+                                else prior_net(x[idx], boards[idx]), masks[idx])
+                        c_dists = masked_dists(
+                            net(x[idx]) if boards is None
+                            else net(x[idx], boards[idx]), masks[idx])
                         kl_prior = sum(
                             torch.distributions.kl_divergence(pd, cd)
                             for pd, cd in zip(p_dists, c_dists)
