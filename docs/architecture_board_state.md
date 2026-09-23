@@ -234,3 +234,66 @@ Since you mentioned the Opponent Hidden Feature (their resource reserve/strategy
       * Loss: MSE between Predicted Inventory and Real Inventory.
    
 Would you like me to expand the _encode_action method to map the complex discrete action space (Move, Plant, Harvest, Buy) into a flat label for classification?
+
+
+Let me lay it out against what's actually in the repo.
+
+There are two pipelines, not one — and that's the first thing to understand
+
+Pipeline A — the forecaster (what we just repaired)
+
+21k recorded sessions
+  → replay both scripts exactly (tools/s3_flow.py job)
+  → board tensor, 177 ch × 10 × 10 (tools/board_tensor.py)
+  → BoardNet CNN (tools/boardnet.py)
+  → predicts the OPPONENT's next 10 days of market flow
+  → tools/make_net_variant.py inlines encoder + float16 weights into ONE slot:
+    the opponent-supply term inside _rent_inventory
+  → tools/ladder_gate.py
+
+Status: held-out R² 0.81. Last time it was wired into the agent (r-net*), it gated at parity (−$276) after retraining on the natural mix — the net is as good as the arithmetic it replaces, not better.
+
+Pipeline B — the policy (what the board trunk just joined)
+
+heuristic + champion games
+  → BC (66.3% exact-plan accuracy)
+  → PPO: self-play + opponent pool + recorded-session replay (rl/train.py)
+  → rl/export.py → kagent/weights.py → build_submission.py
+  → ladder_gate → tools/submit.sh
+
+Status: plateaued at rating 810 over 14 generations. The A/B two days ago showed both arms destroy the BC policy inside 7 iterations regardless of the reward.
+
+The bridge I added this turn: KAGG_BOARD=1 records A's encoder output inside B's rollout, and BoardTrunk trains it end-to-end with the policy. That's the first time the spatial board enters the policy at all.
+
+What success actually buys — and the honest size of it
+
+I'd separate three claims, because they're worth very different amounts.
+
+The encoder repair by itself adds nothing. It doesn't change kagent/. What it does is make four recorded verdicts untrustworthy — V-ranking CLOSED, capacity channels KILLED, BC gated null, temporal stack closed — because all four were measured on a market channel with its sign removed and a sample drawn behind a rating floor. Re-testing them is worth doing. It is not a gain.
+
+If Pipeline A improves, the ceiling is already measured and it's small. Perfect knowledge of opponent flow moves k=5 forecast MAE 13.8 → 11.3, BoardNet already closes 67% of that, and the slot it feeds gated at parity. So more forecast accuracy has a known, near-zero money ceiling. I would not spend much here.
+
+If Pipeline B works, the target is specific and large. The measured gaps are: day-10 cash $16 against the field's $2,425, peak_board day 21 against 9, and a season that ends at $83.8k against the ladder's $86.2k and MMPQ's $101.8k. Win rate on held-out ladder worlds is 0.367. Rating ~810 against tape-sel's 1750. That's the space worth a policy.
+
+The commitment I'd make
+
+Three stages, each with a stopping rule written before it runs — because the value of this pipeline is mostly that it makes failure cheap and unambiguous.
+
+A — decide the encoder (≈6 machine-hours, no new code)
+Six-seed ablation with the per-band table, plus a v1-encoder build over the same 1,075 sessions to separate the repair from the sampling change.
+
+▎ Stop rule: if T_crop_103 doesn't gain ≥+0.005 R² in ≥4 of 5 bands at 6 seeds, the temporal stack closes permanently and we stop rebuilding encoders. If the v1/v2 same-session pair shows no difference, the abs() repair gets recorded as hygiene, not as a cause.
+
+B — decide RL with board state (≈1 day)
+Paired PPO, KAGG_BOARD=1 vs off, same seed, same checkpoint, --plateau-cool 1.0 to kill the endogenous-LR confound I found.
+
+▎ Stop rule: held-out session win rate must beat the rl-v9 baseline of 0.08 at some eval. It has never done so. If it doesn't, the RL track closes and the answer to "what should the model output" reverts to a 30-day schedule with no learner.
+
+C — what ships, unconditionally
+Anything surviving A and B clears ladder_gate on ≥346 held-out worlds, twice, on independent blocks, judged on win rate (McNemar) — never margin. Margin and win have come apart five times.
+
+The bottom line
+
+Realistically, what we achieve is a decision, not money. On this project's record, four of five things fail; the two that paid (rent planner +$4,336, future demand +$676) were both arithmetic on a README rule, not models. What A and B buy is the right to stop guessing about the learned track — either it clears a bar it has never cleared, or we close it with the input defects fixed so the verdict finally means something.
+
+Want me to start with A? I'd also write this up as a page if it's going to the team.

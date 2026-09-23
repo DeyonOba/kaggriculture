@@ -123,9 +123,18 @@ def main() -> None:
     n_p = len(PRODUCTS)
     price = np.asarray([MARKET_PARAMS[p]["base"] for p in PRODUCTS], "float64")
 
-    # The SCORING weight is fixed for every configuration in a block, or the
-    # arms would be graded on different exams.
-    score_alpha = make_alpha(F, price, n_p, H, gamma=1.0, dollars=True)
+    # THREE scores, not two, because per-cell scoring and dollar weighting
+    # are two separate changes against the legacy statistic and Block A must
+    # be able to attribute a pass to one of them:
+    #
+    #   summed      legacy: sum the horizon inside the residual   (the guard)
+    #   perday eq   per cell, UNWEIGHTED  -> isolates the metric change alone
+    #   perday $    per cell, dollar-weighted -> adds the weighting
+    #
+    # gamma is absent from all three. gamma = 1 is the null and belongs in
+    # Block B; an unmeasured parameter has no place inside the decisive test.
+    alpha_eq = np.ones(n_p * H, dtype="float64")
+    alpha_usd = make_alpha(F, price, n_p, H, gamma=1.0, dollars=True)
 
     if args.block == "A":
         configs = [(arm, "equal (current)", None)
@@ -139,12 +148,13 @@ def main() -> None:
 
     print(f"    block {args.block}   {len(T):,} rows, {len(np.unique(G))} games, "
           f"{len(configs)} configs x {len(args.seeds)} seeds")
-    print(f"    score: per-cell R2 weighted by dollars (gamma=1), "
-          f"legacy summed R2 alongside\n")
-    print(f"    {'arm':<16}{'loss':<16}{'seed':>5}{'perday $R2':>12}"
-          f"{'summed R2':>11}")
+    print(f"    scores: per-cell equal | per-cell dollar | legacy summed "
+          f"(no gamma in any of them)\n")
+    print(f"    {'arm':<16}{'loss':<16}{'seed':>5}{'perday eq':>11}"
+          f"{'perday $':>10}{'summed':>10}")
 
     per: Dict[str, Dict[int, List[float]]] = {}
+    peq: Dict[str, Dict[int, List[float]]] = {}
     leg: Dict[str, Dict[int, List[float]]] = {}
     band_of = np.full(len(T), -1)
     for bi, (lo, hi) in enumerate(BANDS):
@@ -162,22 +172,26 @@ def main() -> None:
             rng.shuffle(gids)
             va = np.isin(G, gids[:max(1, len(gids) // 5)])
             P, Yv, bd = predict(net, stats, Ti[va]), F[va], band_of[va]
-            pd_, _ = cell_r2(Yv, P, score_alpha, n_p, H)
+            pd_, _ = cell_r2(Yv, P, alpha_usd, n_p, H)
+            pe_, _ = cell_r2(Yv, P, alpha_eq, n_p, H)
             sm, _ = summed_r2(Yv, P, n_p, H)
             per.setdefault(key, {}).setdefault(-1, []).append(pd_)
+            peq.setdefault(key, {}).setdefault(-1, []).append(pe_)
             leg.setdefault(key, {}).setdefault(-1, []).append(sm)
             for bi in range(len(BANDS)):
                 sel = bd == bi
                 if sel.sum() < 30:
                     continue
-                v, n1 = cell_r2(Yv, P, score_alpha, n_p, H, rows=sel)
+                v, n1 = cell_r2(Yv, P, alpha_usd, n_p, H, rows=sel)
+                e2, _ = cell_r2(Yv, P, alpha_eq, n_p, H, rows=sel)
                 s2, n2 = summed_r2(Yv, P, n_p, H, rows=sel)
                 if n1:
                     per[key].setdefault(bi, []).append(v)
+                    peq[key].setdefault(bi, []).append(e2)
                 if n2:
                     leg[key].setdefault(bi, []).append(s2)
-            print(f"    {arm:<16}{label:<16}{seed:>5}{pd_:>12.4f}{sm:>11.4f}",
-                  flush=True)
+            print(f"    {arm:<16}{label:<16}{seed:>5}{pe_:>11.4f}{pd_:>10.4f}"
+                  f"{sm:>10.4f}", flush=True)
 
     ref = list(per)[0]
     print(f"\n    baseline = {ref}   PAIRED over {len(args.seeds)} seeds\n")
@@ -193,7 +207,9 @@ def main() -> None:
         print(f"    {key:<34}{v.mean():>12.4f}{dd.mean():>+10.4f}{se:>9.4f}"
               f"{(dd.mean()/se if se > 0 else float('inf')):>+8.2f}")
 
-    for title, store in (("PER-DAY DOLLAR R2", per), ("LEGACY SUMMED R2 (guard)", leg)):
+    for title, store in (("PER-DAY EQUAL R2 (metric change alone)", peq),
+                         ("PER-DAY DOLLAR R2 (metric + weighting)", per),
+                         ("LEGACY SUMMED R2 (guard)", leg)):
         print(f"\n    PER BAND, {title}, paired vs base\n")
         print(f"    {'config':<34}" + "".join(
             f"{f'{lo}-{hi:.0f}' if hi < 1e8 else '2500+':>13}" for lo, hi in BANDS))

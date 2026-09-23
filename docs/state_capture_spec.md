@@ -523,3 +523,56 @@ six seeds for a usable se, plus the per-band table, on this dataset. ~18 fits
 at ~17 minutes. And separately, a v1-encoder build over the **same 1,075
 sessions**, which is the only way to attribute anything to the `abs()` repair
 rather than to the sampling change.
+
+---
+
+## 11 H-margin: `T_crop_103` passes, on the target the flow ablation never tested
+
+Encoder v2, same 1,075 sessions, six seeds, paired within seed, trained
+directly against the final margin (`tools/attach_outcome.py` added the label;
+`tools/margin_arms.py` ran it).
+
+| arm | mean R² | vs base | se | t |
+| --- | --- | --- | --- | --- |
+| `E_full_83` | 0.1401 | — | | |
+| `T_temporal_95` | 0.1383 | −0.0018 | 0.0159 | −0.11 |
+| **`T_crop_103`** | **0.1643** | **+0.0242** | 0.0159 | **+1.53** |
+
+| per band, R² | 0–1000 | 1000–1500 | 1500–2000 | 2000–2500 | 2500+ |
+| --- | --- | --- | --- | --- | --- |
+| `E_full_83` (absolute) | −0.1393 | 0.1337 | 0.0296 | 0.1853 | −0.0292 |
+| `T_temporal_95` | +0.2276 | +0.0358 | +0.0035 | −0.0610 | −0.0353 |
+| **`T_crop_103`** | **+0.1478** | **+0.0691** | **+0.0665** | −0.0457 | **+0.0285** |
+
+| per band, win AUC | 0–1000 | 1000–1500 | 1500–2000 | 2000–2500 | 2500+ |
+| --- | --- | --- | --- | --- | --- |
+| `E_full_83` (absolute) | 0.6510 | 0.7131 | 0.6027 | 0.6111 | 0.6420 |
+| `T_temporal_95` | −0.0101 | −0.0082 | +0.0167 | −0.0215 | +0.0108 |
+| **`T_crop_103`** | **+0.0424** | **+0.0302** | **+0.0433** | −0.0046 | **+0.0364** |
+
+**`T_crop_103` PASSES** the pre-registered bar — ≥ +0.01 R² in **4 of 5**
+bands — and gains win AUC in **4 of 5** as well. The two criteria agree, which
+they have rarely done here. `T_temporal_95` fails both. **The two temporal
+arms are not interchangeable: crop lag planes carry margin signal, plateau
+planes do not.**
+
+### What this does and does not establish
+
+**The retraction was right.** Killing the temporal stack on a horizon-summed
+*flow* metric was the wrong test. On margin, per band, `T_crop_103` clears a
+bar fixed before the tool was written.
+
+**The pooled t is 1.53 and that is not significant.** The pooled figure is
+swamped by the base model's own seed spread — `E_full_83` swings from −0.0469
+to +0.3715. The per-band consistency carries this result, and the
+pre-registered rule was per-band, so the verdict stands as written; but it is
+a 4-of-5-band pass at t 1.53, not an established effect, and it should be
+quoted that way.
+
+**Seed 3 is an outlier for every arm** — val MSE ~1.03 against ~0.52
+elsewhere, R² 0.37–0.39 across all three. One validation split drew unusually
+predictable games. Pairing absorbs it, but it is a third of the pooled mean.
+
+**It is observational.** Crop lag planes predict margin better than a single
+frame. Whether wiring them into the agent makes money is a different question,
+and the last model that predicted flow well gated at **parity**.
