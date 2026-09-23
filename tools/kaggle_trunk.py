@@ -1,0 +1,227 @@
+"""In-kernel: pretrain the board trunk on the FULL session corpus, out of core.
+
+The whole corpus does not fit as an array. 21,701 sessions x 60 samples x
+103x10x10 float16 is **26.8 GB**, and one seat only is still 13.4 GB. So this
+never materialises it: it walks the corpus in chunks, extracts a chunk's
+boards, takes gradient passes over that chunk, drops it, and moves on. Peak
+disk is one chunk (~2.5 GB at the default) no matter how large the corpus is.
+
+  chunk 0 .. N-2   training
+  chunk N-1        held out, never trained on, scored after every chunk
+
+One pass over ~1.3M samples against a 42,192-parameter trunk is ~31 samples a
+parameter of gradient, which is why a single outer epoch is enough and why
+re-visiting chunks is not worth the disk.
+
+CHECKPOINT AFTER EVERY CHUNK. A Kaggle job that dies at the 11-hour wall with
+nothing written returns nothing, and that has happened on this project before.
+Each chunk writes the trunk, the running validation score and the chunk index,
+so a killed run resumes rather than restarts.
+
+BANDS ARE PRESERVED. The corpus is 68% 2500+; chunks are drawn from a
+band-stratified ordering so no chunk is all-frontier and the held-out chunk
+spans the ladder.
+
+    steps in tools/kaggle_job/job_trunk.json
+"""
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import os
+import sys
+import time
+
+import numpy as np
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+
+
+def find_sessions():
+    """Session files, from the repo or from any mounted Kaggle dataset."""
+    local = sorted(glob.glob(os.path.join(REPO, "rl", "datasets", "sessions",
+                                          "session-*.json")))
+    if local:
+        return local, "repo"
+    pats = ["/kaggle/input/*/sessions/session-*.json",
+            "/kaggle/input/*/*/sessions/session-*.json",
+            "/kaggle/input/*/session-*.json"]
+    for p in pats:
+        got = sorted(glob.glob(p))
+        if got:
+            return got, p
+    raise SystemExit(
+        "no session files found in the repo or under /kaggle/input -- the "
+        "kernel needs a dataset carrying rl/datasets/sessions/")
+
+
+def band_order(paths, seed):
+    """Interleave the rating bands so every chunk spans the ladder."""
+    import random
+    idx_path = os.path.join(REPO, "rl", "datasets", "session_index.json")
+    try:
+        with open(idx_path) as fh:
+            idx = json.load(fh)
+    except Exception:
+        random.Random(seed).shuffle(paths)
+        print("  no session index; falling back to a flat shuffle")
+        return paths
+    rating = {}
+    for v in idx.values():
+        sc = [x for x in (v.get("scores") or []) if x is not None]
+        if v.get("path"):
+            rating[os.path.basename(v["path"])] = max(sc) if sc else None
+    EDGES = [(0, 1000), (1000, 1500), (1500, 2000), (2000, 2500), (2500, 1e9)]
+    buckets = [[] for _ in EDGES]
+    spare = []
+    for p in paths:
+        r = rating.get(os.path.basename(p))
+        if r is None:
+            spare.append(p); continue
+        buckets[next(i for i, (lo, hi) in enumerate(EDGES) if lo <= r < hi)].append(p)
+    rng = random.Random(seed)
+    for b in buckets:
+        rng.shuffle(b)
+    rng.shuffle(spare)
+    out, i = [], 0
+    while any(buckets) or spare:
+        for b in buckets:
+            if b:
+                out.append(b.pop())
+        if spare:
+            out.append(spare.pop())
+        i += 1
+    print(f"  band sizes {[len(b) for b in buckets]} + {len(spare)} unrated, "
+          f"interleaved")
+    return out
+
+
+def main() -> None:
+    import torch
+    import torch.nn as nn
+    from multiprocessing import Pool
+    from rl.common import BoardTrunk, BOARD_W
+    from rl.session_bc import extract
+
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--chunk", type=int, default=2000, help="sessions per chunk")
+    ap.add_argument("--passes", type=int, default=2, help="gradient passes per chunk")
+    ap.add_argument("--procs", type=int, default=4)
+    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--batch", type=int, default=256)
+    ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--budget-s", type=float, default=34000.0)
+    # FIXED normalisation, not per-chunk. Taking mu/sd from the first chunk
+    # makes every later chunk's targets depend on one arbitrary draw -- the
+    # smoke run swung the loss 0.53 -> 43.5 -> 0.65 that way. Margin is
+    # seat-symmetric because both seats are emitted, so the mean is ~0 by
+    # construction; the scale is the corpus figure ($11,494 measured over
+    # 1,075 band-stratified sessions).
+    ap.add_argument("--margin-sd", type=float, default=11494.0)
+    ap.add_argument("--arm", default=os.environ.get("KAGG_BOARD_ARM", "T_crop_103"))
+    ap.add_argument("--out", default="/kaggle/working/trunk_margin.pt")
+    args = ap.parse_args()
+
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+    torch.set_num_threads(int(os.environ.get("KAGG_THREADS", "1")))
+    torch.manual_seed(args.seed)
+
+    paths, src = find_sessions()
+    print(f"{len(paths):,} sessions from {src}", flush=True)
+    paths = band_order(paths, args.seed)
+
+    # Outcomes from the index; a session without finals is skipped rather than
+    # trained on a NaN target.
+    with open(os.path.join(REPO, "rl", "datasets", "session_index.json")) as fh:
+        idx = json.load(fh)
+    fin = {os.path.basename(v["path"]): v.get("finals")
+           for v in idx.values() if v.get("path")}
+
+    def outcome(p):
+        f = fin.get(os.path.basename(p)) or []
+        if len(f) != 2:
+            return None
+        a, b = float(f[0]), float(f[1])
+        return (a - b, b - a), (1.0 if a > b else 0.0, 1.0 if b > a else 0.0)
+
+    jobs = [(p, args.arm) + o for p in paths if (o := outcome(p))]
+    print(f"{len(jobs):,} with an outcome", flush=True)
+    chunks = [jobs[i:i + args.chunk] for i in range(0, len(jobs), args.chunk)]
+    # The held-out chunk is FIRST, not last. If it were last, a run that hits
+    # the time budget -- which is the expected case at 11 hours -- would
+    # return a trunk with no validation number at all.
+    print(f"{len(chunks)} chunks of <= {args.chunk}; chunk 0 is HELD OUT",
+          flush=True)
+
+    trunk, head = BoardTrunk(), nn.Linear(BOARD_W, 1)
+    opt = torch.optim.Adam(list(trunk.parameters()) + list(head.parameters()),
+                           lr=args.lr)
+    rng = np.random.default_rng(args.seed)
+    t0 = time.time()
+    mu, sd = 0.0, args.margin_sd
+    val = None
+    # ONE pool for the whole run. Building a Pool per chunk costs more than
+    # the extraction: the smoke run spent 1.9 s a session against 0.43 s
+    # measured locally, which at 21,000 sessions is the entire 11-hour budget
+    # spent on process startup.
+    pool = Pool(args.procs)
+
+    def run_chunk(spec_list):
+        res = [r for r in pool.imap_unordered(extract, spec_list) if r]
+        if not res:
+            return None, None, None
+        X = np.concatenate([r[1] for r in res])
+        y = np.asarray([s["m"] for r in res for s in r[0]], "float32")
+        w = np.asarray([s["w"] for r in res for s in r[0]], "float32")
+        return X, y, w
+
+    for ci, spec in enumerate(chunks):
+        if time.time() - t0 > args.budget_s:
+            print(f"  budget reached at chunk {ci}; stopping", flush=True)
+            break
+        X, y, w = run_chunk(spec)
+        if X is None:
+            continue
+        if ci == 0:
+            val = (X, y, w)
+            print(f"  chunk 0: {len(X):,} samples HELD OUT, never trained on",
+                  flush=True)
+            continue
+        trunk.train()
+        for _ in range(args.passes):
+            perm = rng.permutation(len(X))
+            for s in range(0, len(perm), args.batch):
+                i = perm[s:s + args.batch]
+                opt.zero_grad()
+                loss = nn.functional.mse_loss(
+                    head(trunk(torch.from_numpy(X[i].astype("float32")))),
+                    torch.tensor((y[i] - mu) / sd).unsqueeze(1))
+                loss.backward(); opt.step()
+        # Score the held-out chunk every time, so a budget-killed run still
+        # carries a number and the curve is visible rather than a single
+        # end-of-run point.
+        vr = float("nan")
+        if val is not None:
+            trunk.eval(); P = []
+            with torch.no_grad():
+                for s_ in range(0, len(val[0]), 512):
+                    P.append(head(trunk(torch.from_numpy(
+                        val[0][s_:s_ + 512].astype("float32")))).numpy())
+            P = np.concatenate(P).reshape(-1) * sd + mu
+            dd = float(((val[1] - val[1].mean()) ** 2).sum())
+            vr = 1 - float(((val[1] - P) ** 2).sum()) / dd if dd > 0 else float("nan")
+        torch.save({"trunk": trunk.state_dict(), "arm": args.arm,
+                    "chunk": ci, "mu": mu, "sd": sd, "val_r2": vr}, args.out)
+        print(f"  chunk {ci}/{len(chunks)-1}: {len(X):,} samples, "
+              f"loss {loss.item():.4f}, held-out margin R2 {vr:+.4f}, "
+              f"{time.time()-t0:.0f}s -> checkpointed", flush=True)
+        del X, y, w
+
+    pool.close(); pool.join()
+    print(f"-> {args.out}  ({time.time()-t0:.0f}s total)")
+
+
+if __name__ == "__main__":
+    main()
