@@ -567,6 +567,14 @@ def main():
     ap.add_argument("--prior-kl", type=float, default=0.0,
                     help="KL penalty toward the frozen BC prior (residual trust region)")
     ap.add_argument("--lr", type=float, default=None, help="policy/value learning rate (default LR)")
+    ap.add_argument("--board", action="store_true",
+                    help="give PlannerNet a conv trunk over the board tensor "
+                         "(needs KAGG_BOARD=1 so rollout records it)")
+    ap.add_argument("--trunk-init", default=None,
+                    help="rl/pretrain_trunk.py checkpoint. An INITIALISATION, "
+                         "not a freeze -- PPO keeps training these weights, "
+                         "because a trunk frozen on an offline distribution is "
+                         "the self-play-potential failure again")
     ap.add_argument("--seed", type=int, default=None,
                     help="seed torch + python so two runs differ ONLY in what "
                          "you changed. Rollouts are already deterministic in "
@@ -622,8 +630,21 @@ def main():
     n_features = len(probe["records"][0]["x"])
     print(f"n_features={n_features} n_action_logits={features.N_ACTION_LOGITS}")
 
-    net = PlannerNet(n_features)
+    net = PlannerNet(n_features, board=args.board)
     vnet = ValueNet(n_features)
+    if args.trunk_init:
+        if not args.board:
+            raise SystemExit("--trunk-init needs --board")
+        ck = torch.load(args.trunk_init)
+        arm = ck.get("arm", "?")
+        want = os.environ.get("KAGG_BOARD_ARM", "T_crop_103")
+        if arm != want:
+            raise SystemExit(f"trunk was pretrained on arm {arm} but "
+                             f"KAGG_BOARD_ARM is {want} -- the channel sets "
+                             f"differ, refusing to load")
+        net.board.load_state_dict(ck["trunk"])
+        print(f"trunk initialised from {args.trunk_init} (arm {arm}); "
+              f"PPO will keep training it")
     if args.resume:
         ckpt = torch.load(args.resume)
         if isinstance(ckpt, dict) and "policy" in ckpt:
