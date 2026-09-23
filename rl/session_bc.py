@@ -46,8 +46,23 @@ TPD = 24
 
 
 def extract(spec):
-    """Replay one session; return (samples, boards) for both seats."""
-    path, arm = spec
+    """Replay one session; return (samples, boards) for both seats.
+
+    Each sample carries BOTH supervised targets, because they are not equally
+    useful and the choice should be made at training time, not baked in here:
+
+      choices  the champion's implied standing targets. This is what BC has
+               always cloned, and cloning it gated NULL over 4,800 paired
+               games at 69.4% action accuracy -- ten of thirteen heads are
+               ALLOCATION, and allocation is measured flat.
+      m, w     the seat's final margin and win. This is the target H-margin
+               passed on: T_crop_103 beat E_full_83 by >= +0.01 R2 in 4 of 5
+               rating bands, with win AUC up in 4 of 5.
+
+    Pretraining a representation on a measured null teaches it the thing that
+    does not pay. `m` is the one with evidence behind it.
+    """
+    path, arm, margin, win = spec
     sys.path.insert(0, REPO)
     import tools.fast_env as fast_env
     fast_env.install()
@@ -118,7 +133,9 @@ def extract(spec):
                                               hist=past)
             except Exception:
                 continue
-            out.append({"x": x, "masks": m, "choices": choices})
+            out.append({"x": x, "masks": m, "choices": choices,
+                        "m": margin[side], "w": win[side], "seat": side,
+                        "day": d})
             boards.append(t3[cols].astype("float16"))
     if not out:
         return None
@@ -139,6 +156,20 @@ def main() -> None:
     args = ap.parse_args()
 
     paths = pick_sessions(args.n, True, args.seed)
+    # Outcomes come from the index, not from a second replay: `finals` is
+    # already there, and margin is seat-relative.
+    import json as _json
+    with open(os.path.join(REPO, "rl", "datasets", "session_index.json")) as fh:
+        _idx = _json.load(fh)
+    _by = {v["path"]: v for v in _idx.values() if v.get("path")}
+
+    def _outcome(p):
+        rel = p[len(REPO) + 1:] if p.startswith(REPO) else p
+        fin = ((_by.get(rel) or _by.get(p) or {}).get("finals")) or []
+        if len(fin) != 2:
+            return (float("nan"),) * 2, (float("nan"),) * 2
+        a, b = float(fin[0]), float(fin[1])
+        return (a - b, b - a), (1.0 if a > b else 0.0, 1.0 if b > a else 0.0)
     print(f"replaying {len(paths)} sessions on {args.procs} procs, arm {args.arm} ...",
           flush=True)
     board_path = args.out.replace(".jsonl", "_boards.npy")
@@ -153,7 +184,8 @@ def main() -> None:
                                   shape=(cap, n_ch, 10, 10))
     t0, n_s, n_b = time.time(), 0, 0
     with open(args.out, "w") as fh, Pool(args.procs) as pool:
-        for i, res in enumerate(pool.imap(extract, [(p, args.arm) for p in paths]), 1):
+        jobs = [(p, args.arm) + _outcome(p) for p in paths]
+        for i, res in enumerate(pool.imap(extract, jobs), 1):
             if res is None:
                 continue
             samples, boards = res
