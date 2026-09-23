@@ -28,17 +28,31 @@ from kagent import features
 _BOARD = os.environ.get("KAGG_BOARD", "") not in ("", "0")
 
 
-def _board(obs, seat):
-    """(91, 10, 10) float16 for THIS seat, or None when the hook is off.
+# Which channel set the trunk eats. T_crop_103 is the arm that PASSED
+# H-margin -- >= +0.01 R2 in 4 of 5 bands and win AUC up in 4 of 5 -- and it
+# is 103 columns of the 123-channel TEMPORAL build, not of the 91-channel
+# single frame. board_pair_full tops out at index 90, so the crop lag planes
+# (103..122) simply do not exist in it; the flat board is the one encoding we
+# have evidence does NOT help the outcome.
+_BOARD_ARM = os.environ.get("KAGG_BOARD_ARM", "T_crop_103")
 
-    `board_pair_full` reads `obs["day"]` and `obs["farms"]`, both of which the
-    seat-1 observation carries -- only `step` is missing there, and this path
-    does not use it.
+
+def _board(obs, seat, dawn_hist, mid_hist, day):
+    """(len(arm), 10, 10) float16 for THIS seat, or None when the hook is off.
+
+    Mirrors `tools/s3_flow.encode_day` so the RL encoder and the offline one
+    cannot drift: past dawn observations newest-first, plus yesterday's
+    midday frame. `prev_mid` and `hist` are empty on day 0, which zeroes the
+    lag planes rather than failing -- the same thing the offline build does
+    for the first day of a season.
     """
     if not _BOARD:
         return None
-    from tools.board_tensor import board_pair_full
-    return board_pair_full(obs, seat).astype("float16")
+    from tools.board_tensor import board_pair_temporal_both, arm_channels
+    past = [dawn_hist[d] for d in range(day - 1, -1, -1) if d in dawn_hist]
+    t = board_pair_temporal_both(obs, seat, prev_mid=mid_hist.get(day - 1),
+                                 hist=past)
+    return t[arm_channels(_BOARD_ARM)].astype("float16")
 
 _WEIGHTS_CACHE = {}
 KNOB_DAY = 6  # shops revealed on days 3 and 6
@@ -227,9 +241,18 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
     if mode == "bc":
         pol = HeuristicPolicy()
         speculative = style == "spec" or residual
+        # Same lag-plane history as the RL path: BC pretrains the trunk, so it
+        # must see the identical channel set or the weights it hands to PPO
+        # were fitted on a different encoder.
+        bc_dawn, bc_mid = {}, {}
 
         def agent_fn(obs):
             view = View(obs)
+            if _BOARD:
+                if view.hour == 0:
+                    bc_dawn[view.day] = obs
+                elif view.hour == 12:
+                    bc_mid[view.day] = obs
             mem.observe(view)
             if mem.day_plan is None or mem.day_plan_day != view.day:
                 if view.day in DECISION_DAYS and extra is not None:
@@ -247,7 +270,8 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
                         "masks": m,
                         "choices": choices,
                         "pv": portfolio_value(view),
-                        "board": _board(obs, view.player),
+                        "board": _board(obs, view.player, bc_dawn, bc_mid,
+                                        view.day),
                     }
                 )
                 mem.day_plan = plan
@@ -260,9 +284,17 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
     pol = HeuristicPolicy(provider)
 
     last_view = {}
+    # Dawn and midday frames, kept for the temporal lag planes. Only the
+    # observations are held, not tensors: ~60 Structs a season.
+    dawn_hist, mid_hist = {}, {}
 
     def agent_fn(obs):
         view = View(obs)
+        if _BOARD:
+            if view.hour == 0:
+                dawn_hist[view.day] = obs
+            elif view.hour == 12:
+                mid_hist[view.day] = obs
         last_view["v"] = view
         mem.observe(view)
         provider.last_decision = None
@@ -278,7 +310,8 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
                     "value": value,
                     "pv": portfolio_value(view),
                     "stock": stock_value(view),
-                    "board": _board(obs, view.player),
+                    "board": _board(obs, view.player, dawn_hist,
+                                    mid_hist, view.day),
                 }
             )
         return action

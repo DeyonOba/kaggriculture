@@ -32,7 +32,13 @@ VH = 128
 # and that scored -0.398 R^2 out of distribution
 # (docs/phi_ood_and_phase_timing.md). The representation has to move with the
 # states the policy actually visits.
-BOARD_CH = 91          # tools.board_tensor.N_FULL
+# 103 = tools.board_tensor.arm_channels("T_crop_103"), the arm that PASSED
+# H-margin. NOT N_FULL (91): the crop lag planes live at absolute indices
+# 103..122 of the 123-channel temporal build and do not exist in the single
+# frame at all. Override with KAGG_BOARD_ARM, and this must match it.
+import os as _os
+_ARM_CH = {"E_full_83": 83, "T_temporal_95": 95, "T_crop_103": 103}
+BOARD_CH = _ARM_CH.get(_os.environ.get("KAGG_BOARD_ARM", "T_crop_103"), 103)
 BOARD_W = 48           # trunk output width
 
 
