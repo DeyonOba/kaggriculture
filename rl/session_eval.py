@@ -131,6 +131,9 @@ def main() -> None:
                          "results from a previous --out file instead of replaying "
                          "(saves ~19 min an arm). Checked game by game against "
                          "this run's draw and refused on any mismatch")
+    ap.add_argument("--baseline", default=None,
+                    help="arm every other arm is paired against (a played or "
+                         "reused name); default the first --arm")
     args = ap.parse_args()
 
     from rl import rollout
@@ -190,9 +193,12 @@ def main() -> None:
                   f"{sum(x['money'] for x in rows)/len(rows):>9,.0f}   bad "
                   f"{sum(x['bad'] for x in rows)}   ({time.time()-t0:.0f}s)", flush=True)
 
-    # The baseline is the first --arm; reused arms follow the played ones.
-    base_name = arms[0][0]
+    # Baseline: --baseline, else the first --arm. Played arms print first.
     results = {**{n: results[n] for n, _, _ in arms}, **{n: results[n] for n in reused}}
+    base_name = args.baseline or arms[0][0]
+    if base_name not in results:
+        raise SystemExit(f"--baseline {base_name!r} is not a played or reused arm "
+                         f"({list(results)})")
     print(f"\n{'arm':<12}{'win':>8}{'se':>7}{'money':>10}  " +
           "".join(f"{_label(b):>11}" for b in range(len(EDGES))))
     for name, rows in results.items():
