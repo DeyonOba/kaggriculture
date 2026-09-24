@@ -50,3 +50,44 @@ reference.
 Power as before: paired se ≈ 0.008; 0.025 resolves at z ≈ 3. A null closes
 the dense-potential lever at this budget and points to the curriculum that
 tracks the win rate, or to more episodes.
+
+## 3 Results (2026-09-24, eval landed 23:52)
+
+**Guards:** on-policy KL ≤ 8.9e-8 on all 20 iterations, 9.9 updates per
+iteration after warm-up, no zero-update iteration, `bad == 0`. Baselines
+reused after a game-by-game match. The run is read.
+
+| arm | wins / 785 | win rate ± se | money | 0–600 | 600–1000 | 1000–1500 | 1500–2000 | 2000–2500 | 2500+ |
+|---|---|---|---|---|---|---|---|---|---|
+| lead | 14 | 0.018 ± 0.005 | 35,187 | 0.094 | 0.190 | 0.000 | 0.000 | 0.011 | 0.011 |
+| B3 control (baseline) | 29 | 0.037 ± 0.007 | 57,129 | 0.109 | 0.190 | 0.040 | 0.006 | 0.034 | 0.023 |
+| B2 control | 47 | 0.060 ± 0.008 | 61,072 | 0.156 | 0.190 | 0.051 | 0.029 | 0.046 | 0.063 |
+
+| comparison (paired, McNemar) | Δ | se | z | discordant | p | bands ≥ 0 |
+|---|---|---|---|---|---|---|
+| lead − B3 control | −0.019 | 0.005 | −3.67 | 1 / 16 | 0.0002 | 1 of 6 (at 0) |
+| lead − B2 control | −0.042 | — | — | — | — | 0 of 6 |
+
+**H-lead: FAILS, in reverse.** The lead potential halved the control's
+held-out win rate and cut its money by $22k. **H-recover: FAILS.** Training
+wins per iteration fell through the run (13 → 1), and training money fell
+from $29k to $24k: the policy got worse at both while it trained.
+
+**Reading.** The theorem is asymptotic. With 20 iterations the shaping is not
+a value initialisation the learner grows out of; it *is* the transient
+objective, because per-step increments of a bounded-15 potential dwarf a
+±15 terminal that arrives once in 64 episodes. And the shape rewarded the
+wrong thing stepwise: asset lead until day 9, money lead from day 13, so the
+crossover pays for converting assets to cash around day 11 and for holding
+cash afterwards — a liquidate-and-hoard incentive in a season where mid-game
+reinvestment is where the money is. "Invest early, cash late" was measured
+as what *correlates* with winning, which is not the same as what to *pay for*
+step by step. Both the frozen trunk and this potential are the same lesson:
+an offline-measured relation put into the actor's signal does not become an
+online improvement.
+
+**Closed at this budget:** the dense-potential lever on the deployment mix.
+Together with B2 and B3, none of four levers (board trunk, freezing,
+deployment-mix curriculum, phase potential) raised held-out wins; two cut
+them. The best configuration on held-out wins remains B2's control
+(frontier mix, win-first reward, portfolio potential): 47 of 785.
