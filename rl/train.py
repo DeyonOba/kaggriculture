@@ -91,6 +91,14 @@ PHI_SCALE = 1e-3
 # is the tolerance for float32 rounding; anything larger means the rollouts
 # were played by a different policy than the one being trained.
 ONPOLICY_KL_TOL = 1e-3
+# --potential. "pv": Phi = PHI_SCALE x own portfolio value (stationary, a
+# LEVEL). "lead": rl/phase_potential.py, the phase reward -- asset lead over
+# the opponent early, money lead late, tanh-bounded at the session win
+# coefficient. Both are potentials, so neither can move the optimum
+# (tests/test_shaping.py H3); "lead" is the dense, opponent-relative signal
+# for the regime Stage B3 measured, where the terminal win arrives 1-5 times
+# in 64 episodes and a win-only reward carries almost no gradient.
+POTENTIAL = "pv"
 
 
 def _boards(records):
@@ -251,6 +259,15 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
                 print(f"   champion-FT epoch {epoch+1}: nll={total/fn:.3f}")
 
 
+def _potentials(recs):
+    """Phi(s_t) per decision, in reward units, under the selected POTENTIAL."""
+    if POTENTIAL == "lead":
+        from rl.phase_potential import phase_potential
+        return [phase_potential(r["lead"]["asset_lead"], r["lead"]["money_lead"],
+                                r["lead"]["day"]) for r in recs]
+    return [r["pv"] * PHI_SCALE for r in recs]
+
+
 def _episode_advantages(ep, shaping_w, legacy=False):
     """Per-decision rewards, then GAE.
 
@@ -271,7 +288,7 @@ def _episode_advantages(ep, shaping_w, legacy=False):
     n = len(recs)
     if n == 0:
         return [], []
-    phis = [r["pv"] * PHI_SCALE for r in recs]
+    phis = _potentials(recs)
     shape = (_shaping.legacy_shaping_terms(
                  phis, terminal_potential=ep["final_money"] * PHI_SCALE)
              if legacy else
@@ -818,7 +835,7 @@ def apply_checkpoints(net, vnet, resume=None, trunk_init=None, freeze_trunk=Fals
 
 def main():
     global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED, TRUNK_LR_SCALE
-    global REWARD, MARGIN_TIE, MARGIN_SCALE, PHI_SCALE
+    global REWARD, MARGIN_TIE, MARGIN_SCALE, PHI_SCALE, POTENTIAL
     ap = argparse.ArgumentParser()
     ap.add_argument("--bc-games", type=int, default=90)
     ap.add_argument("--iters", type=int, default=60)
@@ -886,6 +903,13 @@ def main():
                     help="Phi = phi-scale * portfolio value. Default 1e-3 "
                          "(legacy) or 1e-4 under --reward win, which puts "
                          "Phi on the terminal reward's scale")
+    ap.add_argument("--potential", choices=("pv", "lead"), default="pv",
+                    help="the PBRS potential. pv: own portfolio value, a "
+                         "stationary level. lead: rl/phase_potential.py, the "
+                         "phase reward -- asset lead over the opponent early, "
+                         "money lead late, bounded at the win coefficient. "
+                         "Neither can move the optimum; lead is the dense "
+                         "signal for opponents the policy rarely beats")
     ap.add_argument("--eval-every", type=int, default=5, help="iterations between evals")
     ap.add_argument("--eval-per-bin", type=int, default=3,
                     help="held-out session games per rating bin at each eval. "
@@ -933,11 +957,13 @@ def main():
         MARGIN_SCALE = args.margin_scale
     PHI_SCALE = (args.phi_scale if args.phi_scale is not None
                  else (1e-4 if REWARD == "win" else 1e-3))
+    POTENTIAL = args.potential
     print(f"reward={REWARD} win_coef={WIN_COEF}/{SESSION_WIN_COEF}(session) "
           + (f"margin_tie=+/-{MARGIN_TIE} @${MARGIN_SCALE:.0f} money=0 "
              if REWARD == "win" else
              f"money_coef={MONEY_COEF} margin_coef={MARGIN_COEF} ")
-          + f"phi_scale={PHI_SCALE:g}")
+          + (f"potential=lead (phase: asset lead -> money lead, |Phi|<=15)"
+             if POTENTIAL == "lead" else f"potential=pv phi_scale={PHI_SCALE:g}"))
     TRUNK_LR_SCALE = 0.0 if args.freeze_trunk else args.trunk_lr_scale
     RESIDUAL = bool(args.residual)
     PAIRED = bool(args.paired)

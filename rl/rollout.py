@@ -119,6 +119,15 @@ def portfolio_value(view):
     return v
 
 
+def _lead(view):
+    """Ingredients of the phase potential (rl/phase_potential.py): the asset
+    and money LEADS over the opponent plus the day, recorded per decision so
+    the trainer can shape with Phi(s, day) under --potential lead. One pass
+    over both boards; no torch."""
+    from rl.phase_potential import ingredients
+    return ingredients(view)
+
+
 def _nearest_valid(vals, mask, target):
     valid = [i for i in range(len(vals)) if mask[i]]
     return min(valid, key=lambda i: abs(vals[i] - target))
@@ -326,6 +335,7 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
                     "pv": portfolio_value(view),
                     "stock": stock_value(view),
                     "board": brd,
+                    "lead": _lead(view),
                 }
             )
         return action

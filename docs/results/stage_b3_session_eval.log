@@ -1,0 +1,18 @@
+785 held-out games per arm; per bin 0-600:64 600-1000:21 1000-1500:175 1500-2000:175 2000-2500:175 2500+:175
+arms: control, trainable (board), b2_control
+  control      win 0.037 +/- 0.007   money    57,129   bad 0   (1056s)
+  trainable    win 0.042 +/- 0.007   money    61,619   bad 0   (2096s)
+  b2_control   win 0.060 +/- 0.008   money    61,072   bad 0   (3176s)
+
+arm              win     se     money        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+control        0.037  0.007    57,129        0.109      0.190      0.040      0.006      0.034      0.023
+trainable      0.042  0.007    61,619        0.203      0.095      0.017      0.000      0.034      0.051
+b2_control     0.060  0.008    61,072        0.156      0.190      0.051      0.029      0.046      0.063
+
+PAIRED vs control (same sessions, same seats), McNemar on discordant games
+arm            delta     se     z  arm-only  base-only       p        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+trainable     +0.005  0.007  0.69        19         15   0.608       +0.094     -0.095     -0.023     -0.006     +0.000     +0.029
+b2_control    +0.023  0.009  2.66        32         14   0.011       +0.047     +0.000     +0.011     +0.023     +0.011     +0.040
+delta = arm win rate minus baseline's on identical games; the per-band columns are the same delta within each rating bin.
+
+-> rl/runs/stage_b3/session_eval.json

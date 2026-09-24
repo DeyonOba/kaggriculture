@@ -82,6 +82,22 @@ def binom_two_sided(k, n):
     return min(1.0, 2 * p)
 
 
+def reuse_results(prior_rows, entries, label="reused arm"):
+    """Accept a previous run's per-game rows as an arm, if and only if they
+    were played on exactly this draw: same sessions, same seats, same order.
+    Temperature-0 play is deterministic (B2's control replayed 47/785 with
+    every game identical), so a matching prior run IS the replay."""
+    if len(prior_rows) != len(entries):
+        raise SystemExit(f"{label}: {len(prior_rows)} prior games vs {len(entries)} "
+                         f"drawn -- different --per-bin or corpus; refusing")
+    for i, (row, (p, ss, b, r)) in enumerate(zip(prior_rows, entries)):
+        if row.get("path") != p or row.get("script_side") != ss:
+            raise SystemExit(f"{label}: game {i} is {row.get('path')} seat "
+                             f"{row.get('script_side')}, drawn {p} seat {ss} -- "
+                             f"not the same draw (seed?); refusing")
+    return prior_rows
+
+
 def _wr(rows):
     if not rows:
         return float("nan"), float("nan")
@@ -110,6 +126,11 @@ def main() -> None:
     ap.add_argument("--procs", type=int, default=5)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default=None, help="JSON of every game, for re-analysis")
+    ap.add_argument("--reuse", action="append", default=[],
+                    help="name=prior_eval.json[:arm] -- take that arm's per-game "
+                         "results from a previous --out file instead of replaying "
+                         "(saves ~19 min an arm). Checked game by game against "
+                         "this run's draw and refused on any mismatch")
     args = ap.parse_args()
 
     from rl import rollout
@@ -135,6 +156,21 @@ def main() -> None:
     print(f"arms: " + ", ".join(f"{n}{' (board)' if hb else ''}" for n, _, hb in arms))
 
     results = {}
+    reused = {}
+    for spec in args.reuse:
+        name, _, rest = spec.partition("=")
+        path, _, arm = rest.partition(":")
+        if not path:
+            raise SystemExit(f"--reuse wants name=path.json[:arm], got {spec!r}")
+        with open(path) as fh:
+            prior = json.load(fh)
+        rows = prior["results"].get(arm or name)
+        if rows is None:
+            raise SystemExit(f"--reuse {spec}: no arm {arm or name!r} in {path}")
+        results[name] = reuse_results(rows, entries, label=f"--reuse {name}")
+        reused[name] = f"{path}:{arm or name}"
+        p_, se = _wr(rows)
+        print(f"  {name:<12} win {p_:.3f} +/- {se:.3f}   (reused from {reused[name]})")
     t0 = time.time()
     with Pool(args.procs) as pool:
         for name, path, _ in arms:
@@ -154,7 +190,9 @@ def main() -> None:
                   f"{sum(x['money'] for x in rows)/len(rows):>9,.0f}   bad "
                   f"{sum(x['bad'] for x in rows)}   ({time.time()-t0:.0f}s)", flush=True)
 
+    # The baseline is the first --arm; reused arms follow the played ones.
     base_name = arms[0][0]
+    results = {**{n: results[n] for n, _, _ in arms}, **{n: results[n] for n in reused}}
     print(f"\n{'arm':<12}{'win':>8}{'se':>7}{'money':>10}  " +
           "".join(f"{_label(b):>11}" for b in range(len(EDGES))))
     for name, rows in results.items():
@@ -185,7 +223,8 @@ def main() -> None:
     if args.out:
         with open(args.out, "w") as fh:
             json.dump({"seed": args.seed, "per_bin": args.per_bin,
-                       "arms": {n: p for n, p, _ in arms}, "results": results}, fh)
+                       "arms": {n: p for n, p, _ in arms}, "reused": reused,
+                       "results": results}, fh)
         print(f"\n-> {args.out}")
 
 

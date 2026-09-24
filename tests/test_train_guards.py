@@ -204,6 +204,44 @@ def test_remainder_keeps_the_legacy_split_at_any_session_frac():
         assert abs(kinds.count("snapshot") / n - 0.16) < 0.02
 
 
+def test_potentials_select_pv_or_lead(monkeypatch):
+    from rl.phase_potential import phase_potential
+    recs = [{"pv": 10_000.0 * (i + 1),
+             "lead": {"asset_lead": 3_000.0 * i, "money_lead": -2_000.0 * i, "day": i}}
+            for i in range(30)]
+    monkeypatch.setattr(train, "POTENTIAL", "pv")
+    monkeypatch.setattr(train, "PHI_SCALE", 1e-4)
+    assert train._potentials(recs) == [r["pv"] * 1e-4 for r in recs]
+    monkeypatch.setattr(train, "POTENTIAL", "lead")
+    got = train._potentials(recs)
+    assert got == [phase_potential(3_000.0 * i, -2_000.0 * i, i) for i in range(30)]
+    assert max(abs(v) for v in got) <= 15.0
+    # early decisions read the asset lead (positive here), late ones the money lead (negative)
+    assert got[3] > 0 > got[25]
+
+
+def test_rl_records_carry_lead_ingredients(tmp_path):
+    import json
+
+    from rl import rollout
+    from rl.common import to_layers
+
+    probe = rollout.run_episode(
+        {"weights_path": None, "seed": 5, "side": 0, "opponent": "starter", "mode": "bc"})
+    n = len(probe["records"][0]["x"])
+    torch.manual_seed(0)
+    w = tmp_path / "w.json"
+    w.write_text(json.dumps(to_layers(PlannerNet(n), ValueNet(n))))
+    ep = rollout.run_episode({"weights_path": str(w), "temperature": 1.0, "seed": 5,
+                              "side": 1, "opponent": "starter", "mode": "rl"})
+    assert ep["records"], "no decisions recorded"
+    for r in ep["records"]:
+        assert set(r["lead"]) == {"asset_lead", "money_lead", "day"}
+    first = ep["records"][0]["lead"]
+    assert first["day"] == 0 and first["asset_lead"] == 0.0 and first["money_lead"] == 0.0
+    assert ep["records"][-1]["lead"]["day"] == len(ep["records"]) - 1
+
+
 def test_eval_band_weights_come_from_the_paired_eval_draw():
     w = train._eval_band_weights(os.path.join(REPO, "rl", "datasets", "session_index.json"))
     assert len(w) == 6 and abs(sum(w) - 1.0) < 1e-9
