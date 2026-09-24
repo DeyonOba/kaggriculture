@@ -94,3 +94,64 @@ The two small bands carry their own n and are read as such.
   late). By the PBRS theorem it cannot change which policy wins, only how
   fast; it is a convergence arm and is judged as one.
 - `--paired` twin episodes (2× rollout cost).
+
+## 5 Results (2026-09-24, eval landed 19:45)
+
+**Guards, all arms:** on-policy KL ≤ 3e-7 on all 60 iterations; every
+post-warm-up iteration performed updates (10–12 per iteration, zero iterations
+with none); frozen trunk at distance 0.0 from its file after PPO, trainable
+trunk moved 7e-3. The run is read.
+
+`rl/session_eval.py`, 785 held-out games per arm on identical sessions and
+seats, temperature 0 (`rl/runs/stage_b2/session_eval.{log,json}`):
+
+| arm | wins / 785 | win rate ± se | money | 0–600 | 600–1000 | 1000–1500 | 1500–2000 | 2000–2500 | 2500+ |
+|---|---|---|---|---|---|---|---|---|---|
+| control | 47 | 0.060 ± 0.008 | 61,072 | 0.156 | 0.190 | 0.051 | 0.029 | 0.046 | 0.063 |
+| frozen | 21 | 0.027 ± 0.006 | 55,150 | 0.141 | 0.143 | 0.017 | 0.006 | 0.011 | 0.017 |
+| trainable | 41 | 0.052 ± 0.008 | 62,254 | 0.172 | 0.190 | 0.023 | 0.029 | 0.040 | 0.057 |
+
+Paired deltas, McNemar on discordant games (arm-only / other-only):
+
+| comparison | Δ win rate | se | z | discordant | p | 95% CI | bands positive |
+|---|---|---|---|---|---|---|---|
+| frozen − control | −0.033 | 0.008 | −4.05 | 8 / 34 | 0.0001 | [−0.049, −0.017] | 0 of 6 |
+| trainable − control | −0.008 | 0.008 | −0.97 | 16 / 22 | 0.42 | [−0.023, +0.008] | 1 of 6 (two at 0) |
+| trainable − frozen | +0.026 | 0.008 | +3.26 | 29 / 9 | 0.0017 | [+0.010, +0.041] | 6 of 6 |
+
+**H-board: FAILS.** Neither board arm beats the control. Frozen is
+significantly *worse* than no board in every band; trainable is parity, and
+its interval excludes an improvement over control larger than ~0.8 points at
+this budget.
+
+**H-freeze: RESOLVED, training wins.** The trainable trunk beats the frozen
+one by +2.6 points of win rate, p = 0.002, positive in all six bands. A
+margin-pretrained representation frozen into the actor hurts; letting PPO move
+it recovers to parity with no board. This matches the earlier finding that a
+frozen self-play potential did not transfer out of distribution, and it
+closes the freeze arm.
+
+**The in-training telemetry pointed the other way.** On training opponents
+both board arms ended *above* control (money 53.7k / 59.9k vs 40.4k, win-vs-
+gate 0.56 vs 0.32) and lost or tied on held-out sessions. The training mix
+explains the gap: the curriculum's frontier bin is the 0–600 bin for the whole
+run (its rolling win rate never reaches 0.55), so ~35% of episodes are against
+0–600 opponents and ~35–42% against the heuristic, while only ~12% are against
+randomly drawn rated sessions. The eval is 700 of 785 games against 1000+
+opponents. Training exposure to that population was on the order of 130
+episodes per arm. This affects all arms equally, so it does not touch the
+freeze comparison, but it is the leading reason no arm improved and the reason
+in-loop numbers must never be read as verdicts.
+
+**The trunk leak cuts against the board arms, not for them:** any memorised
+held-out outcome would have helped them, and they still did not win.
+
+**Closed:** freezing the trunk. **Open:** whether a board helps at all — the
+trainable arm was judged after 1,280 PPO episodes, from a BC readout fitted
+toward a board-blind teacher, on a training mix dominated by opponents the
+eval barely contains. The next arms, in the order the evidence suggests:
+(1) train on the deployment distribution — draw session opponents by the
+eval's band weights instead of the frontier bin, for control and trainable
+alike; (2) a BC readout from the session corpus, whose implied choices *do*
+depend on the board; (3) the board-aware critic; (4) the phase potential, as a
+convergence arm.
