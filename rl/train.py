@@ -68,6 +68,7 @@ UNSOLD_COEF = 0.2    # coefficients handicapped raw profit vs a penalty-free cha
 # final shaping term is exactly -Phi(s_last), so ending the season holding a
 # large non-cash portfolio is already charged, at the potential's own scale
 # and with no free coefficient to tune.
+TRUNK_LR_SCALE = 1.0  # --trunk-lr-scale; 0 is equivalent to --freeze-trunk
 KL_STOP = 0.03       # per-iteration early stop on policy drift
 WARMUP_ITERS = 3     # value-head-only updates while advantages are garbage
 
@@ -383,9 +384,22 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
 
         opt = getattr(ppo_phase, "_opt", None)
         if opt is None or getattr(ppo_phase, "_opt_net", None) is not net:
-            opt = torch.optim.Adam(
-                list(net.parameters()) + list(vnet.parameters()), lr=LR
-            )
+            # The trunk gets its OWN learning rate. Frozen recovered 45% of
+            # what the trainable board arm lost (-10,746 -> -5,922), so PPO
+            # was damaging the encoder -- but frozen also gave up the arm's
+            # win-vs-gate edge (+0.052 -> +0.004). A small non-zero rate is
+            # the middle: the representation keeps adapting to the states the
+            # policy visits, slowly enough not to be overwritten by a gradient
+            # far noisier than the 132k supervised samples that built it.
+            trunk_ps = (list(net.board.parameters())
+                        if getattr(net, "board", None) is not None else [])
+            trunk_ids = {id(q) for q in trunk_ps}
+            rest = [q for q in list(net.parameters()) + list(vnet.parameters())
+                    if id(q) not in trunk_ids]
+            groups = [{"params": rest, "scale": 1.0}]
+            if trunk_ps and TRUNK_LR_SCALE > 0:
+                groups.append({"params": trunk_ps, "scale": TRUNK_LR_SCALE})
+            opt = torch.optim.Adam(groups, lr=LR)
             ppo_phase._opt = opt
             ppo_phase._opt_net = net
 
@@ -397,7 +411,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
         lr_now = LR * decay * cool
         ent_now = ENT_COEF * decay
         for gparam in opt.param_groups:
-            gparam["lr"] = lr_now
+            gparam["lr"] = lr_now * gparam.get("scale", 1.0)
 
         n = x.shape[0]
         warmup = it < WARMUP_ITERS
@@ -595,6 +609,19 @@ def main():
     ap.add_argument("--board", action="store_true",
                     help="give PlannerNet a conv trunk over the board tensor "
                          "(needs KAGG_BOARD=1 so rollout records it)")
+    ap.add_argument("--trunk-lr-scale", type=float, default=1.0,
+                    help="trunk learning rate as a fraction of the policy's. "
+                         "1.0 is the Stage B board arm, 0.0 is --freeze-trunk; "
+                         "a small value lets the representation keep adapting "
+                         "without being overwritten")
+    ap.add_argument("--freeze-trunk", action="store_true",
+                    help="load the pretrained trunk and do NOT train it. The "
+                         "board arm's money gap WIDENED over iterations "
+                         "(-5,336 at 3-9 to -14,533 at 10-19), which is what "
+                         "a well-fitted encoder being overwritten by a noisy "
+                         "policy gradient looks like: the trunk saw 132k "
+                         "supervised samples, PPO gives it 38k frames and a "
+                         "far noisier signal")
     ap.add_argument("--trunk-init", default=None,
                     help="rl/pretrain_trunk.py checkpoint. An INITIALISATION, "
                          "not a freeze -- PPO keeps training these weights, "
@@ -630,7 +657,8 @@ def main():
         random.seed(args.seed)
         torch.manual_seed(args.seed)
         print(f"seeded torch+python with {args.seed}")
-    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED
+    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED, TRUNK_LR_SCALE
+    TRUNK_LR_SCALE = 0.0 if args.freeze_trunk else args.trunk_lr_scale
     RESIDUAL = bool(args.residual)
     PAIRED = bool(args.paired)
     if args.plateau_cool is not None:
@@ -668,8 +696,17 @@ def main():
                              f"KAGG_BOARD_ARM is {want} -- the channel sets "
                              f"differ, refusing to load")
         net.board.load_state_dict(ck["trunk"])
-        print(f"trunk initialised from {args.trunk_init} (arm {arm}); "
-              f"PPO will keep training it")
+        if args.freeze_trunk:
+            for prm in net.board.parameters():
+                prm.requires_grad_(False)
+            net.board.eval()
+            print(f"trunk loaded FROZEN from {args.trunk_init} (arm {arm}, "
+                  f"held-out R2 {ck.get('val_r2', float('nan')):+.4f})")
+        else:
+            print(f"trunk initialised from {args.trunk_init} (arm {arm}); "
+                  f"PPO will keep training it")
+        n_tr = sum(p.numel() for p in net.parameters() if p.requires_grad)
+        print(f"  trainable policy params: {n_tr:,}")
     if args.resume:
         ckpt = torch.load(args.resume)
         if isinstance(ckpt, dict) and "policy" in ckpt:
