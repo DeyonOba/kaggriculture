@@ -23,13 +23,20 @@
 # nets: 175 held-out games a bin where the bin has them (the 0-600 and
 # 600-1000 bins hold only 64 and 21 rated held-out seats), 785 an arm,
 # paired, McNemar.
+#
+# RESUMABLE, and honest about it: an arm counts as done only when its
+# telemetry holds all $ITERS iterations AND eval.json exists. A partial arm is
+# moved aside (never deleted) and rerun. The first version of this script
+# skipped any arm with a non-empty telemetry file, which would have reported a
+# run killed at iteration 3 as trained.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export PYTHONPATH=. KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=1
 TRUNK=rl/datasets/trunk_margin_kaggle.pt
 OUT=rl/runs/stage_b2
+ITERS=20
 mkdir -p "$OUT"
-COMMON="--seed 1234 --iters 20 --episodes 64 --procs 5 --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8"
+COMMON="--seed 1234 --iters $ITERS --episodes 64 --procs 5 --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8"
 
 for ARM in control frozen trainable; do
   case $ARM in
@@ -42,19 +49,30 @@ for ARM in control frozen trainable; do
     KAGG_BOARD=$B uv run python -u rl/train.py --bc-games 60 --iters 0 --seed 1234 \
         $EXTRA --run "$OUT/bc_$ARM" 2>&1 | tee "$OUT/bc_$ARM.log" || exit 1
   fi
-  if [ -s "$OUT/$ARM/telemetry.jsonl" ]; then
-    echo "[$(date +%H:%M)] $ARM already has telemetry; skipping"
-    continue
+  if [ -f "$OUT/$ARM/telemetry.jsonl" ]; then
+    n_done=$(wc -l < "$OUT/$ARM/telemetry.jsonl" | tr -d ' ')
+    if [ "$n_done" -ge "$ITERS" ] && [ -f "$OUT/$ARM/eval.json" ]; then
+      echo "[$(date +%H:%M)] $ARM complete ($n_done iterations); skipping"
+      continue
+    fi
+    stamp=$(date +%m%d_%H%M%S)
+    echo "[$(date +%H:%M)] $ARM is PARTIAL ($n_done/$ITERS iterations): moving to $ARM.partial.$stamp and rerunning"
+    mv "$OUT/$ARM" "$OUT/$ARM.partial.$stamp"
+    [ -f "$OUT/$ARM.log" ] && mv "$OUT/$ARM.log" "$OUT/$ARM.partial.$stamp.log"
   fi
   echo "[$(date +%H:%M)] PPO arm: $ARM"
   KAGG_BOARD=$B uv run python -u rl/train.py --resume "$OUT/bc_$ARM/bc.pt" --bc-games 0 \
       $COMMON $EXTRA --run "$OUT/$ARM" 2>&1 | tee "$OUT/$ARM.log" || exit 1
 done
 
-echo "[$(date +%H:%M)] powered paired eval on the final nets ..."
-KAGG_BOARD=1 uv run python -u rl/session_eval.py \
-    --arm control="$OUT/control/eval.json" \
-    --arm frozen="$OUT/frozen/eval.json" \
-    --arm trainable="$OUT/trainable/eval.json" \
-    --per-bin 175 --procs 5 --out "$OUT/session_eval.json" 2>&1 | tee "$OUT/session_eval.log"
+if [ -s "$OUT/session_eval.json" ]; then
+  echo "[$(date +%H:%M)] session eval already done ($OUT/session_eval.json); skipping"
+else
+  echo "[$(date +%H:%M)] powered paired eval on the final nets ..."
+  KAGG_BOARD=1 uv run python -u rl/session_eval.py \
+      --arm control="$OUT/control/eval.json" \
+      --arm frozen="$OUT/frozen/eval.json" \
+      --arm trainable="$OUT/trainable/eval.json" \
+      --per-bin 175 --procs 5 --out "$OUT/session_eval.json" 2>&1 | tee "$OUT/session_eval.log"
+fi
 echo "[$(date +%H:%M)] Stage B2 complete."
