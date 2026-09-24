@@ -151,6 +151,16 @@ def to_layers(net, vnet=None):
 
 def to_weights_data(net):
     """Submission export: POLICY ONLY, packed as base85 float32."""
+    if getattr(net, "board", None) is not None:
+        # The b85 format carries blocks + out and nothing else, and the
+        # bundle (kagent/policy.py) never builds a board tensor or sets
+        # provider.board. Exporting a board net here would ship a 216-row
+        # first layer with no trunk -- the original silent truncation, in
+        # the submitted agent. Refuse until the bundle has a board builder.
+        raise ValueError(
+            "to_weights_data: board nets cannot be exported for submission "
+            "yet -- the bundle has no board tensor builder. Use to_layers() "
+            "for local play, and build the bundle-side board path first.")
     p = policy_layers(net)
     flat, sizes = [], []
     for w, b, g, beta in p["blocks"]:

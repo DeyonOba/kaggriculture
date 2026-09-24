@@ -122,6 +122,10 @@ def main() -> None:
     ap.add_argument("--margin-sd", type=float, default=11494.0)
     ap.add_argument("--arm", default=os.environ.get("KAGG_BOARD_ARM", "T_crop_103"))
     ap.add_argument("--out", default="/kaggle/working/trunk_margin.pt")
+    ap.add_argument("--include-held-out", action="store_true",
+                    help="keep the id %% 5 == 0 sessions rl/train.py holds "
+                         "out as its field eval. The shipped trunk "
+                         "(trunk_margin_kaggle.pt) was built WITH them")
     args = ap.parse_args()
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
@@ -130,6 +134,12 @@ def main() -> None:
 
     paths, src = find_sessions()
     print(f"{len(paths):,} sessions from {src}", flush=True)
+    if not args.include_held_out:
+        from rl.session_bc import is_held_out
+        before = len(paths)
+        paths = [p for p in paths if not is_held_out(p)]
+        print(f"  excluded {before - len(paths):,} PPO held-out sessions "
+              f"(id % 5 == 0)", flush=True)
     paths = band_order(paths, args.seed)
 
     # Outcomes WITHOUT the index. The index is generated, not tracked, so

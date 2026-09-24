@@ -114,3 +114,56 @@ def test_neural_policy_full_episode():
     final = env.steps[-1]
     assert final[0].status == "DONE"
     assert final[0].reward is not None
+
+
+# ------------------------------------------------- the board trunk round trip
+#
+# None of the tests above build a board net, which is how policy_layers()
+# could omit the trunk for the whole of Stage B without a test failing.
+
+def _rand_board(rng, ch):
+    return [[[rng.uniform(0, 1) for _ in range(10)] for _ in range(10)]
+            for _ in range(ch)]
+
+
+def test_board_policy_forward_parity():
+    """to_layers -> forward_board + forward_policy == torch PlannerNet(board)."""
+    from rl.common import BOARD_CH
+
+    torch.manual_seed(0)
+    net = PlannerNet(N_FEAT, board=True)
+    layers = to_layers(net)
+    assert layers["policy"].get("board") is not None, "trunk not serialised"
+    rng = random.Random(6)
+    for _ in range(3):
+        x = _rand_input(rng, N_FEAT)
+        t = _rand_board(rng, BOARD_CH)
+        xp = list(x) + nnpolicy.forward_board(layers["policy"]["board"], t)
+        logits_py = nnpolicy.forward_policy(layers["policy"], xp)
+        with torch.no_grad():
+            logits_t = net(torch.tensor([x], dtype=torch.float32),
+                           torch.tensor([t], dtype=torch.float32))
+        for a, b in zip(logits_py, logits_t[0].tolist()):
+            assert abs(a - b) < 1e-4
+    # and the board actually reaches the logits
+    zero = list(x) + nnpolicy.forward_board(layers["policy"]["board"],
+                                            [[[0.0] * 10] * 10] * BOARD_CH)
+    assert nnpolicy.forward_policy(layers["policy"], zero) != logits_py
+
+
+def test_forward_policy_refuses_short_input():
+    """A 216-row first layer fed the bare 168 features must raise, not
+    silently ignore the missing 48 -- the Stage B defect."""
+    torch.manual_seed(0)
+    layers = to_layers(PlannerNet(N_FEAT, board=True))
+    x = _rand_input(random.Random(7), N_FEAT)       # no trunk output appended
+    with pytest.raises(ValueError, match="expects"):
+        nnpolicy.forward_policy(layers["policy"], x)
+
+
+def test_weights_data_refuses_board_net():
+    """The b85 submission format has no trunk slot and the bundle no board
+    builder; exporting a board net would be the truncation in the agent."""
+    torch.manual_seed(0)
+    with pytest.raises(ValueError, match="board"):
+        to_weights_data(PlannerNet(N_FEAT, board=True))

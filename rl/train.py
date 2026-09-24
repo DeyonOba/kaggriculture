@@ -15,6 +15,7 @@ Usage:
 import argparse
 import copy
 import json
+import math
 import os
 import random
 import sys
@@ -72,6 +73,25 @@ TRUNK_LR_SCALE = 1.0  # --trunk-lr-scale; 0 is equivalent to --freeze-trunk
 KL_STOP = 0.03       # per-iteration early stop on policy drift
 WARMUP_ITERS = 3     # value-head-only updates while advantages are garbage
 
+# --reward. "legacy" is the mix above. "win" makes the win THE terminal
+# reward and margin a bounded tiebreaker: under the legacy coefficients the
+# win term was a few percent of terminal-reward variance (money at 1e-3 x
+# $40-100k, margin at 3e-3 x a ~$25k spread, against a +/-6..15 win), so the
+# trainer was optimising bank size while the ladder scores wins.
+REWARD = "legacy"
+MARGIN_TIE = 2.0            # max reward a margin can add, via tanh
+MARGIN_SCALE = 20_000.0     # dollars at which the tiebreaker is 76% saturated
+# Phi = PHI_SCALE * portfolio_value. Under PBRS the scale cannot move the
+# optimum, but Phi should sit near the terminal reward's scale so the critic
+# is not learning a potential ten times the size of the signal. 1e-3 puts
+# Phi at 30..150 against a +/-15 win; --reward win defaults to 1e-4.
+PHI_SCALE = 1e-3
+# The worker's logged log pi_old(a|s) and the trainer's recomputation must
+# agree before any update -- same weights, same states, same actions. This
+# is the tolerance for float32 rounding; anything larger means the rollouts
+# were played by a different policy than the one being trained.
+ONPOLICY_KL_TOL = 1e-3
+
 
 def _boards(records):
     """(B, C, 10, 10) float32, or None when the board hook is off.
@@ -110,6 +130,37 @@ def _sample_weights(records):
     return torch.tensor(w, dtype=torch.float32)
 
 
+def _bc_params(net):
+    """Every policy parameter EXCEPT the board trunk's."""
+    trunk_ids = ({id(q) for q in net.board.parameters()}
+                 if getattr(net, "board", None) is not None else set())
+    return [q for q in net.parameters() if id(q) not in trunk_ids]
+
+
+def _onpolicy_check(old_lp, lp_now, it, tol=None):
+    """mean(log pi_old - log pi) over the batch, which must be ~0 before any
+    update. Raises when it is not.
+
+    The worker logs log pi_old(a|s) from the serialised weights; the trainer
+    recomputes it from the torch net on the same (s, a). Same weights, same
+    states, same actions: the two agree up to float32 rounding, or the
+    rollouts were played by a DIFFERENT policy than the one being trained.
+    In Stage B this was +3.7 to +4.0 nats on every board arm -- the KL from
+    the truncated policy to the full one -- and because KL_STOP is 0.03 the
+    early stop fired on the first minibatch of every iteration. No policy
+    update ran in any board arm, and nothing said so.
+    """
+    tol = ONPOLICY_KL_TOL if tol is None else tol
+    kl0 = float((old_lp - lp_now).mean())
+    if not math.isfinite(kl0) or abs(kl0) > tol:
+        raise RuntimeError(
+            f"iter {it}: worker and trainer disagree on the policy: mean "
+            f"log pi_old - log pi = {kl0:+.4f} (tolerance {tol}). The weights "
+            f"the rollouts played are not the net being trained -- a "
+            f"serialisation or feature mismatch. Refusing to update.")
+    return kl0
+
+
 def _joint_logprob_entropy(net, x, masks, choices, b=None):
     logits = net(x, b) if b is not None else net(x)
     dists = masked_dists(logits, masks)
@@ -142,7 +193,15 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
     x, masks, choices = _tensor_batch(records)
     boards = _boards(records)
     weights = _sample_weights(records)
-    opt = torch.optim.Adam(net.parameters(), lr=1e-3)
+    # The trunk is EXCLUDED from BC. The teacher is the heuristic planner,
+    # which never reads the board, so its choices carry nothing the trunk
+    # could learn from -- BC on it only rewrites what the trunk already
+    # knows. Measured: 40 BC epochs moved the margin-pretrained trunk 0.23
+    # relative-L2 from its file in every trainable Stage B arm, and PPO then
+    # resumed from THAT. h1's board columns still train here, so the policy
+    # learns to read the trunk's output; the trunk itself waits for PPO.
+    bc_params = _bc_params(net)
+    opt = torch.optim.Adam(bc_params, lr=1e-3)
     n = x.shape[0]
     for epoch in range(epochs):
         perm = torch.randperm(n)
@@ -174,7 +233,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         fx, fm, fc = _tensor_batch(list(extra))
         fb = _boards(list(extra))
         fw = _sample_weights(list(extra))
-        fopt = torch.optim.Adam(net.parameters(), lr=3e-4)
+        fopt = torch.optim.Adam(bc_params, lr=3e-4)
         fn = fx.shape[0]
         for epoch in range(ft_epochs):
             perm = torch.randperm(fn)
@@ -212,9 +271,9 @@ def _episode_advantages(ep, shaping_w, legacy=False):
     n = len(recs)
     if n == 0:
         return [], []
-    phis = [r["pv"] / 1000.0 for r in recs]
+    phis = [r["pv"] * PHI_SCALE for r in recs]
     shape = (_shaping.legacy_shaping_terms(
-                 phis, terminal_potential=ep["final_money"] / 1000.0)
+                 phis, terminal_potential=ep["final_money"] * PHI_SCALE)
              if legacy else
              _shaping.shaping_terms(phis, GAMMA,
                                     terminal_potential=_shaping.TERMINAL_POTENTIAL))
@@ -226,7 +285,21 @@ def _episode_advantages(ep, shaping_w, legacy=False):
         if i == n - 1:
             wc = SESSION_WIN_COEF if ep.get("is_session") else WIN_COEF
             margin = ep["final_money"] - ep.get("opp_money", ep["final_money"])
-            if "base_final" in ep:
+            if REWARD == "win":
+                # WIN-FIRST. The ladder is win-based, so the win is the
+                # reward. Margin enters through tanh so it stays inside
+                # +/-MARGIN_TIE whatever the world does -- a blowout cannot
+                # outvote a win, and a narrow win outranks any loss. Money
+                # enters nowhere: an absolute level measures the world, not
+                # the player (docs/reward_design.md Rule 1).
+                tie = MARGIN_TIE * math.tanh(margin / MARGIN_SCALE)
+                if "base_final" in ep:
+                    base_margin = ep["base_final"] - ep.get("base_opp", ep["base_final"])
+                    r += wc * (ep["win"] - ep["base_win"])
+                    r += tie - MARGIN_TIE * math.tanh(base_margin / MARGIN_SCALE)
+                else:
+                    r += wc * (2 * ep["win"] - 1) + tie
+            elif "base_final" in ep:
                 # Paired baseline: the zero-offset champion plan played the
                 # SAME world (seed, seat, opponent). Rewarding the difference
                 # removes the +/-$30k shared-world variance that drowned the
@@ -259,7 +332,7 @@ def _episode_advantages(ep, shaping_w, legacy=False):
 
 def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bundles=(),
               prior_net=None, prior_kl=0.0,
-              patience=4, legacy_shaping=False):
+              patience=4, legacy_shaping=False, eval_per_bin=3):
     snapshots = []
     league = []          # weight paths of every new-best: future opponents
     best_score = -1.0
@@ -382,6 +455,14 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
         adv_t = (adv_t - adv_t.mean()) / (adv_t.std() + 1e-6)
         ret_t = torch.tensor(all_ret, dtype=torch.float32)
 
+        # ON-POLICY IDENTITY. Cheap (one forward over the batch) and the one
+        # check that would have caught Stage B from inside the trainer: see
+        # _onpolicy_check. Runs during warmup too, so a mismatch is refused
+        # at iteration 0 rather than after three iterations of value fitting.
+        with torch.no_grad():
+            lp_now, _ = _joint_logprob_entropy(net, x, masks, choices, boards)
+        onpolicy_kl = _onpolicy_check(old_lp, lp_now, it)
+
         opt = getattr(ppo_phase, "_opt", None)
         if opt is None or getattr(ppo_phase, "_opt_net", None) is not net:
             # The trunk gets its OWN learning rate. Frozen recovered 45% of
@@ -416,7 +497,11 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
         n = x.shape[0]
         warmup = it < WARMUP_ITERS
         stop = False
-        for _ in range(4):
+        # Counted and logged. A trainer that can perform zero updates and
+        # still print twenty iterations of money means is how Stage B went
+        # unnoticed; `policy_updates` and `kl_stop_at` land in telemetry.
+        n_updates, kl_stop_at = 0, None
+        for ep_i in range(4):
             if stop:
                 break
             perm = torch.randperm(n)
@@ -437,6 +522,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                     approx_kl = (old_lp[idx] - lp).mean()
                     if approx_kl > KL_STOP:
                         stop = True
+                        kl_stop_at = [ep_i, s // 512]
                         break
                     ratio = torch.exp(lp - old_lp[idx])
                     a = adv_t[idx]
@@ -466,6 +552,10 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                     list(net.parameters()) + list(vnet.parameters()), 0.5
                 )
                 opt.step()
+                if not warmup:
+                    n_updates += 1
+        if not warmup and n_updates == 0:
+            print(f"   WARNING iter {it}: ZERO policy updates (kl stop at {kl_stop_at})")
 
         money = [ep["final_money"] for ep in episodes_out]
         gate_wins = [
@@ -492,14 +582,21 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             "unsold": sum(unsold) / len(unsold),
             "held_stock": sum(held) / len(held),
             "episodes": len(episodes_out), "steps": n, "bad": bad,
+            "onpolicy_kl": onpolicy_kl, "policy_updates": n_updates,
+            "kl_stop_at": kl_stop_at, "warmup": warmup, "reward": REWARD,
         }
         with open(os.path.join(run_dir, "telemetry.jsonl"), "a") as _tf:
             _tf.write(json.dumps(telemetry) + "\n")
+        # Every iteration, not only at eval: a run killed between evals, or
+        # one with evals disabled, otherwise leaves no final weights at all.
+        torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
+                   os.path.join(run_dir, "last.pt"))
         print(
             f"iter {it:3}: money mean={sum(money)/len(money):8.0f} "
             f"win-vs-gate={sum(gate_wins)/max(1,len(gate_wins)):.2f} "
             f"unsold={telemetry['unsold']:7.0f} held={telemetry['held_stock']:7.0f} "
             f"shaping={shaping_w:.2f} lr={lr_now:.1e} steps={n} bad={bad} "
+            f"upd={n_updates} kl0={onpolicy_kl:+.1e} "
             f"ep_dur p50={durs[len(durs)//2]:.1f}s max={durs[-1]:.1f}s ({time.time()-t0:.0f}s)"
         )
 
@@ -524,7 +621,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                     if r is None:
                         continue
                     b = next(i for i, (lo, hi) in enumerate(EDGES) if lo <= r < hi)
-                    if per_bin_n[b] < 3:
+                    if per_bin_n[b] < eval_per_bin:
                         per_bin_n[b] += 1
                         strat.append((sp, ss))
             sess_jobs = []
@@ -536,6 +633,13 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             sess_out = list(pool.imap_unordered(rollout.run_episode, sess_jobs))
             session_wr = sum(ep["win"] for ep in sess_out) / max(1, len(sess_out))
             session_money = sum(ep["final_money"] for ep in sess_out) / max(1, len(sess_out))
+            # The standard error goes next to the number. At the old default
+            # of 3 a bin this was 18 games: 0.06 was one win, 0.11 two, and
+            # six arms were ranked on that. Selection here is still noisy at
+            # any affordable size; the decisive comparison is
+            # rl/session_eval.py on the final nets, paired, ~750 games.
+            n_sess = max(1, len(sess_out))
+            session_se = math.sqrt(session_wr * (1 - session_wr) / n_sess)
             bin_report = "/".join(f"{w/g:.0%}" for w, g in bin_wins)
             profit = 100_000 * session_wr + (profit + 15_000 * mean_win) / 10.0
             min_win = min(w for _, w, _ in results)
@@ -545,7 +649,8 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                 for g, w, m in results
             )
             print(f"   EVAL argmax score={profit:8.0f} mean-win={mean_win:.2f} min-win={min_win:.2f} "
-                  f"SESSION-WR={session_wr:.2f} (${session_money/1000:.1f}k) train-bins={bin_report}  [{detail}]")
+                  f"SESSION-WR={session_wr:.2f}+/-{session_se:.2f} (n={n_sess}, ${session_money/1000:.1f}k) "
+                  f"train-bins={bin_report}  [{detail}]")
             torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
                        os.path.join(run_dir, "last.pt"))
             if profit > best_score:
@@ -554,8 +659,14 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                 league.append(wpath)
                 torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
                            os.path.join(run_dir, "best.pt"))
-                with open(os.path.join(run_dir, "best_weights.json"), "w") as f:
-                    json.dump(to_weights_data(net), f)
+                if getattr(net, "board", None) is None:
+                    with open(os.path.join(run_dir, "best_weights.json"), "w") as f:
+                        json.dump(to_weights_data(net), f)
+                else:
+                    # No b85 export for a board net: the bundle cannot build
+                    # a board tensor yet, so the export would be the silent
+                    # truncation again. best.pt and eval.json carry it.
+                    print("   (board net: b85 export skipped; best.pt + eval.json hold the weights)")
                 print(f"   new best (score={profit:.0f}) saved; league size {len(league)}")
             else:
                 evals_since_best += 1
@@ -584,7 +695,61 @@ def evaluate(net, pool, run_dir, n_seeds=10, opponent="heuristic", seed_base=90_
     return wins, money
 
 
+def apply_checkpoints(net, vnet, resume=None, trunk_init=None, freeze_trunk=False):
+    """Load in the ONE order that cannot lose the trunk: resume first, then
+    the trunk file OVER it, then freeze.
+
+    The old order was trunk-init, then resume. `load_state_dict` is strict
+    and a BC checkpoint carries `board.*` keys, so the resume silently put
+    the BC-trained trunk back over the pretrained one. Measured on Stage B:
+    four of five board arms ran PPO on a trunk 0.23 relative-L2 from the
+    file the log said they had loaded.
+
+    Returns {"resume_trunk_dist": how far the resume's trunk sat from the
+    file (None when either is absent), "trunk_dist": distance after loading,
+    0.0 by construction}. Both are printed so the log is the evidence.
+    """
+    if resume:
+        ckpt = torch.load(resume)
+        if isinstance(ckpt, dict) and "policy" in ckpt:
+            net.load_state_dict(ckpt["policy"])
+            vnet.load_state_dict(ckpt["value"])
+        else:
+            net.load_state_dict(ckpt)
+    info = {"resume_trunk_dist": None, "trunk_dist": None}
+    if trunk_init:
+        if getattr(net, "board", None) is None:
+            raise SystemExit("--trunk-init needs --board")
+        ck = torch.load(trunk_init)
+        arm = ck.get("arm", "?")
+        want = os.environ.get("KAGG_BOARD_ARM", "T_crop_103")
+        if arm != want:
+            raise SystemExit(f"trunk was pretrained on arm {arm} but "
+                             f"KAGG_BOARD_ARM is {want} -- the channel sets "
+                             f"differ, refusing to load")
+        with torch.no_grad():
+            cur = net.board.state_dict()
+            if resume:
+                info["resume_trunk_dist"] = max(
+                    float((cur[k] - v).abs().max()) for k, v in ck["trunk"].items())
+            net.board.load_state_dict(ck["trunk"])
+            cur = net.board.state_dict()
+            info["trunk_dist"] = max(
+                float((cur[k] - v).abs().max()) for k, v in ck["trunk"].items())
+        info["arm"] = arm
+        info["val_r2"] = ck.get("val_r2", float("nan"))
+    if freeze_trunk:
+        if getattr(net, "board", None) is None:
+            raise SystemExit("--freeze-trunk needs --board")
+        for prm in net.board.parameters():
+            prm.requires_grad_(False)
+        net.board.eval()
+    return info
+
+
 def main():
+    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED, TRUNK_LR_SCALE
+    global REWARD, MARGIN_TIE, MARGIN_SCALE, PHI_SCALE
     ap = argparse.ArgumentParser()
     ap.add_argument("--bc-games", type=int, default=90)
     ap.add_argument("--iters", type=int, default=60)
@@ -639,6 +804,24 @@ def main():
                          "docs/shaping_spec.md); for reproducing old runs only")
     ap.add_argument("--paired", action="store_true",
                     help="reward = outcome minus the champion plan's outcome on the identical world (twin episodes)")
+    ap.add_argument("--reward", choices=("legacy", "win"), default="legacy",
+                    help="terminal reward. legacy: money + margin + win mix "
+                         "(the win is a few percent of its variance). win: "
+                         "the win IS the reward, margin a tanh-bounded "
+                         "tiebreaker of at most --margin-tie, money absent")
+    ap.add_argument("--margin-tie", type=float, default=None,
+                    help=f"--reward win: max reward a margin can add (default {MARGIN_TIE})")
+    ap.add_argument("--margin-scale", type=float, default=None,
+                    help=f"--reward win: dollars at 76%% tanh saturation (default {MARGIN_SCALE:.0f})")
+    ap.add_argument("--phi-scale", type=float, default=None,
+                    help="Phi = phi-scale * portfolio value. Default 1e-3 "
+                         "(legacy) or 1e-4 under --reward win, which puts "
+                         "Phi on the terminal reward's scale")
+    ap.add_argument("--eval-every", type=int, default=5, help="iterations between evals")
+    ap.add_argument("--eval-per-bin", type=int, default=3,
+                    help="held-out session games per rating bin at each eval. "
+                         "3 -> 18 games, se ~0.1: telemetry, not a verdict. "
+                         "The verdict is rl/session_eval.py on the final nets")
     ap.add_argument("--plateau-cool", type=float, default=None,
                     help="LR multiplier per eval without improvement (1.0 = off; residual argmax evals stay flat by design)")
     ap.add_argument("--prior-pt", default=None, help="checkpoint to use as the frozen prior for --prior-kl (default: the resumed/BC net)")
@@ -653,11 +836,28 @@ def main():
         help="stop after this many evals without a profit improvement",
     )
     args = ap.parse_args()
+    # Pinned threads. torch.manual_seed pins a fit WITHIN a process; thread
+    # order broke it ACROSS processes and silently un-paired every ablation
+    # (memory: fit determinism). The PPO update is ~2k rows, so one thread
+    # costs nothing; the rollouts run in the Pool without torch.
+    torch.set_num_threads(int(os.environ.get("KAGG_THREADS", "1")))
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
-        print(f"seeded torch+python with {args.seed}")
-    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED, TRUNK_LR_SCALE
+        print(f"seeded torch+python with {args.seed}; torch threads "
+              f"{torch.get_num_threads()}")
+    REWARD = args.reward
+    if args.margin_tie is not None:
+        MARGIN_TIE = args.margin_tie
+    if args.margin_scale is not None:
+        MARGIN_SCALE = args.margin_scale
+    PHI_SCALE = (args.phi_scale if args.phi_scale is not None
+                 else (1e-4 if REWARD == "win" else 1e-3))
+    print(f"reward={REWARD} win_coef={WIN_COEF}/{SESSION_WIN_COEF}(session) "
+          + (f"margin_tie=+/-{MARGIN_TIE} @${MARGIN_SCALE:.0f} money=0 "
+             if REWARD == "win" else
+             f"money_coef={MONEY_COEF} margin_coef={MARGIN_COEF} ")
+          + f"phi_scale={PHI_SCALE:g}")
     TRUNK_LR_SCALE = 0.0 if args.freeze_trunk else args.trunk_lr_scale
     RESIDUAL = bool(args.residual)
     PAIRED = bool(args.paired)
@@ -685,36 +885,25 @@ def main():
 
     net = PlannerNet(n_features, board=args.board)
     vnet = ValueNet(n_features)
+    if args.freeze_trunk and not args.board:
+        raise SystemExit("--freeze-trunk needs --board")
+    info = apply_checkpoints(net, vnet, resume=args.resume,
+                             trunk_init=args.trunk_init,
+                             freeze_trunk=args.freeze_trunk)
+    if args.resume:
+        print(f"resumed from {args.resume}")
     if args.trunk_init:
-        if not args.board:
-            raise SystemExit("--trunk-init needs --board")
-        ck = torch.load(args.trunk_init)
-        arm = ck.get("arm", "?")
-        want = os.environ.get("KAGG_BOARD_ARM", "T_crop_103")
-        if arm != want:
-            raise SystemExit(f"trunk was pretrained on arm {arm} but "
-                             f"KAGG_BOARD_ARM is {want} -- the channel sets "
-                             f"differ, refusing to load")
-        net.board.load_state_dict(ck["trunk"])
-        if args.freeze_trunk:
-            for prm in net.board.parameters():
-                prm.requires_grad_(False)
-            net.board.eval()
-            print(f"trunk loaded FROZEN from {args.trunk_init} (arm {arm}, "
-                  f"held-out R2 {ck.get('val_r2', float('nan')):+.4f})")
-        else:
-            print(f"trunk initialised from {args.trunk_init} (arm {arm}); "
-                  f"PPO will keep training it")
+        state = "FROZEN" if args.freeze_trunk else "trainable by PPO"
+        print(f"trunk loaded from {args.trunk_init} (arm {info['arm']}, "
+              f"held-out R2 {info['val_r2']:+.4f}) -> {state}; "
+              f"distance from file after loading {info['trunk_dist']:.2e}"
+              + (f"; the resume's trunk sat {info['resume_trunk_dist']:.4f} "
+                 f"from the file and was OVERRIDDEN" if args.resume else ""))
+        if info["trunk_dist"] > 0:
+            raise SystemExit("trunk does not match its file after loading")
+    if args.board:
         n_tr = sum(p.numel() for p in net.parameters() if p.requires_grad)
         print(f"  trainable policy params: {n_tr:,}")
-    if args.resume:
-        ckpt = torch.load(args.resume)
-        if isinstance(ckpt, dict) and "policy" in ckpt:
-            net.load_state_dict(ckpt["policy"])
-            vnet.load_state_dict(ckpt["value"])
-        else:
-            net.load_state_dict(ckpt)
-        print(f"resumed from {args.resume}")
 
     bundles = tuple(b for b in (args.opp_bundles or "").split(",") if b)
     extra = None
@@ -739,9 +928,10 @@ def main():
                 prm.requires_grad_(False)
         ppo_phase(
             net, vnet, pool, run_dir, args.iters, args.episodes, args.procs,
+            eval_every=args.eval_every,
             opp_bundles=bundles, patience=args.patience,
             prior_net=prior_net, prior_kl=args.prior_kl,
-            legacy_shaping=args.legacy_shaping,
+            legacy_shaping=args.legacy_shaping, eval_per_bin=args.eval_per_bin,
         )
 
 

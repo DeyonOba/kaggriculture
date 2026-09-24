@@ -64,18 +64,34 @@ def auc(y, s):
                  / (len(pos) * len(neg)))
 
 
-def groups_and_ratings(rows, n_expected_per_session, n_draw, seed):
+def groups_and_ratings(rows, n_expected_per_session, n_draw, seed, sidecar=None):
     """Session id per sample, plus that session's rating -- both CHECKED.
 
-    The extractor emits seat 0 days 0..29 then seat 1 days 0..29 for each
-    session, in the order `pick_sessions` returned them. That makes
-    `bi // 60` the session index, but only if no sample was dropped, so the
-    count is verified before the mapping is used.
+    Preferred source is the `_sessions.json` sidecar `rl/session_bc.py` now
+    writes: the sessions actually emitted, in order, with sample counts. It
+    survives held-out filtering and dropped days. Without it, fall back to
+    reconstructing from `pick_sessions(seed)` and `bi // 60`, which is only
+    right when nothing was filtered and no sample was dropped, so the count
+    is verified before that mapping is used.
     """
     from tools.ladder_panel import pick_sessions
     from tools.s3_flow import _session_rating
 
     n = len(rows)
+    if sidecar and os.path.exists(sidecar):
+        with open(sidecar) as fh:
+            used = json.load(fh)["sessions"]
+        counts = np.asarray([u["n"] for u in used], int)
+        if int(counts.sum()) != n:
+            raise SystemExit(f"sidecar lists {int(counts.sum()):,} samples, "
+                             f"dataset has {n:,}: they are not the same build")
+        g = np.repeat(np.arange(len(used)), counts)
+        rating = np.asarray([_session_rating(u["path"]) for u in used], "float32")
+        if not np.isfinite(rating).any():
+            raise SystemExit("every sidecar rating is NaN -- the path keys do "
+                             "not match the session index")
+        print(f"  sessions from sidecar {os.path.basename(sidecar)}: {len(used)}")
+        return g, rating[g]
     if n % n_expected_per_session:
         raise SystemExit(
             f"{n:,} samples is not a multiple of {n_expected_per_session}: "
@@ -128,13 +144,15 @@ def main() -> None:
     ok = np.isfinite(y)
     print(f"{len(rows):,} samples, boards {B.shape}, {int(ok.sum()):,} with an outcome")
 
-    g, rating = groups_and_ratings(rows, 60, args.n_draw, args.seed)
-    # The check that makes the reconstruction trustworthy: margin is constant
-    # within a (session, seat) block and opposite between the two seats.
-    blk = y.reshape(-1, 30)
-    if not np.allclose(blk, blk[:, :1], equal_nan=True):
-        raise SystemExit("margin varies within a 30-day block -- the row -> "
-                         "session mapping is wrong, refusing to train")
+    g, rating = groups_and_ratings(rows, 60, args.n_draw, args.seed,
+                                   sidecar=args.data.replace(".jsonl", "_sessions.json"))
+    # The check that makes the mapping trustworthy: margin is constant within
+    # a session (up to sign between the two seats).
+    for gid in np.unique(g)[:2000]:
+        ys = np.abs(y[g == gid])
+        if np.isfinite(ys).any() and not np.allclose(ys, ys[0], equal_nan=True):
+            raise SystemExit(f"|margin| varies within session {gid} -- the row "
+                             "-> session mapping is wrong, refusing to train")
     print(f"  {int(g.max())+1} sessions, ratings "
           f"{np.nanmin(rating):.0f}-{np.nanmax(rating):.0f}")
 

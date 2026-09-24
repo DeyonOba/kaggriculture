@@ -45,6 +45,17 @@ sys.path.insert(0, REPO)
 TPD = 24
 
 
+def is_held_out(path):
+    """rl/train.py reserves session ids with id % 5 == 0 as its held-out
+    field eval. Anything that FITS on outcomes -- the trunk, a value head --
+    must not see them, or the honest eval scores memorised games. Both trunk
+    builders drew from every session before this existed."""
+    try:
+        return int(os.path.basename(path).split("-")[-1][:-5]) % 5 == 0
+    except ValueError:
+        return False
+
+
 def extract(spec):
     """Replay one session; return (samples, boards) for both seats.
 
@@ -153,9 +164,18 @@ def main() -> None:
     ap.add_argument("--arm", default=os.environ.get("KAGG_BOARD_ARM", "T_crop_103"))
     ap.add_argument("--out", default=os.path.join(REPO, "rl", "datasets",
                                                   "session_bc.jsonl"))
+    ap.add_argument("--include-held-out", action="store_true",
+                    help="keep the id %% 5 == 0 sessions train.py holds out. "
+                         "Only for a dataset that will never train anything "
+                         "PPO is then evaluated on")
     args = ap.parse_args()
 
     paths = pick_sessions(args.n, True, args.seed)
+    if not args.include_held_out:
+        before = len(paths)
+        paths = [p for p in paths if not is_held_out(p)]
+        print(f"  excluded {before - len(paths)} PPO held-out sessions "
+              f"(id % 5 == 0); {len(paths)} remain")
     # Outcomes come from the index, not from a second replay: `finals` is
     # already there, and margin is seat-relative.
     import json as _json
@@ -183,9 +203,14 @@ def main() -> None:
     B = np.lib.format.open_memmap(board_path, mode="w+", dtype="float16",
                                   shape=(cap, n_ch, 10, 10))
     t0, n_s, n_b = time.time(), 0, 0
+    # The sessions ACTUALLY written, in order, with their sample counts. The
+    # trunk pretrainer used to reconstruct this from pick_sessions(seed) and
+    # bi // 60, which breaks the moment a session is filtered or a day is
+    # dropped; now it reads this file.
+    used = []
     with open(args.out, "w") as fh, Pool(args.procs) as pool:
         jobs = [(p, args.arm) + _outcome(p) for p in paths]
-        for i, res in enumerate(pool.imap(extract, jobs), 1):
+        for i, res in enumerate(pool.imap(extract, jobs), 1):   # ordered
             if res is None:
                 continue
             samples, boards = res
@@ -196,6 +221,9 @@ def main() -> None:
                 smp["bi"] = n_b + k
                 fh.write(json.dumps(smp) + "\n")
             B[n_b:n_b + len(boards)] = boards
+            p_i = paths[i - 1]
+            used.append({"path": p_i[len(REPO) + 1:] if p_i.startswith(REPO) else p_i,
+                         "n": len(samples)})
             n_s += len(samples); n_b += len(boards)
             if i % 200 == 0:
                 print(f"    {i}/{len(paths)} sessions, {n_s:,} samples, "
@@ -203,6 +231,9 @@ def main() -> None:
                       f"{time.time()-t0:.0f}s", flush=True)
     if n_b == 0:
         raise SystemExit("nothing extracted")
+    with open(args.out.replace(".jsonl", "_sessions.json"), "w") as sfh:
+        json.dump({"held_out_excluded": not args.include_held_out,
+                   "arm": args.arm, "seed": args.seed, "sessions": used}, sfh)
     B.flush(); del B
     # Truncate the memmap to what was actually written.
     full = np.load(board_path, mmap_mode="r")[:n_b]

@@ -79,6 +79,15 @@ def _gelu(x):
 def forward_policy(policy, x):
     """Policy structure -> flat action logits."""
     if policy.get("arch") == 2:
+        n_in = len(policy["blocks"][0][0])
+        if len(x) != n_in:
+            # _matvec iterates over the INPUT vector, so a 216-row first
+            # layer fed 168 numbers silently ignores rows 168..215. That is
+            # exactly how every Stage B board arm lost its 48 board columns
+            # without a single error. Refuse instead.
+            raise ValueError(
+                f"policy expects {n_in} inputs, got {len(x)}: the weights and "
+                "the feature vector disagree (missing board trunk output?)")
         h = x
         for w, b, g, beta in policy["blocks"]:
             h = _gelu(_layernorm(_matvec(w, b, h), g, beta))

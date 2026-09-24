@@ -302,7 +302,16 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
         # this line the trunk was serialised nowhere and nnpolicy silently
         # dropped the 48 board columns of a 216-wide h1, so every board arm
         # played with a truncated policy while training on the full one.
-        brd = _board(obs, view.player, dawn_hist, mid_hist, view.day)
+        #
+        # Built only when a plan will be made this step (HeuristicPolicy.act
+        # rebuilds when day_plan_day != view.day, i.e. at hour 0): the tensor
+        # is ~9 board_tensor passes and was being built at all 720 steps for
+        # 30 decisions. On the other 690 steps the provider gets None, so a
+        # plan made unexpectedly mid-day raises instead of reading a stale
+        # board.
+        need_plan = mem.day_plan is None or mem.day_plan_day != view.day
+        brd = (_board(obs, view.player, dawn_hist, mid_hist, view.day)
+               if need_plan else None)
         provider.board = brd
         action = pol.act(view, mem)
         if provider.last_decision is not None:
