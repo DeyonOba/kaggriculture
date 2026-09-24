@@ -1,0 +1,391 @@
+<title>Kaggriculture Replay</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#EDF0EA; --panel:#F7F8F4; --line:#CBD2C6; --ink:#1F2A22; --ink-2:#5B675E; --ink-3:#8A968C;
+  --accent:#2F6F9F; --accent-ink:#FFFFFF; --good:#3E8E5A; --warn:#C98A1B; --bad:#B54545;
+  --t-empty:#E3E7DC; --t-locked:#B9C0B4; --t-locked-hatch:#8F978A; --t-weed:#7A8A3A; --t-struct:#D9CBAA;
+  --t-wheat:#D8B44A; --t-carrot:#E07A3A; --t-tomato:#C93F3F; --t-straw:#D5507A; --t-melon:#4F9D5C;
+  --t-goose:#F1ECDD; --t-cow:#7A6350; --t-sheep:#C3CBD2; --t-ink:#1F2A22; --t-ink-light:#FFFFFF;
+  --unit:#1F2A22; --unit-ink:#FFFFFF; --hand:#2F6F9F; --water:#3E86C7; --shed:#8A7B6B;
+  --grid:#FFFFFF;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#151915; --panel:#1D231E; --line:#33403A; --ink:#D9E0D6; --ink-2:#9AA79E; --ink-3:#6C7A70;
+    --accent:#5E9BC9; --accent-ink:#0F1A24; --good:#5FB27C; --warn:#D9A53A; --bad:#D96A6A;
+    --t-empty:#242B25; --t-locked:#31383A; --t-locked-hatch:#4C555A; --t-weed:#5E6D2A; --t-struct:#5C5140;
+    --t-wheat:#C9A63C; --t-carrot:#D5702F; --t-tomato:#BE3A3A; --t-straw:#C94B72; --t-melon:#469454;
+    --t-goose:#E6E0CF; --t-cow:#8A7360; --t-sheep:#AEB7BF; --t-ink:#151915; --t-ink-light:#F4F4F1;
+    --unit:#F4F4F1; --unit-ink:#151915; --hand:#8AC0E8; --water:#5E9BC9; --shed:#A89887;
+    --grid:#151915;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#151915; --panel:#1D231E; --line:#33403A; --ink:#D9E0D6; --ink-2:#9AA79E; --ink-3:#6C7A70;
+  --accent:#5E9BC9; --accent-ink:#0F1A24; --good:#5FB27C; --warn:#D9A53A; --bad:#D96A6A;
+  --t-empty:#242B25; --t-locked:#31383A; --t-locked-hatch:#4C555A; --t-weed:#5E6D2A; --t-struct:#5C5140;
+  --t-wheat:#C9A63C; --t-carrot:#D5702F; --t-tomato:#BE3A3A; --t-straw:#C94B72; --t-melon:#469454;
+  --t-goose:#E6E0CF; --t-cow:#8A7360; --t-sheep:#AEB7BF; --t-ink:#151915; --t-ink-light:#F4F4F1;
+  --unit:#F4F4F1; --unit-ink:#151915; --hand:#8AC0E8; --water:#5E9BC9; --shed:#A89887;
+  --grid:#151915;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 22px;padding:18px 24px 10px;border-bottom:1px solid var(--line)}
+header h1{font-size:19px;font-weight:600;margin:0;letter-spacing:.01em;text-wrap:balance}
+header .sub{color:var(--ink-2)}
+header select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+.outcome{display:inline-flex;gap:8px;align-items:baseline;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel)}
+.outcome .w{color:var(--good);font-weight:600}.outcome .l{color:var(--bad);font-weight:600}
+main{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:18px;padding:16px 24px 32px;align-items:start}
+@media (max-width:1080px){main{grid-template-columns:1fr}}
+.boards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.farm{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 12px 10px}
+.farm h2{margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);display:flex;justify-content:space-between;gap:8px}
+.farm h2 span{color:var(--ink);letter-spacing:0;text-transform:none;font-weight:500}
+canvas.board{width:100%;max-width:420px;display:block;margin:0 auto;border-radius:6px;cursor:crosshair}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 10px;margin-top:10px}
+.strip div{font-size:12px;color:var(--ink-2)}
+.strip b{display:block;font-size:15px;font-weight:500;color:var(--ink)}
+.strip .money b{font-size:17px}
+.transport{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:18px;display:grid;grid-template-columns:auto 1fr auto;gap:10px 14px;align-items:center}
+.transport .clock{font-size:22px;font-weight:500;min-width:170px}
+.transport .clock small{display:block;font-size:11px;color:var(--ink-2);font-family:var(--sans);letter-spacing:.06em;text-transform:uppercase}
+.transport input[type=range]{width:100%;accent-color:var(--accent)}
+.transport .btns{display:flex;gap:6px;align-items:center}
+button{font:inherit;color:var(--ink);background:var(--ground);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--ink-3)}button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.transport .hint{grid-column:1/-1;font-size:12px;color:var(--ink-3)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:12px;color:var(--ink-2)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1px solid var(--line)}
+aside{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card h3{margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.card h3 .num{text-transform:none;letter-spacing:0;font-weight:400}
+table{border-collapse:collapse;width:100%}
+td,th{padding:3px 4px;text-align:right;font-size:12.5px;vertical-align:middle}
+th{font-weight:500;color:var(--ink-2);text-align:right}
+td:first-child,th:first-child{text-align:left}
+td canvas{display:block}
+.bar{position:relative;height:6px;background:var(--t-empty);border-radius:3px;overflow:hidden;min-width:48px}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:3px}
+.plan{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:12.5px}
+.plan div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted var(--line);padding:2px 0}
+.plan div span:first-child{color:var(--ink-2)}
+.note{font-size:11px;color:var(--ink-3);margin-top:6px}
+.acts{font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+.acts .who{color:var(--ink-2);font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:6px}
+.sig{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.sig div{font-size:11px;color:var(--ink-2)}.sig b{display:block;font-size:14px;font-weight:500;color:var(--ink)}
+canvas.chart{width:100%;height:170px;display:block}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--ground);padding:6px 9px;border-radius:6px;font-size:12px;line-height:1.35;max-width:240px;z-index:9;display:none;font-family:var(--mono);white-space:pre-wrap}
+.foot{grid-column:1/-1;font-size:12px;color:var(--ink-3);padding-top:6px}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+
+<header>
+  <h1>Kaggriculture Replay</h1>
+  <label class="sub">Game <select id="game"></select></label>
+  <span class="outcome" id="outcome"></span>
+  <span class="sub" id="meta"></span>
+</header>
+
+<main>
+  <section>
+    <div class="boards">
+      <div class="farm">
+        <h2>Our farm <span id="me-seat"></span></h2>
+        <canvas class="board" id="b-me" aria-label="our farm"></canvas>
+        <div class="strip" id="s-me"></div>
+      </div>
+      <div class="farm">
+        <h2>Their farm <span id="opp-seat"></span></h2>
+        <canvas class="board" id="b-opp" aria-label="their farm"></canvas>
+        <div class="strip" id="s-opp"></div>
+      </div>
+    </div>
+    <div class="transport">
+      <div class="clock num" id="clock"><small>day &middot; hour</small>&mdash;</div>
+      <input type="range" id="scrub" min="0" max="719" value="0" step="1" aria-label="step">
+      <div class="btns">
+        <button id="back" title="one step back (left arrow)">&lsaquo;</button>
+        <button id="play" class="primary" title="play / pause (space)">Play</button>
+        <button id="fwd" title="one step forward (right arrow)">&rsaquo;</button>
+        <select id="speed" title="steps per tick"><option value="1">1&times;</option><option value="4" selected>4&times;</option><option value="12">12&times;</option><option value="24">24&times;</option></select>
+      </div>
+      <div class="hint">&larr; &rarr; one step &middot; shift + &larr; &rarr; one day &middot; home / end &middot; space plays. Hover a tile for its state.</div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h3>Market <span class="num" id="shops"></span></h3>
+      <table id="market"><thead><tr><th>product</th><th>price</th><th>vs base</th><th>season</th><th>inventory</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h3>Dawn plan <span id="plan-day" class="num"></span></h3>
+      <div class="plan" id="plan"></div>
+      <div class="note">The neural planner's choices at hour 0. Tile and herd heads are standing targets; a negative value is an anchored head, an offset from the heuristic's own anchor for that day.</div>
+    </div>
+    <div class="card">
+      <h3>This step's actions</h3>
+      <div class="acts" id="acts"></div>
+    </div>
+    <div class="card">
+      <h3>What the trainer sees</h3>
+      <div class="sig" id="sig"></div>
+      <canvas class="chart" id="chart"></canvas>
+      <div id="terminal" class="note" style="color:var(--ink-2)"></div>
+    </div>
+    <div class="card">
+      <h3>Shed &amp; seeds</h3>
+      <div class="acts" id="shed"></div>
+    </div>
+  </aside>
+  <div class="foot">Recorded opponent replayed on its own world; our agent plays at temperature 0, so this is the exact game the paired eval scored. A plant shows its age and yield, a blue mark when watered today and an amber edge when a day was missed; an animal shows fed and cared marks.</div>
+</main>
+<div class="tip" id="tip"></div>
+
+<script>
+const GAMES = /*__GAMES__*/null;
+const $ = id => document.getElementById(id);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const MID = "·", MINUS = "−", DASH = "—", PHI = "Φ";
+const money = v => (v < 0 ? MINUS + "$" : "$") + Math.abs(Math.round(v)).toLocaleString();
+const QUAD = ["NW","NE","SW","SE"];
+let gi = 0, t = 0, playing = false, timer = null;
+const G = () => GAMES[gi];
+const S = () => G().steps[t];
+const N = () => G().steps.length;
+
+// ---------------------------------------------------------------- boards
+const CROP_VAR = ["--t-wheat","--t-carrot","--t-tomato","--t-straw","--t-melon"];
+const ANIMAL_VAR = ["--t-goose","--t-cow","--t-sheep"];
+const ANIMAL_GLYPH = ["G","C","S"];
+function drawBoard(canvas, farm){
+  const dpr = window.devicePixelRatio || 1;
+  const size = Math.min(420, canvas.clientWidth || 380);
+  if (canvas.width !== Math.round(size*dpr)) { canvas.width = Math.round(size*dpr); canvas.height = Math.round(size*dpr); }
+  canvas.style.height = size + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const pad = 4, cell = (size - 2*pad) / 10;
+  ctx.fillStyle = css("--grid"); ctx.fillRect(0,0,size,size);
+  const tiles = farm.tiles;
+  for (let y=0;y<10;y++) for (let x=0;x<10;x++){
+    const c = tiles[y][x], px = pad + x*cell, py = pad + y*cell, w = cell-1.5, h = cell-1.5;
+    let fill = css("--t-empty");
+    if (c === 0) fill = css("--t-locked");
+    else if (c === 2) fill = css("--t-weed");
+    else if (Array.isArray(c)) { if (c[0]===3) fill = css("--t-struct"); else if (c[0]===4) fill = css(CROP_VAR[c[1]]||"--t-empty"); else if (c[0]===5) fill = css(ANIMAL_VAR[c[1]]||"--t-empty"); }
+    ctx.fillStyle = fill; ctx.fillRect(px,py,w,h);
+    if (c === 0){ ctx.strokeStyle = css("--t-locked-hatch"); ctx.lineWidth = 1; ctx.beginPath();
+      for (let k=-h;k<w;k+=7){ ctx.moveTo(px+Math.max(0,k), py+Math.max(0,-k)); ctx.lineTo(px+Math.min(w,k+h), py+Math.min(h,h-k)); } ctx.stroke(); }
+    if (c === 2){ ctx.strokeStyle = css("--t-ink-light"); ctx.lineWidth = 1.2; ctx.globalAlpha = .7; ctx.beginPath();
+      const cx = px+w/2, cy = py+h*.72; ctx.moveTo(cx,cy); ctx.lineTo(cx,cy-h*.38); ctx.moveTo(cx,cy-h*.1); ctx.lineTo(cx-w*.2,cy-h*.32); ctx.moveTo(cx,cy-h*.16); ctx.lineTo(cx+w*.2,cy-h*.36); ctx.stroke(); ctx.globalAlpha = 1; }
+    if (Array.isArray(c) && c[0]===3){ ctx.setLineDash([3,3]); ctx.strokeStyle = css("--ink-3"); ctx.strokeRect(px+3,py+3,w-6,h-6); ctx.setLineDash([]);
+      ctx.fillStyle = css("--t-ink"); ctx.font = `500 ${Math.round(cell*.34)}px ${css("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(c[1]?"P":"C", px+w/2, py+h/2); }
+    if (Array.isArray(c) && c[0]===4){
+      const ci = c[1], age = c[2], yl = c[3], wat = c[4], unw = c[5];
+      const inkVar = (ci===0||ci===4) ? "--t-ink" : "--t-ink-light";
+      if (yl>0){ ctx.fillStyle = css(inkVar); ctx.font = `500 ${Math.round(cell*.34)}px ${css("--mono")}`; ctx.textAlign="right"; ctx.textBaseline="alphabetic"; ctx.fillText(String(yl), px+w-3, py+h-4); }
+      ctx.fillStyle = css(inkVar); ctx.globalAlpha=.75; ctx.font = `400 ${Math.round(cell*.26)}px ${css("--mono")}`; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.fillText("d"+age, px+3, py+3); ctx.globalAlpha=1;
+      if (wat){ ctx.fillStyle = css("--water"); ctx.fillRect(px+3, py+h-3, w-6, 2.5); }
+      if (unw>=1){ ctx.strokeStyle = unw>=2?css("--bad"):css("--warn"); ctx.lineWidth = 2; ctx.strokeRect(px+1,py+1,w-2,h-2); }
+    }
+    if (Array.isArray(c) && c[0]===5){
+      const ai = c[1], fed = c[2], cared = c[3], fert = c[4], yl = c[5];
+      const inkVar = ai===1 ? "--t-ink-light" : "--t-ink";
+      ctx.fillStyle = css(inkVar); ctx.font = `600 ${Math.round(cell*.4)}px ${css("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(ANIMAL_GLYPH[ai]||"?", px+w/2, py+h/2+1);
+      const dot = (dx,on,col)=>{ ctx.beginPath(); ctx.arc(px+dx, py+5, 2.6, 0, 6.283); ctx.fillStyle = on?css(col):css("--line"); ctx.fill(); };
+      dot(6, fed, "--good"); dot(13, cared, "--accent");
+      if (fert){ ctx.fillStyle = css("--t-cow"); ctx.fillRect(px+3, py+h-7, 5, 4); }
+      if (yl>0){ ctx.fillStyle = css(inkVar); ctx.font = `500 ${Math.round(cell*.32)}px ${css("--mono")}`; ctx.textAlign="right"; ctx.textBaseline="alphabetic"; ctx.fillText(String(yl), px+w-3, py+h-4); }
+    }
+  }
+  ctx.strokeStyle = css("--shed"); ctx.lineWidth = 1.5; ctx.setLineDash([2,3]);
+  ctx.strokeRect(pad+4*cell+1, pad+4*cell+1, 2*cell-3, 2*cell-3); ctx.setLineDash([]);
+  ctx.strokeStyle = css("--ink-3"); ctx.lineWidth = 1.5; ctx.beginPath();
+  ctx.moveTo(pad+5*cell-.75, pad); ctx.lineTo(pad+5*cell-.75, size-pad); ctx.moveTo(pad, pad+5*cell-.75); ctx.lineTo(size-pad, pad+5*cell-.75); ctx.stroke();
+  const per = {};
+  farm.hands.forEach(([x,y])=>{ const k = x+","+y; per[k] = (per[k]||0)+1; });
+  Object.entries(per).forEach(([k,n])=>{ const [x,y]=k.split(",").map(Number); const cx = pad+x*cell+cell*.3, cy = pad+y*cell+cell*.62;
+    ctx.beginPath(); ctx.arc(cx,cy,cell*.17,0,6.283); ctx.fillStyle = css("--hand"); ctx.fill(); ctx.strokeStyle = css("--grid"); ctx.lineWidth=1.2; ctx.stroke();
+    if (n>1){ ctx.fillStyle = css("--unit-ink"); ctx.font = `600 ${Math.round(cell*.24)}px ${css("--mono")}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(String(n), cx, cy+.5); } });
+  const fx = farm.farmer[0], fy = farm.farmer[1]; const cx = pad+fx*cell+cell*.68, cy = pad+fy*cell+cell*.62;
+  ctx.beginPath(); ctx.arc(cx,cy,cell*.2,0,6.283); ctx.fillStyle = css("--unit"); ctx.fill(); ctx.strokeStyle = css("--grid"); ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle = css("--unit-ink"); ctx.font = `600 ${Math.round(cell*.26)}px ${css("--sans")}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("F", cx, cy+.5);
+}
+
+function describeTile(c, x, y, farm){
+  const g = G();
+  const at = [];
+  if (farm.farmer[0]===x && farm.farmer[1]===y) at.push("farmer");
+  const nh = farm.hands.filter(([hx,hy])=>hx===x&&hy===y).length; if (nh) at.push(nh+" hand"+(nh>1?"s":""));
+  const q = QUAD[(y>=5?2:0)+(x>=5?1:0)];
+  let s;
+  if (c===0) s = "locked";
+  else if (c===1) s = "empty";
+  else if (c===2) s = "WEED " + DASH + " needs DIG";
+  else if (c[0]===3) s = (c[1]?"pasture":"coop")+", empty";
+  else if (c[0]===4) s = `${g.crops[c[1]]||"?"} ${MID} age ${c[2]} ${MID} yield ${c[3]}\n${c[4]?"watered today":"not watered"}${c[5]>=1?` ${MID} ${c[5]} day${c[5]>1?"s":""} unwatered`:""}`;
+  else if (c[0]===5) s = `${g.animals[c[1]]||"?"} ${MID} ${c[2]?"fed":"unfed"} ${MID} ${c[3]?"cared":"uncared"}${c[4]?` ${MID} fertilizer ready`:""} ${MID} yield ${c[5]}`;
+  return `(${x},${y}) ${q}\n${s}${at.length?"\n"+at.join(", "):""}`;
+}
+function hookHover(canvas, which){
+  const tip = $("tip");
+  canvas.addEventListener("mousemove", e=>{
+    const r = canvas.getBoundingClientRect(); const size = r.width, pad = 4, cell = (size-2*pad)/10;
+    const x = Math.floor((e.clientX-r.left-pad)/cell), y = Math.floor((e.clientY-r.top-pad)/cell);
+    if (x<0||y<0||x>9||y>9){ tip.style.display="none"; return; }
+    const farm = S()[which];
+    tip.textContent = describeTile(farm.tiles[y][x], x, y, farm);
+    tip.style.display = "block"; tip.style.left = (e.clientX+14)+"px"; tip.style.top = (e.clientY+14)+"px";
+  });
+  canvas.addEventListener("mouseleave", ()=>{ tip.style.display="none"; });
+}
+
+// ---------------------------------------------------------------- panels
+function strip(el, f){
+  const c = f.counts;
+  el.innerHTML = `
+    <div class="money">money<b class="num">${money(f.money)}</b></div>
+    <div>hands<b class="num">${f.hands.length}</b></div>
+    <div>quadrants<b class="num">${f.quadrants.join(" ")}</b></div>
+    <div>plants<b class="num">${c.plants}</b></div>
+    <div>animals<b class="num">${c.animals}</b></div>
+    <div>weeds<b class="num" style="color:${c.weeds?'var(--warn)':'inherit'}">${c.weeds}</b></div>
+    <div>empty<b class="num">${c.empty}</b></div>
+    <div>locked<b class="num">${c.locked}</b></div>`;
+}
+let sparkCache = {};
+function marketTable(){
+  const g = G(), s = S(), tb = $("market").querySelector("tbody");
+  if (tb.children.length !== g.products.length){
+    tb.innerHTML = g.products.map((p,i)=>`<tr><td>${p.toLowerCase()}</td><td class="num" id="px${i}"></td><td><div class="bar"><i id="bar${i}"></i></div></td><td><canvas id="sp${i}" width="90" height="22" style="width:90px;height:22px"></canvas></td><td class="num" id="inv${i}"></td></tr>`).join("");
+    sparkCache = {};
+  }
+  g.products.forEach((p,i)=>{
+    const px = s.market.prices[i], base = g.base_prices[i];
+    $("px"+i).textContent = px.toFixed(1);
+    const ratio = Math.max(0, Math.min(2, px/base));
+    const bar = $("bar"+i); bar.style.width = (ratio*50)+"%"; bar.style.background = ratio<0.7?"var(--bad)":ratio>1.15?"var(--good)":"var(--accent)";
+    $("inv"+i).textContent = s.market.inv[i].toLocaleString();
+    const cv = $("sp"+i), key = gi+":"+i;
+    if (!sparkCache[key]){ sparkCache[key] = g.steps.map(st=>st.market.prices[i]); }
+    drawSpark(cv, sparkCache[key], t, base);
+  });
+  $("shops").textContent = s.market.shops.length ? ` ${MID} shops: ` + s.market.shops.map(x=>x.toLowerCase().replace(/_/g," ")).join(", ") : ` ${MID} no shops open`;
+}
+function drawSpark(cv, arr, cur, base){
+  const dpr = window.devicePixelRatio||1; if (cv.width !== 90*dpr){ cv.width = 90*dpr; cv.height = 22*dpr; }
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,90,22);
+  let lo = base, hi = base; for (const v of arr){ if (v<lo) lo=v; if (v>hi) hi=v; }
+  const sp = hi-lo || 1;
+  const X = i => i/(arr.length-1)*88+1, Y = v => 20 - (v-lo)/sp*18;
+  ctx.strokeStyle = css("--line"); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(1,Y(base)); ctx.lineTo(89,Y(base)); ctx.stroke();
+  ctx.strokeStyle = css("--ink-2"); ctx.lineWidth = 1.2; ctx.beginPath(); arr.forEach((v,i)=>{ i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v)); }); ctx.stroke();
+  ctx.fillStyle = css("--accent"); ctx.beginPath(); ctx.arc(X(cur),Y(arr[cur]),2.2,0,6.283); ctx.fill();
+}
+function planPanel(){
+  const g = G(), s = S(), p = g.plans[String(s.day)];
+  $("plan-day").textContent = ` ${MID} day ${s.day}`;
+  if (!p){ $("plan").innerHTML = `<div><span>no neural plan recorded</span><span></span></div>`; return; }
+  $("plan").innerHTML = Object.entries(p).map(([k,v])=>`<div><span>${k.replace(/_/g," ")}</span><span class="num">${v===null?DASH:v}</span></div>`).join("");
+}
+const fmtOp = op => Array.isArray(op) ? op.join(" ") : String(op);
+function actsPanel(){
+  const s = S();
+  const one = (who, a) => { if (!a) return `<div class="who">${who}</div>(none)`;
+    const lines = [`farmer  ${fmtOp(a.farmer)}`];
+    (a.hands||[]).forEach((h,i)=>lines.push(`hand ${i+1}  ${fmtOp(h)}`));
+    (a.market||[]).forEach(m=>lines.push(`market  ${fmtOp(m)}`));
+    return `<div class="who">${who}</div>` + lines.join("\n"); };
+  $("acts").innerHTML = one("ours", s.act.me) + "\n" + one("theirs", s.act.opp);
+}
+function shedPanel(){
+  const s = S();
+  const fmt = o => Object.keys(o).length ? Object.entries(o).map(([k,v])=>`${k.toLowerCase().padEnd(11)} ${String(v).padStart(4)}`).join("\n") : "(empty)";
+  $("shed").innerHTML = `<div class="who">shed</div>${fmt(s.shed)}\n<div class="who">seeds in hand</div>${fmt(s.seeds)}`;
+}
+let sigCache = null;
+function sigPanel(){
+  const g = G(), s = S();
+  $("sig").innerHTML = `<div>portfolio<b class="num">${money(s.sig.pv)}</b></div><div>asset lead<b class="num">${money(s.sig.asset_lead)}</b></div><div>money lead<b class="num">${money(s.sig.money_lead)}</b></div><div>${PHI} (lead)<b class="num">${s.sig.phi>=0?"+":""}${s.sig.phi.toFixed(2)}</b></div>`;
+  if (!sigCache || sigCache.gi!==gi){ sigCache = { gi, pv: g.steps.map(x=>x.sig.pv), al: g.steps.map(x=>x.sig.asset_lead), ml: g.steps.map(x=>x.sig.money_lead), phi: g.steps.map(x=>x.sig.phi) }; }
+  drawChart($("chart"), sigCache, t);
+  const m = g.final.margin, tie = 2*Math.tanh(m/20000), r = (g.final.win?15:-15) + tie;
+  $("terminal").innerHTML = `Season end: ours ${money(g.final.me)} ${MID} theirs ${money(g.final.opp)} ${MID} margin <span class="num">${money(m)}</span>. Trainer's terminal reward under win-first: <span class="num">${r>=0?"+":""}${r.toFixed(2)}</span> (${g.final.win?"+15":MINUS+"15"} win term ${tie>=0?"+":MINUS}${Math.abs(tie).toFixed(2)} bounded margin).`;
+}
+function drawChart(cv, d, cur){
+  const dpr = window.devicePixelRatio||1, W = cv.clientWidth||340, H = 170;
+  if (cv.width !== Math.round(W*dpr)){ cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); }
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const L = 46, R = 30, T = 14, B = 22, n = d.pv.length;
+  let lo = 0, hi = 1;
+  for (const arr of [d.pv, d.al, d.ml]) for (const v of arr){ if (v<lo) lo=v; if (v>hi) hi=v; }
+  const nice = v => Math.pow(10, Math.floor(Math.log10(Math.max(1,Math.abs(v))))); const stepv = nice((hi-lo)/4);
+  lo = Math.floor(lo/stepv)*stepv; hi = Math.ceil(hi/stepv)*stepv;
+  const X = i => L + i/(n-1)*(W-L-R), Y = v => T + (hi-v)/(hi-lo)*(H-T-B), Yphi = v => T + (15-v)/30*(H-T-B);
+  ctx.font = `10px ${css("--mono")}`; ctx.fillStyle = css("--ink-3"); ctx.strokeStyle = css("--line"); ctx.lineWidth = 1;
+  for (let v=lo; v<=hi+1e-9; v+=stepv){ ctx.beginPath(); ctx.moveTo(L,Y(v)); ctx.lineTo(W-R,Y(v)); ctx.stroke(); ctx.textAlign="right"; ctx.textBaseline="middle"; ctx.fillText((v/1000).toFixed(0)+"k", L-4, Y(v)); }
+  ctx.textAlign="left"; [15,0,-15].forEach(v=>{ ctx.fillText((v>0?"+":"")+v, W-R+4, Yphi(v)); });
+  ctx.textAlign="center"; ctx.textBaseline="top"; for (let dd=0; dd<=30; dd+=5){ const i = Math.min(n-1, dd*24); ctx.fillText("d"+dd, X(i), H-B+5); }
+  const line = (arr, col, Yf, w) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); arr.forEach((v,i)=>{ i?ctx.lineTo(X(i),Yf(v)):ctx.moveTo(X(i),Yf(v)); }); ctx.stroke(); };
+  line(d.pv, css("--ink-3"), Y, 1.2); line(d.al, css("--t-melon"), Y, 1.4); line(d.ml, css("--t-carrot"), Y, 1.4); line(d.phi, css("--accent"), Yphi, 1.8);
+  ctx.strokeStyle = css("--accent"); ctx.lineWidth = 1; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(X(cur),T); ctx.lineTo(X(cur),H-B); ctx.stroke(); ctx.setLineDash([]);
+  ctx.font = `11px ${css("--sans")}`; ctx.textAlign="left"; ctx.textBaseline="top";
+  const leg = [["portfolio",css("--ink-3")],["asset lead",css("--t-melon")],["money lead",css("--t-carrot")],[PHI+" lead (right axis)",css("--accent")]];
+  let lx = L+2; leg.forEach(([name,col])=>{ ctx.fillStyle = col; ctx.fillRect(lx, 4, 10, 3); ctx.fillStyle = css("--ink-2"); ctx.fillText(name, lx+13, 0); lx += 13 + ctx.measureText(name).width + 12; });
+}
+function legend(){
+  const items = [["--t-wheat","wheat"],["--t-carrot","carrot"],["--t-tomato","tomato"],["--t-straw","strawberry"],["--t-melon","melon"],["--t-goose","goose G"],["--t-cow","cow C"],["--t-sheep","sheep S"],["--t-weed","weed"],["--t-struct","empty coop / pasture"],["--t-empty","empty"],["--t-locked","locked"]];
+  $("legend").innerHTML = items.map(([v,n])=>`<span><i style="background:var(${v})"></i>${n}</span>`).join("") + `<span><i style="background:var(--unit);border-radius:50%"></i>farmer</span><span><i style="background:var(--hand);border-radius:50%"></i>hand</span>`;
+}
+
+// ---------------------------------------------------------------- render
+function render(){
+  const s = S();
+  $("clock").innerHTML = `<small>day ${MID} hour</small>day ${String(s.day).padStart(2)} ${MID} ${String(s.hour).padStart(2,"0")}:00 <span style="color:var(--ink-3);font-size:13px">step ${t}</span>`;
+  $("scrub").value = t;
+  drawBoard($("b-me"), s.me); drawBoard($("b-opp"), s.opp);
+  strip($("s-me"), s.me); strip($("s-opp"), s.opp);
+  marketTable(); planPanel(); actsPanel(); shedPanel(); sigPanel();
+}
+function setGame(i){
+  gi = i; t = 0; sigCache = null; sparkCache = {};
+  const g = G();
+  $("scrub").max = N()-1;
+  $("me-seat").textContent = `seat ${g.our_seat}`;
+  const rr = g.ratings && g.ratings[g.tape_seat];
+  $("opp-seat").textContent = `seat ${g.tape_seat}${rr?` ${MID} rated ${Math.round(rr)}`:""}`;
+  $("outcome").innerHTML = g.final.win ? `<span class="w">WIN</span><span class="num">by ${money(g.final.margin)}</span>` : `<span class="l">LOSS</span><span class="num">by ${money(-g.final.margin)}</span>`;
+  $("meta").textContent = `${g.session} ${MID} seed ${g.seed} ${MID} ${g.weights ? g.weights.split("/").slice(-2).join("/") : "heuristic"}`;
+  legend(); render();
+}
+function step(d){ t = Math.max(0, Math.min(N()-1, t+d)); render(); }
+function setPlay(on){ playing = on; $("play").textContent = on?"Pause":"Play"; if (timer){ clearInterval(timer); timer=null; }
+  if (on) timer = setInterval(()=>{ if (t>=N()-1){ setPlay(false); return; } step(+$("speed").value); }, 70); }
+
+$("game").innerHTML = GAMES.map((g,i)=>`<option value="${i}">${g.label}</option>`).join("");
+$("game").addEventListener("change", e=>{ setPlay(false); setGame(+e.target.value); });
+$("scrub").addEventListener("input", e=>{ t = +e.target.value; render(); });
+$("back").addEventListener("click", ()=>step(-1)); $("fwd").addEventListener("click", ()=>step(1));
+$("play").addEventListener("click", ()=>setPlay(!playing));
+document.addEventListener("keydown", e=>{
+  if (e.target.tagName==="SELECT"||e.target.tagName==="INPUT") return;
+  if (e.key==="ArrowRight"){ step(e.shiftKey?24:1); e.preventDefault(); }
+  else if (e.key==="ArrowLeft"){ step(e.shiftKey?-24:-1); e.preventDefault(); }
+  else if (e.key==="Home"){ t=0; render(); } else if (e.key==="End"){ t=N()-1; render(); }
+  else if (e.key===" "){ setPlay(!playing); e.preventDefault(); }
+});
+window.addEventListener("resize", render);
+hookHover($("b-me"), "me"); hookHover($("b-opp"), "opp");
+setGame(0);
+</script>
