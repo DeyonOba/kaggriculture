@@ -118,7 +118,25 @@ def policy_layers(net):
             [w, b, ln.weight.detach().cpu().numpy().tolist(), ln.bias.detach().cpu().numpy().tolist()]
         )
     w, b = _lin(net.logits)
-    return {"arch": 2, "blocks": blocks, "out": [w, b]}
+    out = {"arch": 2, "blocks": blocks, "out": [w, b]}
+    # The conv trunk MUST travel with the policy. Without this the weights
+    # file carried a 216-input h1 and inference fed it 168 features, and
+    # nnpolicy._matvec iterates over the INPUT vector -- so rows 168..215,
+    # exactly the 48 board columns, were never touched and no error was
+    # raised. Every Stage B board arm acted on a silently truncated policy.
+    if getattr(net, "board", None) is not None:
+        t = net.board
+        out["board"] = {
+            "c1w": t.c1.weight.detach().cpu().numpy().tolist(),
+            "c1b": t.c1.bias.detach().cpu().numpy().tolist(),
+            "c2w": t.c2.weight.detach().cpu().numpy().tolist(),
+            "c2b": t.c2.bias.detach().cpu().numpy().tolist(),
+            "lnw": t.ln.weight.detach().cpu().numpy().tolist(),
+            "lnb": t.ln.bias.detach().cpu().numpy().tolist(),
+            "fcw": t.fc.weight.detach().cpu().numpy().tolist(),
+            "fcb": t.fc.bias.detach().cpu().numpy().tolist(),
+        }
+    return out
 
 
 def value_layers(vnet):

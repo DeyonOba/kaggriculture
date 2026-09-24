@@ -90,6 +90,51 @@ def forward_policy(policy, x):
     return _matvec(layers[2][0], layers[2][1], h)
 
 
+def forward_board(bl, t):
+    """(C,10,10) -> (48,) matching rl.common.BoardTrunk exactly.
+
+    numpy, not pure python: the bundle already ships numpy (the S4 net
+    variant inlines a numpy forward at 0.3 ms) and a 103x32 3x3 convolution
+    in interpreted loops would not fit the 60 s season budget.
+    """
+    import numpy as np
+
+    def conv3(x, w, b):
+        # x (Ci,H,W), w (Co,Ci,3,3) -> (Co,H,W), zero padding 1
+        ci, h, wd = x.shape
+        xp = np.zeros((ci, h + 2, wd + 2), dtype=np.float32)
+        xp[:, 1:h + 1, 1:wd + 1] = x
+        co = w.shape[0]
+        out = np.empty((co, h, wd), dtype=np.float32)
+        cols = np.stack([xp[:, i:i + h, j:j + wd].reshape(ci, -1)
+                         for i in range(3) for j in range(3)])      # (9,Ci,HW)
+        cols = cols.transpose(1, 0, 2).reshape(ci * 9, -1)          # (Ci*9,HW)
+        wm = w.transpose(1, 2, 3, 0).reshape(ci * 9, co)            # (Ci*9,Co)
+        out = (cols.T @ wm).T.reshape(co, h, wd) + b[:, None, None]
+        return out
+
+    def gelu(x):
+        # exact erf form, as nn.GELU() defaults to
+        from math import sqrt
+        return 0.5 * x * (1.0 + np.vectorize(_erf)(x / sqrt(2.0)))
+
+    x = np.asarray(t, dtype=np.float32)
+    h = gelu(conv3(x, np.asarray(bl["c1w"], np.float32),
+                   np.asarray(bl["c1b"], np.float32)))
+    h = gelu(conv3(h, np.asarray(bl["c2w"], np.float32),
+                   np.asarray(bl["c2b"], np.float32)))
+    g = np.concatenate([h.mean((1, 2)), h.max((1, 2))])
+    mu, var = g.mean(), g.var()
+    g = (g - mu) / np.sqrt(var + 1e-5)
+    g = g * np.asarray(bl["lnw"], np.float32) + np.asarray(bl["lnb"], np.float32)
+    return gelu(np.asarray(bl["fcw"], np.float32) @ g
+                + np.asarray(bl["fcb"], np.float32)).tolist()
+
+
+def _erf(v):
+    return math.erf(v)
+
+
 def forward_value(value_layers, x):
     """Worker-side value estimate ([(W,b),...] GELU MLP); 0.0 if absent."""
     if not value_layers:
@@ -157,7 +202,21 @@ class NeuralPolicy:
             return plan
         x = features.encode(view, memory)
         head_masks = features.masks(view)
-        logits = forward_policy(self.layers["policy"], x)
+        bl = self.layers["policy"].get("board")
+        board = getattr(self, "board", None)
+        xp = x
+        if bl is not None:
+            if board is None:
+                raise ValueError(
+                    "policy weights carry a board trunk but no board tensor "
+                    "was supplied -- set provider.board before act()")
+            # ONLY the policy sees the trunk output. ValueNet has no board and
+            # takes the bare 168; feeding it the concatenated 216 walked off
+            # the end of its first weight matrix, and act_safe swallowed the
+            # IndexError into a silent heuristic fallback -- zero records,
+            # status DONE.
+            xp = list(x) + forward_board(bl, board)
+        logits = forward_policy(self.layers["policy"], xp)
         value = forward_value(self.layers.get("value"), x)
         choices, logprob = choose(
             logits, head_masks, rng=self.rng, temperature=self.temperature

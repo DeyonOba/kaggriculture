@@ -298,6 +298,12 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
         last_view["v"] = view
         mem.observe(view)
         provider.last_decision = None
+        # The board must reach the ACTING policy, not just the record. Until
+        # this line the trunk was serialised nowhere and nnpolicy silently
+        # dropped the 48 board columns of a 216-wide h1, so every board arm
+        # played with a truncated policy while training on the full one.
+        brd = _board(obs, view.player, dawn_hist, mid_hist, view.day)
+        provider.board = brd
         action = pol.act(view, mem)
         if provider.last_decision is not None:
             x, m, choices, logprob, value = provider.last_decision
@@ -310,8 +316,7 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
                     "value": value,
                     "pv": portfolio_value(view),
                     "stock": stock_value(view),
-                    "board": _board(obs, view.player, dawn_hist,
-                                    mid_hist, view.day),
+                    "board": brd,
                 }
             )
         return action
