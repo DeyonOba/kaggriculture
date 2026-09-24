@@ -330,9 +330,89 @@ def _episode_advantages(ep, shaping_w, legacy=False):
     return adv, ret
 
 
+# Rating bins shared by the curriculum, the in-loop eval and rl/session_eval.py.
+EDGES = [(0, 600), (600, 1000), (1000, 1500), (1500, 2000), (2000, 2500), (2500, 99999)]
+EVAL_PER_BIN = 175   # rl/session_eval.py's draw; --session-mix eval matches its composition
+
+
+def _eval_band_weights(idx_path, edges=None, per_bin=EVAL_PER_BIN):
+    """Per-bin weights equal to the paired eval's composition.
+
+    The eval draws `per_bin` rated held-out seats a bin, or every seat when a
+    bin has fewer (0-600 holds 64, 600-1000 holds 21), so its composition is
+    min(count, per_bin) normalised. Training opponents are then drawn from the
+    TRAIN sessions with these weights: the held-out set fixes the weights and
+    never supplies an opponent.
+    """
+    from rl import session_eval
+    edges = EDGES if edges is None else edges
+    if list(session_eval.EDGES) != list(edges):
+        raise RuntimeError("rl/session_eval.EDGES and rl/train.EDGES disagree")
+    ent = session_eval.held_out_entries(idx_path, seed=0, per_bin=per_bin)
+    counts = [sum(1 for x in ent if x[2] == b) for b in range(len(edges))]
+    tot = float(sum(counts)) or 1.0
+    return [c / tot for c in counts]
+
+
+def _draw_opponent(rng, roll, entries, bins, unrated, bin_wins, band_w,
+                   session_mix, session_frac, opp_bundles, league, snapshots):
+    """One episode's opponent, and the learner's seat when it is a session.
+
+    Returns (opp_spec, side_or_None).
+
+    session_mix
+      frontier  the legacy curriculum: 70% of session draws from the first
+                bin whose rolling win rate is below 0.55, 30% from any rated
+                entry. In Stage B2 the frontier never left the 0-600 bin (its
+                win rate peaked at 27%), so ~35% of ALL episodes were against
+                0-600 tapes and ~35-42% against the heuristic, while the eval
+                is 89% opponents rated 1000+. Board arms beat that training
+                mix by $13-19k and lost or tied held out.
+      eval      draw the BIN with the paired eval's band weights, then an
+                entry from it: train on the deployment distribution.
+      uniform   equal weight per non-empty bin.
+
+    The non-session remainder keeps the legacy split among bundles / league /
+    heuristic / snapshots (40 / 16 / 28 / 16 with fall-throughs), rescaled to
+    1 - session_frac, so session_frac=0.5 with 'frontier' IS the old code.
+    """
+    nb = len(bins)
+    if (entries or unrated) and roll < session_frac:
+        if not entries:
+            path, script_side = rng.choice(unrated)
+        elif session_mix in ("eval", "uniform"):
+            w = ([band_w[b] if bins[b] else 0.0 for b in range(nb)]
+                 if session_mix == "eval" else
+                 [1.0 if bins[b] else 0.0 for b in range(nb)])
+            if sum(w) <= 0:
+                w = [1.0 if bins[b] else 0.0 for b in range(nb)]
+            b = rng.choices(range(nb), weights=w)[0]
+            path, script_side, _ = rng.choice(bins[b])
+        else:
+            rates = [w_ / g for w_, g in bin_wins]
+            frontier = next((b for b in range(nb) if bins[b] and rates[b] < 0.55), None)
+            if frontier is not None and rng.random() < 0.7:
+                path, script_side, _ = rng.choice(bins[frontier])
+            elif not unrated or rng.random() < 0.8:
+                path, script_side, _ = rng.choice(entries)
+            else:
+                path, script_side = rng.choice(unrated)
+        return ("session", path, script_side), 1 - script_side
+    rest = max(1e-9, 1.0 - session_frac)
+    u = (roll - session_frac) / rest if roll >= session_frac else rng.random()
+    if opp_bundles and u < 0.40:
+        return ("bundle", rng.choice(opp_bundles)), None
+    if league and u < 0.56:
+        return ("league", rng.choice(league[-4:])), None
+    if u < 0.84 or not snapshots:
+        return "heuristic", None
+    return ("snapshot", rng.choice(snapshots[-5:])), None
+
+
 def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bundles=(),
               prior_net=None, prior_kl=0.0,
-              patience=4, legacy_shaping=False, eval_per_bin=3):
+              patience=4, legacy_shaping=False, eval_per_bin=3,
+              session_mix="frontier", session_frac=0.5):
     snapshots = []
     league = []          # weight paths of every new-best: future opponents
     best_score = -1.0
@@ -350,7 +430,6 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
     # (session, script_side) entry binned by that opponent's rating at game
     # time. Frontier = first bin with rolling win rate < 0.55; rl-v9 ladder:
     # 0.85 / 0.10 / 0 / 0 / 0 / 0 -> frontier is the 600-1000 bin.
-    EDGES = [(0, 600), (600, 1000), (1000, 1500), (1500, 2000), (2000, 2500), (2500, 99999)]
     NB = len(EDGES)
     entries = []          # (path, script_side, bin)
     unrated = []          # (path, winner script_side)
@@ -372,6 +451,13 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
     entry_bin = {(p, ss): b for p, ss, b in entries}
     print(f"session pool: {len(train_sessions)} train / {len(held_out)} held-out; "
           f"rating-bins={[len(b) for b in bins]} unrated={len(unrated)}")
+    band_w = [1.0 / NB] * NB
+    if session_mix == "eval":
+        band_w = _eval_band_weights("rl/datasets/session_index.json")
+    print(f"opponent mix: sessions {session_frac:.0%}, drawn by '{session_mix}'"
+          + (f" with band weights {[round(w, 3) for w in band_w]}"
+             if session_mix != "frontier" else "")
+          + "; remainder bundles/league/heuristic/snapshots 40/16/28/16")
     # Gates: the heuristic plus every incumbent bundle. Training against ONE
     # static incumbent breeds a brittle exploiter (measured: a v3 < rl-v1 <
     # exploiter < v3 cycle). Selection is PROFIT-first: mean final money
@@ -389,27 +475,10 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
         rng = random.Random(it)
         for e in range(episodes):
             roll = rng.random()
-            side = e % 2
-            if train_sessions and roll < 0.50:
-                # Curriculum: 70% mass on the frontier rating bin, 30% anywhere.
-                rates = [w / g for w, g in bin_wins]
-                frontier = next((b for b in range(NB) if bins[b] and rates[b] < 0.55), None)
-                if frontier is not None and rng.random() < 0.7:
-                    path, script_side, _ = rng.choice(bins[frontier])
-                elif entries and (not unrated or rng.random() < 0.8):
-                    path, script_side, _ = rng.choice(entries)
-                else:
-                    path, script_side = rng.choice(unrated)
-                opp = ("session", path, script_side)
-                side = 1 - script_side
-            elif opp_bundles and roll < 0.70:
-                opp = ("bundle", rng.choice(opp_bundles))
-            elif league and roll < 0.78:
-                opp = ("league", rng.choice(league[-4:]))
-            elif roll < 0.92 or not snapshots:
-                opp = "heuristic"
-            else:
-                opp = ("snapshot", rng.choice(snapshots[-5:]))
+            opp, sess_side = _draw_opponent(
+                rng, roll, entries, bins, unrated, bin_wins, band_w,
+                session_mix, session_frac, opp_bundles, league, snapshots)
+            side = sess_side if sess_side is not None else e % 2
             jobs.append(
                 {"weights_path": wpath, "temperature": 1.0,
                  "seed": 10_000 + it * episodes + e, "side": side,
@@ -822,6 +891,17 @@ def main():
                     help="held-out session games per rating bin at each eval. "
                          "3 -> 18 games, se ~0.1: telemetry, not a verdict. "
                          "The verdict is rl/session_eval.py on the final nets")
+    ap.add_argument("--session-mix", choices=("frontier", "eval", "uniform"),
+                    default="frontier",
+                    help="how session opponents are drawn across rating bins. "
+                         "frontier: legacy, 70%% on the first bin below a 0.55 "
+                         "win rate (stuck at 0-600 all of Stage B2). eval: the "
+                         "paired eval's band weights -- the deployment "
+                         "distribution. uniform: equal per bin")
+    ap.add_argument("--session-frac", type=float, default=0.5,
+                    help="share of episodes against recorded sessions; the rest "
+                         "is bundles/league/heuristic/snapshots in the legacy "
+                         "40/16/28/16 split. The eval has no heuristic games")
     ap.add_argument("--plateau-cool", type=float, default=None,
                     help="LR multiplier per eval without improvement (1.0 = off; residual argmax evals stay flat by design)")
     ap.add_argument("--prior-pt", default=None, help="checkpoint to use as the frozen prior for --prior-kl (default: the resumed/BC net)")
@@ -932,6 +1012,7 @@ def main():
             opp_bundles=bundles, patience=args.patience,
             prior_net=prior_net, prior_kl=args.prior_kl,
             legacy_shaping=args.legacy_shaping, eval_per_bin=args.eval_per_bin,
+            session_mix=args.session_mix, session_frac=args.session_frac,
         )
 
 
