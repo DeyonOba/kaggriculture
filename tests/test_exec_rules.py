@@ -185,11 +185,39 @@ def test_quadq_allocates_hands_by_pending_work():
     assert len(actions) == 4
 
 
+def test_evesell_walks_produce_in_before_the_hour_0_dump():
+    # a unit three tiles from the shed, standing on a dry plant, carrying 4
+    # strawberries at hour 21: shipped, it waters; evesell, it walks in
+    obs = _obs(day=14, hour=21)
+    obs["farms"][0]["farmer"] = [1, 4]
+    obs["farms"][0]["tiles"][4][1] = _plant("STRAWBERRY", planted_day=4, yield_units=0, unwatered=1)
+    obs["private"]["inventories"] = [{"STRAWBERRY": 4}]
+    view, plan = _plan(obs)
+    tasks = scheduler.build_tasks(view, plan)
+    assert scheduler.assign(view, plan, tasks)[0][0] == "WATER"
+    scheduler.set_exec("evesell")
+    assert scheduler.assign(view, plan, tasks)[0][0] == "EAST"
+    # too early to leave (arrive by 22 from distance 3 -> leave at 19)
+    obs["hour"] = 15
+    view, plan = _plan(obs)
+    assert scheduler.assign(view, plan, scheduler.build_tasks(view, plan))[0][0] == "WATER"
+    # not worth the walk with a small load
+    obs["hour"] = 21
+    obs["private"]["inventories"] = [{"STRAWBERRY": 2}]
+    view, plan = _plan(obs)
+    assert scheduler.assign(view, plan, scheduler.build_tasks(view, plan))[0][0] == "WATER"
+    # at the shed tile it drops
+    obs["farms"][0]["farmer"] = [4, 4]
+    obs["private"]["inventories"] = [{"STRAWBERRY": 4}]
+    view, plan = _plan(obs)
+    assert scheduler.assign(view, plan, scheduler.build_tasks(view, plan))[0][0] == "DROP"
+
+
 def test_full_episode_with_all_rules_holds_the_scheduler_invariants():
     from kaggle_environments import make
     from kagent.policy import HeuristicPolicy
 
-    scheduler.set_exec("lastwater,chain,weeds,h23,quadq")
+    scheduler.set_exec("lastwater,chain,weeds,h23,quadq,evesell")
     mem = Memory()
     pol = HeuristicPolicy()
     violations = []

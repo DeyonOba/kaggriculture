@@ -47,9 +47,19 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #   quadq      one work queue per unlocked quadrant, hands allocated in
 #              proportion to the quadrant's pending chores, survival /
 #              harvest / animal chores before tend / grow, nearest within
-EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq")
+#   evesell    a unit carrying EVESELL_MIN_CARRY sellable units within
+#              EVESELL_MAX_DIST of the shed walks in and DROPs so the
+#              produce is on the market before the hour-0 dumps (the engine
+#              fills sells unit by unit; measured, the recorded opponents
+#              sell 33-42% of their strawberries in the evening to our
+#              14-19% and realise 0.85-1.03 of the mean price to our
+#              0.68-0.89 in the same markets)
+EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell")
 EXEC = {k: False for k in EXEC_FLAGS}
 LASTWATER_HARVEST_HOUR = 20  # from here harvest the crop even if unwatered
+EVESELL_MIN_CARRY = 3        # sellable units in the pocket that justify the run
+EVESELL_MAX_DIST = 5         # farther units keep working; midnight drops them
+EVESELL_ARRIVE_HOUR = 22     # DROP by this hour, sold at 22-23, before hour 0
 
 
 def set_exec(flags):
@@ -517,6 +527,36 @@ def assign(view, plan, tasks):
 
     _count_moves(actions, set(), "shuttle")
     _seen = set(actions)
+
+    if EXEC["evesell"] and not aggressive:
+        # ---- 1b. Evening shed run: produce in a pocket at midnight is
+        # dropped by the engine and sold at hour 0 into both farms' dumps;
+        # carried in by hour 22 it sells first. Only units close enough to
+        # arrive in time, with enough in the pocket to be worth the walk.
+        for idx in sorted(free):
+            x, y = units[idx]
+            inv = view.unit_inv(idx)
+            carry = sum(n for item, n in inv.items()
+                        if item not in ("GOOSE", "COW", "SHEEP", "WHEAT", "FERTILIZER"))
+            if carry < EVESELL_MIN_CARRY:
+                continue
+            tx, ty = _nearest_shed_tile(x, y)
+            d = _dist(x, y, tx, ty)
+            if d > EVESELL_MAX_DIST or view.hour < EVESELL_ARRIVE_HOUR - d:
+                continue
+            if d == 0:
+                if shed_room <= 0:
+                    continue
+                actions[idx] = ["DROP"]
+                shed_room = max(0, shed_room - sum(inv.values()))
+            else:
+                step = _step_toward(x, y, tx, ty)
+                if not step:
+                    continue
+                actions[idx] = [step]
+            free.discard(idx)
+        _count_moves(actions, _seen, "evesell")
+        _seen = set(actions)
 
     # ---- 1.5 Global need-provisioning: animals, fertilizer, and any wheat the
     # morning zone pickups missed. Without this, bought animals strand in the

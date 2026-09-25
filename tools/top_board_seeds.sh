@@ -2,7 +2,7 @@
 # Replicate the top-player-cloned RL arms (research note §K) with two more
 # training seeds, board and no-board, then pair them on the standing 785
 # held-out games against seed 1234, the three capped controls, champ-h8 and
-# the dev tree.  Waits for the rule tests (rl/runs/rules_tests/exec_eval.json)
+# the dev tree.  Waits for the rule tests (rl/runs/rules_tests/evesell_eval.json)
 # so the two do not share the 5 procs.  Resumable: a finished arm is skipped.
 #
 #   bash tools/top_board_seeds.sh            (log: rl/runs/top_board/seeds_queue.log)
@@ -16,8 +16,8 @@ OUT=rl/runs/top_board
 TRUNK=rl/datasets/trunk_margin_top.pt
 [ -s "$TRUNK" ] || { echo "missing $TRUNK"; exit 1; }
 
-echo "[$(date +%H:%M)] waiting for the rule tests (rl/runs/rules_tests/exec_eval.json) ..."
-while [ ! -s rl/runs/rules_tests/exec_eval.json ]; do sleep 120; done
+echo "[$(date +%H:%M)] waiting for the rule tests (rl/runs/rules_tests/evesell_eval.json) ..."
+while [ ! -s rl/runs/rules_tests/evesell_eval.json ]; do sleep 120; done
 
 run_ppo () {  # name  KAGG_BOARD  seed  extra...
   local NAME=$1 B=$2 SEED=$3; shift 3
