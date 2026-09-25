@@ -289,3 +289,35 @@ uncapped control are reused game-by-game. Baseline `champ-h8`.
   environment). Failing says the RL track has not yet caught the heuristic
   champion on the ladder's own terms, and the cap should be tested on the
   champion itself.
+
+## 11 Deployment check result (2026-09-25, landed 17:03): H-deploy FAILS decisively
+
+Same 785 games, `bad == 0` for both bundles.
+
+| agent, our side | wins / 785 | win rate | money | margin |
+|---|---|---|---|---|
+| **champ-h8** (frozen champion bundle) | **144** | **0.183** | **$80,802** | **−$13,894** |
+| champ-h1 (recorded as submitted) | 46 | 0.059 | $72,137 | −$29,765 |
+| capped control, seeds 1234 / 1235 / 1236 | 63 / 59 / 58 | 0.080 / 0.075 / 0.074 | ~$64.7k | ~−$36.8k |
+| B2 control, uncapped | 47 | 0.060 | $61,072 | −$41,068 |
+
+| paired, capped control vs champion | Δ win, 3-seed mean ± sd | z (per seed) | bands positive | bank | margin |
+|---|---|---|---|---|---|
+| vs champ-h8 | **−0.107 ± 0.003** | −7.2 to −7.5 | 0 of 6, every seed | −$16k | −$23k |
+| vs champ-h1 | +0.018 ± 0.003 | +1.5 to +2.3 | 3 of 6 | −$7k | −$7k |
+
+The strongest frozen champion wins **more than twice as often** as the best
+RL configuration the track has produced, on every band, with $16k more in
+the bank on identical worlds. The replicated land-cap gain (+1.7 points) is
+real and is a sixth of that gap. Against the older champ-h1 the capped
+control is +1.8 points on wins in all three seeds and $7k poorer in money.
+
+**Reading.** The RL day-planner is not a submission candidate. Both agents
+share the scripted executor, so the deficit is the planner: the decoded
+champion playbook (which already stops at three quadrants, `CHAMP_LAND_BUYS
+= 2`) beats the learned heads by ten points of win rate. The consolidation
+rules should be developed *on the champion*. First step, cheap (19 min):
+play the current dev tree's champion plan (`speculative=True`) on the same
+games — if it reproduces champ-h8's 0.183 the dev executor is intact and the
+capacity gate can be tested on it at inference; if it is lower, the dev tree
+has regressed since h8 and that regression comes first.
