@@ -259,6 +259,17 @@ into those same markets, so the price relief is theirs. Eggs earned $8k on
 that game. Third geese refutation, now with the mechanism; the top players
 carry ~6 geese because their chores cost half of ours (§3.1), not because
 eggs pay for the labour at our rate.
+**Culls on the dev tree (26 September, `docs/results/rules_cull_eval.log`,
+same 785 games, paired against the dev tree with h8's rules):** stop
+feeding cows when milk falls under 0.35 of base (from day 12) +1.0 pt (z
++1.5, p 0.18, 18 vs 10 discordant, 3/6 bands, bank +$1.5k but the opponent
++$1.3k); sheep when wool falls under 0.5 of base −0.4 (n.s.); stop feeding
+cows and sheep from day 25 **−7.5 pts (z −7.2, 0/6 bands)**; all three
+together −6.9. The endgame cull that the top agent makes loses for us: a
+fed cow or sheep still returns its last two productions against a wheat a
+day, and what we withdraw from the market the recorded opponent sells
+into. Price-triggered culls are neutral to slightly positive and not
+adopted; the endgame cull is closed.
 
 **Learned models.** The executor BC ranker fits at 69.4% and gated null
 (later +$1.2k, z 1.95, on the fixed executor: the only learned component
