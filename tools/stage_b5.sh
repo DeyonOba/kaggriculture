@@ -23,7 +23,9 @@ cd "$(dirname "$0")/.."
 export PYTHONPATH=. KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=1 KAGG_MAX_QUADRANTS=3
 TRUNK=rl/datasets/trunk_margin_kaggle.pt
 B2=rl/runs/stage_b2
-OUT=rl/runs/stage_b5
+# STAGE_OUT=rl/runs/stage_b5b for the rerun with the land-pressure leak closed;
+# rl/runs/stage_b5 is the partially-capped first run, kept for the record.
+OUT=${STAGE_OUT:-rl/runs/stage_b5}
 ITERS=20
 mkdir -p "$OUT"
 COMMON="--seed 1234 --iters $ITERS --episodes 64 --procs 5 --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8"

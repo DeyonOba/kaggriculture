@@ -57,3 +57,56 @@ quotas, hire timing) rather than the land purchase itself.
 The trunk file still predates the held-out exclusion; the BC readout is still
 the heuristic's; the mechanism (idle tiles, hands per quadrant) is verified
 after the fact with `tools/game_trace.py` on the same two worlds.
+
+## 4 First run (2026-09-25, eval landed 04:01): the cap LEAKED — partial manipulation
+
+**Mechanism check failed.** The capped control traced on the two B2 worlds
+still held 3.7 and 3.9 quadrants over days 10–25 (B2 control: 3.8 on both).
+A **third** purchase path was uncovered: `apply_land_pressure`, called at the
+end of the neural plan path, buys the next quadrant on days 2–24 whenever
+idle tiles fall below pending plantings plus two and cash exceeds the price
+plus $1,500. The first gate test used a day-0 state, outside that window, so
+it passed with the leak live. The cap therefore blocked the head and the
+crunch but not the pressure net; the arms were partially capped, buying the
+fourth quadrant later or less often rather than never.
+
+Guards held (KL ≤ 2e-7, 11–12 updates per iteration, no zero-update
+iteration), so the numbers are real, but they measure a weaker manipulation
+than pre-registered and are **not read against the stop rule**:
+
+| capped arm vs its B2 counterpart, 785 paired games | Δ win | z | p | our bank | opp bank | margin |
+|---|---|---|---|---|---|---|
+| control (54 vs 47 wins) | +0.009 | +1.15 | 0.32 | +$3,939 | +$1,583 | +$2,355 |
+| frozen (29 vs 21) | +0.010 | +2.00 | 0.077 | +$127 | −$620 | +$747 |
+| trainable (28 vs 41) | −0.017 | −2.20 | 0.041 | −$7,509 | +$5,397 | −$12,905 |
+
+For the record: the partially-capped control is the highest held-out win
+rate of any arm to date (0.069) and the first arm where wins, money and
+margin all moved the same way, concentrated in the 2500+ band (+0.029). The
+partially-capped trainable board arm went the other way on all three.
+
+**Fix:** the pressure net is now behind `land_allowed` too, with a
+mid-season test that exercises it. **Mechanism check, fixed gate, B2 control
+on the two traced worlds:** max quadrants 3 on both; idle tiles days 10–25
+15.9 → 4.1 and 20.7 → 1.9 (the opponent's level); plants + animals 75.0 →
+69.6 and 73.1 → 72.1; hands unchanged; final bank $101.5k → $104.7k and
+$91.4k → $104.1k. Two games, so anecdotal, but the manipulation now does
+what it says.
+
+## 5 Rerun (B5b), pre-registered before it ran
+
+`tools/stage_b5b.sh`, two tests in one queue, cheapest first:
+
+- **H-cap-rule (inference-time cap).** B2's three nets, weights untouched,
+  played with `KAGG_MAX_QUADRANTS=3`, each paired against its own B2 games
+  (reused). Tests consolidation as a *rule the planner is given*, isolated
+  from retraining noise. Pass: `cap_control` beats `b2_control` on win rate,
+  p < 0.05, positive in ≥ 4 of 6 bands, with money moving the same way.
+  Board arms reported per arm.
+- **H-land (retrained), as in §2**, into `rl/runs/stage_b5b`, same BC
+  checkpoints, same configuration, same rule.
+
+If the rule passes and retraining does not add to it, consolidation is a
+constraint to be given, not learned, at this budget. If retraining adds to
+it, the planner can use the freed labour. If neither passes, the idle ground
+was a symptom, not a cause, and the two traced games were lucky.

@@ -1,0 +1,27 @@
+785 held-out games per arm; per bin 0-600:64 600-1000:21 1000-1500:175 1500-2000:175 2000-2500:175 2500+:175
+arms: land_control, land_frozen (board), land_trainable (board)
+  b2_control   win 0.060 +/- 0.008   (reused from rl/runs/stage_b2/session_eval.json:control)
+  b2_frozen    win 0.027 +/- 0.006   (reused from rl/runs/stage_b2/session_eval.json:frozen)
+  b2_trainable win 0.052 +/- 0.008   (reused from rl/runs/stage_b2/session_eval.json:trainable)
+  land_control win 0.069 +/- 0.009   money    65,010   bad 0   (1081s)
+  land_frozen  win 0.037 +/- 0.007   money    55,277   bad 0   (2177s)
+  land_trainable win 0.036 +/- 0.007   money    54,745   bad 0   (3286s)
+
+arm              win     se     money        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+land_control   0.069  0.009    65,010        0.156      0.190      0.051      0.034      0.051      0.091
+land_frozen    0.037  0.007    55,277        0.125      0.190      0.029      0.000      0.034      0.034
+land_trainable   0.036  0.007    54,745        0.156      0.190      0.011      0.006      0.034      0.029
+b2_control     0.060  0.008    61,072        0.156      0.190      0.051      0.029      0.046      0.063
+b2_frozen      0.027  0.006    55,150        0.141      0.143      0.017      0.006      0.011      0.017
+b2_trainable   0.052  0.008    62,254        0.172      0.190      0.023      0.029      0.040      0.057
+
+PAIRED vs b2_control (same sessions, same seats), McNemar on discordant games
+arm            delta     se     z  arm-only  base-only       p        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+land_control  +0.009  0.008  1.15        22         15   0.324       +0.000     +0.000     +0.000     +0.006     +0.006     +0.029
+land_frozen   -0.023  0.009 -2.66        14         32   0.011       -0.031     +0.000     -0.023     -0.029     -0.011     -0.029
+land_trainable  -0.024  0.009 -2.85        13         32   0.007       +0.000     +0.000     -0.040     -0.023     -0.011     -0.034
+b2_frozen     -0.033  0.008 -4.05         8         34   0.000       -0.016     -0.048     -0.034     -0.023     -0.034     -0.046
+b2_trainable  -0.008  0.008 -0.97        16         22   0.418       +0.016     +0.000     -0.029     +0.000     -0.006     -0.006
+delta = arm win rate minus baseline's on identical games; the per-band columns are the same delta within each rating bin.
+
+-> rl/runs/stage_b5/session_eval.json

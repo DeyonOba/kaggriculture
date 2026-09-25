@@ -82,6 +82,34 @@ def test_cap_above_ownership_still_allows(monkeypatch):
     assert plan.land_buys
 
 
+def _midseason_pressure_obs():
+    """Day 10, one quadrant, no idle tiles, rich: inside apply_land_pressure's
+    window (days 2-24). The first gate test used day 0 and never exercised
+    this path, which is how Stage B5 ran with the leak live."""
+    obs = _rich_crunch_obs()
+    obs["day"] = 10
+    obs["step"] = 240
+    obs["hour"] = 0
+    return obs
+
+
+def test_no_cap_land_pressure_still_buys(monkeypatch):
+    monkeypatch.setattr(features, "MAX_QUADRANTS", 0)
+    view = View(_midseason_pressure_obs())
+    plan = planner.make_day_plan(view, Memory())
+    features.apply_to_plan(plan, _choices(0), view)
+    assert plan.land_buys, "without a cap the pressure net buys despite head=0"
+
+
+def test_cap_closes_the_land_pressure_path(monkeypatch):
+    monkeypatch.setattr(features, "MAX_QUADRANTS", 1)
+    view = View(_midseason_pressure_obs())
+    for land in (0, 1):
+        plan = planner.make_day_plan(view, Memory())
+        features.apply_to_plan(plan, _choices(land), view)
+        assert plan.land_buys == [], f"pressure net must not buy at the cap (head={land})"
+
+
 def test_env_switch_is_read_at_import(monkeypatch):
     import importlib
     monkeypatch.setenv("KAGG_MAX_QUADRANTS", "3")

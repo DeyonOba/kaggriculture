@@ -487,7 +487,11 @@ def apply_to_plan(plan, choices, view):
             plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * values["staple_floor_scale"]))
 
     # Scripted safety net: expand land when planned work exceeds open tiles.
-    apply_land_pressure(plan, view)
+    # Third purchase path (after the head and the crunch): the demand-driven
+    # safety net. It bought the fourth quadrant on day 14 in the first capped
+    # traces while the head read 0 -- Stage B5 ran with this leak live.
+    if land_allowed(view):
+        apply_land_pressure(plan, view)
     return plan
 
 
