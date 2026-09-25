@@ -91,6 +91,54 @@ worth about $0, and the hauling floor that fixed pickup-per-feed lost
 $12,026. So the movement gap is real, large, and not closable by routing
 alone; it is coupled to *what* the planner asks for.
 
+**Turn-by-turn measurement, 2026-09-25** (twelve M & M & P & Q replays, both
+seats; our RL control and today's dev champion plan on two traced worlds;
+code and full report in the session scratchpad `research/`). The executor
+gap is the same for both of our agents, so it belongs to the scheduler,
+not the planner:
+
+| per game | M & M & P & Q | their opponents | our RL control | our dev champion |
+|---|---|---|---|---|
+| moves per productive op | **0.71** | 0.88 | 1.24 | 1.40 |
+| productive share of unit-steps | **55%** | 51% | 44% | 41% |
+| effective chores per unit-day | **13.3** | 12.1 | 10.6 | 9.9 |
+| chores per tile visit | **1.98** | 1.92 | 1.56 | 1.48 |
+| next chore on the same or an adjacent tile | 89% | 86% | 79% | 78% |
+| pickups | **194** | 216 | 395 | 380 |
+| pickups per FEED | **0.55** | 0.60 | 1.03 | 1.09 |
+| feeds from wheat harvested in hand, no shed trip | **26%** | 1% | 0% | 0% |
+| effective harvests | **470** | 476 | 270 | 263 |
+| effective plantings | **266** | 253 | 165 | 145 |
+| one-time-crop harvest latency, median steps after peak | **0** | 0 | 22.5 | 23.5 |
+| replant within one step of harvest | **78%** | 89% | 55% | 66% |
+| WATER ops with no effect | **16%** | 22% | 23% | 26% |
+| idle share of unlocked tiles | **12%** | 14% | 28% | 17% |
+| price at sale over the game's mean price | **1.044** | 0.991 | 0.990 | 0.983 |
+| revenue share in days 27–29 | **23%** | 16% | 15% | 10% |
+| hands at noon / verified wages | 8.6 / **$4.3k** | 9.6 / $5.5k | 9.1 / $6.1k | 8.9 / $4.4k |
+
+Three method facts the measurement established: the yield bonus of a
+one-time crop is applied by the WATER op itself, only at wheat ages 2–4,
+carrot 2–3 and melon 6–10; units respawn at the shed at hour 0, so any move
+at hour 23 is wasted (5.5% of our moves, 0% of theirs); and M & M & P & Q
+DROPs and SELLs in the same step, so the shed never holds stock long.
+
+What the top agent does turn by turn that ours does not: a fixed daily
+script (all seed purchases and hires at hours 0–1, one pickup per unit at
+hours 0–2 and then no shed trips); **chore chains on a tile** before moving
+(FEED, CARE, COLLECT on an animal; WATER, HARVEST, PLANT, WATER on a crop,
+the second WATER because a seed left dry on its planting day dies that
+night); wheat rows placed beside pastures so a unit harvests and feeds
+without visiting the shed; harvest of one-time crops on the frame they
+peak, replanted the next step; alternate-day watering outside the bonus
+window and daily inside it; fertilizer collected from every animal daily
+and put on wheat (220 FERTILIZE a game to our 112); selling the instant
+produce reaches the shed, at 4% above the game's mean price, with $5.6k
+liquidated on the last decision step. Our own day 12, read the same way:
+the farmer ferried six sheep one or two at a time to pastures being built
+on land bought that morning, while hands walked back to the shed for one to
+three wheat at a time.
+
 ### 3.2 Volume: they respond to demand, we do not
 
 `docs/market_congestion.md`, `docs/market_structure.md`. Product output as
@@ -250,6 +298,40 @@ before any training.** A rule now has to beat 0.232, not 0.080.
 ladder has disagreed with local gates twice before, so submit, watch the
 rating, and keep the frozen h8 as the fallback. Cost: a bundle build.
 
+### B0. The executor's daily script, copied from measurement — five concrete rules
+The turn-by-turn table above turns "moves 1.45 vs 0.71" into mechanisms,
+each a scheduler rule, each with its own mechanism check in the metric
+code, and each cheap to test at inference on the dev champion plan:
+
+1. **Harvest one-time crops on the frame they peak, replant the next step.**
+   Our median latency is 22–23 steps, theirs 0; 44 yield units a game decay
+   on our plants against their 0.5. Harvest priority is already P=1; the lag
+   is in how ripeness is detected, so this is a detection fix, not a
+   priority change.
+2. **Chore chains on one tile before moving**: FEED→CARE→COLLECT on an
+   animal, WATER→HARVEST→PLANT→WATER on a crop. We do 1.5 chores per tile
+   visit, they do 2.0. *Caution:* a "chaining" throughput arm lost $6,385
+   and cross-turn commitment lost $2,162, so the test must be this exact
+   within-visit bundle with chores-per-visit as the check, not a commitment
+   to a tile across turns.
+3. **Feed from wheat harvested in hand**: place wheat rows beside pastures
+   and let the harvesting unit feed without a shed trip. 26% of their feeds,
+   0% of ours; pickups per feed 0.55 vs 1.03–1.09; 190 fewer pickups a game.
+   The earlier hauling floor (−$12k) forced fewer pickups without changing
+   *where the wheat was*; this changes the layout, which is why it may not
+   repeat that loss. Mechanism check: the feeds-from-hand share.
+4. **Water to the bonus window**: daily at wheat ages 2–4, carrot 2–3,
+   melon 6–10, alternate days outside it. 23–26% of our WATER ops do
+   nothing; 16% of theirs. Coverage inside the window is already equal, so
+   this frees labour rather than adding yield.
+5. **No moves at hour 23**, and PASS once the day's work is done rather than
+   drifting: 5.5% of our moves are structurally wasted.
+
+Expected size: unknown individually; together they account for the
+measured 1,200 extra unit-steps a game and 200 fewer harvests, on the same
+executor the dev tree ships. Test each alone and then the bundle, at
+inference, paired against `dev_champion`.
+
 ### B. Watering and chore triage by product value — untested, reallocates labour
 `docs/spatial_program.md` §4: the only untried lever that *reallocates*
 rather than adds labour. Today survival and tending tasks are ordered by
@@ -273,14 +355,18 @@ rather than fixed values. Expected size: the market-structure note prices
 wheat and eggs as annuities; the ahmed ledger puts our net-wheat deficit at
 $13k a game. Test: inference, paired, per product so a bad one is dropped.
 
-### D. Hold stock, sell later — three confirmations, one rule not written
-First-sale day 16 for the top agent vs 20–22 for us is not the same thing
-as "sell later": they build a stock early and sell it into a price they
-waited for. Melon timing confirms it (harvest-at-first-yield −$1.5k). The
-sell floors are inert, so the lever is not floors; it is *when the shed is
-opened*, a day-schedule rule (like the hiring schedule that cleared money)
-on the sell decision, fitted on the corpus's sell-day distribution for the
-crashable products. Test: inference, paired; watch margin as well as wins.
+### D. Sell on the drop, at the price, and liquidate at the end
+The top agent sells the instant produce reaches the shed (54% of its SELL
+steps coincide with a DROP, 14% of ours), at 4.4% *above* the game's mean
+price where we sell 1–2% below, and takes 23% of its revenue in the last
+three days to our 10–15%. It also liquidates $5.6k of carried produce on
+the last decision step; that part is not our gap — both of our agents end
+with an empty shed (0–2 units in all four traced games), so the leftover
+is already handled. Melon timing confirms the direction
+(harvest-at-first-yield −$1.5k). The sell floors are inert, so the lever is
+not floors: it is *when* produce is dropped and sold relative to the price
+path. Test: inference, paired; watch margin as well as wins, with the
+price-at-sale ratio as the mechanism check.
 
 ### E. The capacity-gated fourth quadrant — the top agent's own pattern
 Open the fourth quadrant only when the first three are full (idle < 3), the

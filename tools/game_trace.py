@@ -107,6 +107,9 @@ def _plan_choices(choices):
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--weights", default=None, help="to_layers JSON; omit for the heuristic")
+    ap.add_argument("--champion", action="store_true",
+                    help="play the dev tree's CHAMPION plan (speculative=True), "
+                         "the agent the bundler ships, instead of the plain heuristic")
     ap.add_argument("--session", required=True)
     ap.add_argument("--script-side", type=int, required=True, help="the tape's seat")
     ap.add_argument("--label", default=None, help="name shown in the viewer")
@@ -128,7 +131,10 @@ def main() -> None:
         raise SystemExit("weights carry a board trunk: set KAGG_BOARD=1")
 
     records = []
-    learner = rollout._make_learner_agent(layers, 0.0, None, records, "rl")
+    if args.champion:
+        learner, _ = rollout._make_dev_policy_agent({"kind": "champion"})
+    else:
+        learner = rollout._make_learner_agent(layers, 0.0, None, records, "rl")
     tape = rollout.make_script_agent(session["actions"][ss])
 
     seen = {0: [], 1: []}          # (obs, action) per step per seat
