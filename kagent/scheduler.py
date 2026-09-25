@@ -11,6 +11,8 @@ priority-contested. Survival tasks keep a global override; logistics
 (pickups, deliveries, drops, liquidation shuttles) stay global.
 """
 
+import os
+
 from kagent.constants import ANIMALS, CROPS, MARKET_PARAMS, SHED_ACCESS, TURNS_PER_DAY
 from kagent.planner import FINAL_STEP
 
@@ -28,6 +30,46 @@ EARLY_DROP_THRESHOLD = 2  # days 0-9: every fertilizer unit is the day's cash
 MIN_ZONE_TILES = 5
 SWEEP_DEADLINE_HOUR = 16  # from here survival tasks (dies tonight) jump the sweep
 HELP_RADIUS = 5           # cross-zone help only within this many steps
+
+# --- Switchable executor rules (research note §5 B0 and the per-quadrant
+# queue), all OFF by default so the shipped behaviour is byte-identical.
+# Turn them on with KAGG_EXEC="lastwater,chain,weeds,h23,quadq" in a
+# process, or "exec": [...] in a dev arm's rules JSON (rl/rollout.py).
+#   lastwater  water a one-time crop on the last bonus-window day BEFORE
+#              harvesting it (the engine adds a yield unit per in-window
+#              WATER; shipped code harvested at hour 0 of that day and lost
+#              the unit: wheat 3 of 4, carrot 2 of 3)
+#   chain      finish the tile underfoot (harvest, plant, water, feed ...)
+#              before any shed shuttle or provisioning trip
+#   weeds      dig weeds at planting priority when the plan wants more tiles
+#              than are bare
+#   h23        no moves on the day's last turn (units respawn at the shed)
+#   quadq      one work queue per unlocked quadrant, hands allocated in
+#              proportion to the quadrant's pending chores, survival /
+#              harvest / animal chores before tend / grow, nearest within
+EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq")
+EXEC = {k: False for k in EXEC_FLAGS}
+LASTWATER_HARVEST_HOUR = 20  # from here harvest the crop even if unwatered
+
+
+def set_exec(flags):
+    """flags: names (iterable or comma string) or {name: bool}. Unknown raise."""
+    if isinstance(flags, str):
+        flags = [f for f in flags.split(",") if f.strip()]
+    items = flags.items() if isinstance(flags, dict) else [(f.strip(), True) for f in flags]
+    for k, v in items:
+        if k not in EXEC:
+            raise ValueError(f"unknown executor flag {k!r}; known: {EXEC_FLAGS}")
+        EXEC[k] = bool(v)
+
+
+def reset_exec():
+    for k in EXEC:
+        EXEC[k] = False
+
+
+if os.environ.get("KAGG_EXEC"):
+    set_exec(os.environ["KAGG_EXEC"])
 
 
 class Task:
@@ -90,6 +132,62 @@ def zone_map(view):
     return zone_of, n_zones
 
 
+def quadrant_queues(view, tasks, plan=None):
+    """EXEC["quadq"]: one zone per unlocked quadrant, with the units
+    allocated in proportion to the quadrant's pending chores (non-filler
+    tasks; PLANT tasks -- one per bare tile -- are weighted so they sum to
+    the day's remaining plant quota; every quadrant with work gets at least
+    one unit when the crew allows). Returns (zone_of: {(x, y): zone},
+    n_zones, uz: {unit: zone}). Ordering inside a queue is done by `pick`
+    (priority class, then distance). Stateless per turn like zone_map."""
+    quads = [("NW", 0, 0), ("NE", 5, 0), ("SW", 0, 5), ("SE", 5, 5)]
+    unlocked = [q for q in quads if q[0] in view.me.unlocked_quadrants] or quads[:1]
+    zone_of = {}
+    for zi, (_, x0, y0) in enumerate(unlocked):
+        for r in range(5):
+            for c in range(5):
+                zone_of[(x0 + c, y0 + r)] = zi
+    n = len(unlocked)
+    n_units = max(1, len(view.me.units))
+    n_plant = sum(1 for t in tasks if t.op[0] == "PLANT")
+    quota = sum(plan.plant_quota.values()) if plan is not None else n_plant
+    plant_w = min(1.0, quota / n_plant) if n_plant else 0.0
+    work = [0.0] * n
+    for t in tasks:
+        z = zone_of.get((t.x, t.y))
+        if z is not None and t.pri < P_FILLER:
+            work[z] += plant_w if t.op[0] == "PLANT" else 1.0
+    total = sum(work)
+    if total == 0:
+        alloc = [n_units // n + (1 if i < n_units % n else 0) for i in range(n)]
+    else:
+        raw = [n_units * w / total for w in work]
+        alloc = [int(r) for r in raw]
+        for i in range(n):
+            if work[i] > 0 and alloc[i] == 0 and sum(alloc) < n_units:
+                alloc[i] = 1
+        rem = n_units - sum(alloc)
+        by_frac = sorted(range(n), key=lambda i: (raw[i] - int(raw[i]), work[i]), reverse=True)
+        j = 0
+        while rem > 0:
+            alloc[by_frac[j % n]] += 1
+            rem -= 1
+            j += 1
+        while rem < 0:
+            k = max(range(n), key=lambda i: (alloc[i] - raw[i], alloc[i]))
+            alloc[k] -= 1
+            rem += 1
+    uz = {}
+    zi, left = 0, alloc[0]
+    for idx, _, _ in view.me.units:
+        while zi < n - 1 and left <= 0:
+            zi += 1
+            left = alloc[zi]
+        uz[idx] = zi
+        left -= 1
+    return zone_of, n, uz
+
+
 def build_tasks(view, plan):
     """Generate this turn's pending tile tasks."""
     tasks = []
@@ -111,6 +209,19 @@ def build_tasks(view, plan):
             if yields >= crop["max_yield"] - 1 or (yields > 0 and (decaying or plan.liquidation)):
                 tasks.append(Task(P_HARVEST, x, y, ["HARVEST"]))
         else:
+            if (
+                EXEC["lastwater"]
+                and age == crop["max_yield_day"]
+                and yields < crop["max_yield"]
+                and not t.get("watered_today")
+                and view.hour < LASTWATER_HARVEST_HOUR
+            ):
+                # Last day of the bonus window and not yet watered: the WATER
+                # adds a yield unit, so it goes first at harvest priority (the
+                # underfoot pass keeps the unit on the tile) and the HARVEST
+                # is generated next turn once watered_today is set.
+                tasks.append(Task(P_HARVEST, x, y, ["WATER"]))
+                continue
             ripe = age >= crop["first_yield_day"] and (
                 yields >= crop["max_yield"] or age >= crop["max_yield_day"]
             )
@@ -229,6 +340,11 @@ def build_tasks(view, plan):
                 tasks.append(Task(P_GROW, x, y, ["PLANT", wanted[i % len(wanted)]]))
 
     weed_pri = P_GROW if len(empties) - cursor < 6 else P_FILLER
+    if EXEC["weeds"] and weed_pri == P_FILLER:
+        # A weed on plantable ground is a lost tile-day whenever the plan
+        # wants more tiles than are bare: dig it at planting priority.
+        if len(empties) - cursor < sum(plan.plant_quota.values()) + 2:
+            weed_pri = P_GROW
     for x, y, _ in me.weeds():
         tasks.append(Task(weed_pri, x, y, ["DIG"]))
 
@@ -272,15 +388,88 @@ def assign(view, plan, tasks):
     seeds_left = dict(view.seeds)
     shed_room = max(0, 100 - view.shed_total)
     zone_of, n_zones = zone_map(view)
+    uz = {idx: idx % n_zones for idx, _, _ in me.units}  # unit -> zone
+    if EXEC["quadq"]:
+        zone_of, n_zones, uz = quadrant_queues(view, tasks, plan)
 
     final_push = view.step >= FINAL_STEP - 10
     aggressive = view.day >= 29 or final_push
+
+    plant_requests = {}
+    claimed = set()  # (x, y, op0) already assigned this turn
+
+    def try_execute(idx, task):
+        x, y = units[idx]
+        key = (task.x, task.y, task.op[0])
+        if key in claimed:
+            return False
+        if task.need and view.unit_inv(idx).get(task.need, 0) < 1:
+            return False
+        if task.op[0] == "PLANT":
+            crop = task.op[1]
+            allowed = min(seeds_left.get(crop, 0), plan.plant_quota.get(crop, 0))
+            if plant_requests.get(crop, 0) + 1 > allowed:
+                return False
+        if (x, y) == (task.x, task.y):
+            if not _unlocked(view, task.x, task.y):
+                return False
+            actions[idx] = task.op
+            if task.op[0] == "PLANT":
+                plant_requests[task.op[1]] = plant_requests.get(task.op[1], 0) + 1
+        else:
+            step = _step_toward(x, y, task.x, task.y)
+            if not step:
+                return False
+            actions[idx] = [step]
+        claimed.add(key)
+        return True
+
+    # Work underfoot, regardless of whose zone the tile belongs to. `pick`
+    # below only searches the unit's own zone, and measured, the unit
+    # standing on an unserved task tile is in a FOREIGN zone 65% of the time,
+    # so it is refused the task and walks back to its own zone.
+    _uf = {}
+    for _t in tasks:
+        if _t.pri < P_FILLER:
+            _uf.setdefault((_t.x, _t.y), []).append(_t)
+
+    def _underfoot(idx):
+        _x, _y = units[idx]
+        _inv = view.unit_inv(idx)
+        _best = None
+        for _t in _uf.get((_x, _y), ()):
+            if (_t.x, _t.y, _t.op[0]) in claimed:
+                continue
+            if _t.need and _inv.get(_t.need, 0) < 1:
+                continue
+            if _best is None or _t.pri < _best.pri:
+                _best = _t
+        return _best
+
+    # Carriers of an animal are skipped by the underfoot pass so the animal
+    # in a pocket still reaches its structure first.
+    _hold = {i for i, _, _ in me.units
+             if any(view.unit_inv(i).get(_a, 0)
+                    for _a in ("GOOSE", "COW", "SHEEP"))}
+
+    if EXEC["chain"]:
+        # ---- 0. Chore chain: a unit standing on a tile with an executable
+        # chore finishes the tile before any shuttle or provisioning trip.
+        # Measured on days 0-9: a carrot harvest tripped the early-drop
+        # threshold, the unit walked to the shed with the tile bare, and the
+        # replant came 20+ steps later; the top agent replants next step.
+        for idx in sorted(free - _hold):
+            _t = _underfoot(idx)
+            if _t is not None and try_execute(idx, _t):
+                free.discard(idx)
 
     # ---- 1. Liquidation / heavy-load shuttles (global) ----------------------
     # Fertilizer in a pocket is only working stock while a FERTILIZE task
     # wants it; otherwise it is unsold cash and goes to the shed.
     fert_wanted = any(t.need == "FERTILIZER" for t in tasks)
     for idx, x, y in me.units:
+        if idx in actions:
+            continue
         inv = view.unit_inv(idx)
         total = sum(
             n
@@ -380,13 +569,13 @@ def assign(view, plan, tasks):
                 zone_needs[z][t.need] += 1
     zone_carry = {}
     for idx, _, _ in me.units:
-        z = idx % n_zones
+        z = uz[idx]
         for item in ("WHEAT", "FERTILIZER"):
             zone_carry.setdefault(z, {}).setdefault(item, 0)
             zone_carry[z][item] += view.unit_inv(idx).get(item, 0)
     shed_left = {item: view.shed.get(item, 0) for item in ("WHEAT", "FERTILIZER")}
     for idx in sorted(free):
-        z = idx % n_zones
+        z = uz[idx]
         for item in ("WHEAT", "FERTILIZER"):
             need = zone_needs.get(z, {}).get(item, 0) - zone_carry.get(z, {}).get(item, 0)
             n = min(need, shed_left[item], 5 if item == "WHEAT" else 3)
@@ -421,35 +610,6 @@ def assign(view, plan, tasks):
     for z in zone_tasks:
         zone_tasks[z].sort(key=lambda t: (t.pri, t.y, t.x))
 
-    plant_requests = {}
-    claimed = set()  # (x, y, op0) already assigned this turn
-
-    def try_execute(idx, task):
-        x, y = units[idx]
-        key = (task.x, task.y, task.op[0])
-        if key in claimed:
-            return False
-        if task.need and view.unit_inv(idx).get(task.need, 0) < 1:
-            return False
-        if task.op[0] == "PLANT":
-            crop = task.op[1]
-            allowed = min(seeds_left.get(crop, 0), plan.plant_quota.get(crop, 0))
-            if plant_requests.get(crop, 0) + 1 > allowed:
-                return False
-        if (x, y) == (task.x, task.y):
-            if not _unlocked(view, task.x, task.y):
-                return False
-            actions[idx] = task.op
-            if task.op[0] == "PLANT":
-                plant_requests[task.op[1]] = plant_requests.get(task.op[1], 0) + 1
-        else:
-            step = _step_toward(x, y, task.x, task.y)
-            if not step:
-                return False
-            actions[idx] = [step]
-        claimed.add(key)
-        return True
-
     # A unit carrying an ANIMAL places it FIRST, anywhere on the farm. Without
     # this the provisioning carrier fell back into its own zone's rounds and
     # hauled a cow around for days while the pasture sat empty (traced on
@@ -482,7 +642,12 @@ def assign(view, plan, tasks):
             if max_dist is not None and d > max_dist:
                 continue
             urgent = 0 if (late and task.pri == P_SURVIVAL) else 1
-            score = (urgent, d, task.pri)
+            if EXEC["quadq"]:
+                # priority queue: survival / harvest / animal chores before
+                # tend / grow, nearest first inside the class
+                score = (urgent, 0 if task.pri <= P_ANIMAL else 1, d, task.pri)
+            else:
+                score = (urgent, d, task.pri)
             if best is None or score < best[0]:
                 best = (score, task)
         return best[1] if best else None
@@ -492,39 +657,14 @@ def assign(view, plan, tasks):
         key=lambda t: (t.pri, t.y, t.x),
     )
 
-    # Work underfoot, regardless of whose zone the tile belongs to. `pick`
-    # below only searches zone_tasks[idx % n_zones], and measured, the unit
-    # standing on an unserved task tile is in a FOREIGN zone 65% of the time,
-    # so it is refused the task and walks back to its own zone.
-    _uf = {}
-    for _t in all_tasks + global_tasks:
-        if _t.pri < P_FILLER:
-            _uf.setdefault((_t.x, _t.y), []).append(_t)
-
-    def _underfoot(idx):
-        _x, _y = units[idx]
-        _inv = view.unit_inv(idx)
-        _best = None
-        for _t in _uf.get((_x, _y), ()):
-            if (_t.x, _t.y, _t.op[0]) in claimed:
-                continue
-            if _t.need and _inv.get(_t.need, 0) < 1:
-                continue
-            if _best is None or _t.pri < _best.pri:
-                _best = _t
-        return _best
-
     # Pass 0 — the tile underfoot, ALL units, before anyone picks by zone.
     # Doing this inside pass 1's per-unit loop is not enough: `sorted(free)`
     # lets a DISTANT unit reach the task first through its own-zone pick,
     # claim it (`claimed` is set on the step TOWARD a task, not on arrival),
     # and the unit already standing on the tile is then refused. Measured on
     # the DIG residue: a unit stood on the weed at T, walked off, and the weed
-    # was dug 14-37 turns later. Carriers are skipped so an animal in a pocket
-    # still reaches its structure first.
-    _hold = {i for i, _, _ in me.units
-             if any(view.unit_inv(i).get(_a, 0)
-                    for _a in ("GOOSE", "COW", "SHEEP"))}
+    # was dug 14-37 turns later. (Under EXEC["chain"] this pass already ran
+    # before the shuttles; units it served are no longer free.)
     for idx in sorted(free - _hold):
         _t = _underfoot(idx)
         if _t is not None and try_execute(idx, _t):
@@ -538,7 +678,7 @@ def assign(view, plan, tasks):
         if task is None:
             task = _underfoot(idx)
         if task is None:
-            task = pick(idx, zone_tasks.get(idx % n_zones, []), P_SURVIVAL, P_FILLER)
+            task = pick(idx, zone_tasks.get(uz[idx], []), P_SURVIVAL, P_FILLER)
         if task is not None and try_execute(idx, task):
             free.discard(idx)
     _count_moves(actions, _seen, "zone")
@@ -555,7 +695,7 @@ def assign(view, plan, tasks):
 
     # Pass 3 — filler work: own zone, then anywhere.
     for idx in sorted(free):
-        task = pick(idx, zone_tasks.get(idx % n_zones, []), P_FILLER, 99)
+        task = pick(idx, zone_tasks.get(uz[idx], []), P_FILLER, 99)
         if task is None:
             task = pick(idx, all_tasks + global_tasks, P_FILLER, 99)
         if task is not None and try_execute(idx, task):
@@ -600,7 +740,7 @@ def assign(view, plan, tasks):
             step = _step_toward(x, y, tx, ty)
             actions[idx] = [step] if step else (["DROP"] if shed_room > 0 else ["PASS"])
         else:
-            z = idx % n_zones
+            z = uz[idx]
             home = [tile for tile, zz in zone_of.items() if zz == z]
             if home and (x, y) not in home:
                 hx, hy = min(home, key=lambda p: _dist(x, y, p[0], p[1]))
@@ -613,5 +753,12 @@ def assign(view, plan, tasks):
                 actions[idx] = ["PASS"]
         free.discard(idx)
     _count_moves(actions, _seen, "stage")
+
+    if EXEC["h23"] and view.hour >= TURNS_PER_DAY - 1:
+        # Units respawn at the shed at hour 0, so a move on the day's last
+        # turn is wasted (5.5% of shipped moves; 0% of the top agent's).
+        for idx, op in actions.items():
+            if op and op[0] in ("NORTH", "SOUTH", "EAST", "WEST"):
+                actions[idx] = ["PASS"]
 
     return actions

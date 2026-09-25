@@ -110,6 +110,10 @@ def main() -> None:
     ap.add_argument("--champion", action="store_true",
                     help="play the dev tree's CHAMPION plan (speculative=True), "
                          "the agent the bundler ships, instead of the plain heuristic")
+    ap.add_argument("--rules", default=None,
+                    help="knob-bandit rules JSON (a dev:knobs arm, e.g. tools/rules/rules_h8.json)")
+    ap.add_argument("--exec", default=None,
+                    help="executor rule flags, comma-separated (kagent/scheduler.EXEC_FLAGS)")
     ap.add_argument("--session", required=True)
     ap.add_argument("--script-side", type=int, required=True, help="the tape's seat")
     ap.add_argument("--label", default=None, help="name shown in the viewer")
@@ -118,9 +122,13 @@ def main() -> None:
 
     from kaggle_environments import make
 
+    from kagent import scheduler
     from kagent.gamestate import View
     from rl import rollout
     from rl.phase_potential import ingredients, phase_potential
+
+    if args.exec:
+        scheduler.set_exec(args.exec)
 
     session = rollout.load_session(args.session)
     seed = session["seed"]
@@ -131,7 +139,11 @@ def main() -> None:
         raise SystemExit("weights carry a board trunk: set KAGG_BOARD=1")
 
     records = []
-    if args.champion:
+    if args.rules:
+        with open(args.rules) as fh:
+            rules = json.load(fh)
+        learner, _ = rollout._make_dev_policy_agent({"kind": "knobs", "rules": rules})
+    elif args.champion:
         learner, _ = rollout._make_dev_policy_agent({"kind": "champion"})
     else:
         learner = rollout._make_learner_agent(layers, 0.0, None, records, "rl")

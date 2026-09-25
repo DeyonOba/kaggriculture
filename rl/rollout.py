@@ -470,12 +470,23 @@ def run_episode(job):
 
     extra = {}
     switched_mode = False
+    exec_prev = None
     if job.get("learner_policy"):
         # OUR side played by the DEV TREE's scripted agents: the champion plan,
         # or the knob bandit over it with a rules dict (lifted from a frozen
         # bundle). The same objects the bundler freezes into main.py, from
         # today's kagent/ -- the check that the dev tree still IS the champion.
-        learner, switched_mode = _make_dev_policy_agent(job["learner_policy"])
+        spec = job["learner_policy"]
+        learner, switched_mode = _make_dev_policy_agent(spec)
+        # Executor rule flags for THIS episode only (kagent/scheduler.EXEC):
+        # "exec" on the spec or inside its rules JSON; restored afterwards so
+        # the next job in the worker sees the shipped executor.
+        flags = spec.get("exec") or (spec.get("rules") or {}).get("exec")
+        if flags:
+            from kagent import scheduler as _sched
+            exec_prev = dict(_sched.EXEC)
+            _sched.reset_exec()
+            _sched.set_exec(flags)
     elif job.get("learner_bundle"):
         # OUR side played by a frozen bundle (a shipped main.py), exec'd the way
         # the Kaggle loader does it. No records: nothing to train on, this is
@@ -503,6 +514,9 @@ def run_episode(job):
             # the bandit needs residual heads; put the worker back for the
             # next job, which may be a neural net on absolute heads
             features.set_mode("absolute")
+        if exec_prev is not None:
+            from kagent import scheduler as _sched
+            _sched.EXEC.update(exec_prev)
     duration = _time.time() - t0
 
     if duration > 60:
