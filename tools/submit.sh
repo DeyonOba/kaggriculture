@@ -44,9 +44,15 @@ echo "== self-containment: no repo imports, no file/path access =="
 python3 - <<'PY'
 import re, sys
 src = open("main.py").read()
-bad = [p for p in ("kagent", "arena.", "tools.", "__file__", "sys.path",
-                   "os.getcwd", "open(") if p in src]
-print("  suspicious tokens:", bad or "none")
+# Import STATEMENTS and path access, not bare words: every planner-lineage
+# bundle (champ-h8 included) carries "edit kagent/, not this file",
+# "kagent/weights.py" and the kagent_bundle namespace name in docstrings, and
+# the bundler strips the intra-package imports. A real `import kagent` is
+# also what the isolation smoke below would break on.
+pats = [r"^\s*(?:import|from)\s+(?:kagent|arena|tools|rl)\b", r"__file__", r"sys\.path",
+        r"os\.getcwd", r"(?<![\w.])open\("]
+bad = [p for p in pats if re.search(p, src, re.M)]
+print("  suspicious patterns:", bad or "none")
 sys.exit(1 if bad else 0)
 PY
 

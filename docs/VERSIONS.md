@@ -9,6 +9,42 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h9 — the dev tree, bundled (2026-09-25, submitted 20:27, ref 56559654, sha256 e71e58cd)
+
+Same rules.json as champ-h8. Everything else is today's `kagent/`: the planner
+and executor work since h8 (rent rule on the fixed executor, future-shop
+demand, the underfoot fix, global matching, the land cap plumbing which is
+inert without `KAGG_MAX_QUADRANTS`, the forward_policy width guard). Built
+with `rl/export.py --clear --champion --bandit-rules <h8 rules> --freeze
+champ-h9`; the flags read back from the bundle are CHAMPION_PLAN, no weights,
+MPC off, four knob conditions.
+
+Why it went up: the first evaluation of the shipped bundles and the dev tree
+on the same instrument, 785 band-stratified held-out recorded games, paired,
+McNemar (`docs/stage_b5_preregistration.md` §11–13):
+
+| our side | wins / 785 | win rate | money |
+|---|---|---|---|
+| dev tree + h8 knob rules (= champ-h9) | 190 | 0.242 | $84,125 |
+| dev tree, plain champion plan | 182 | 0.232 | $83,231 |
+| frozen champ-h8 | 144 | 0.183 | $80,802 |
+| frozen champ-h1 | 46 | 0.059 | $72,137 |
+| best RL planner (capped control, 3 seeds) | 58–63 | 0.074–0.080 | $64.7k |
+
+dev + knobs vs frozen champ-h8: +0.059, z +3.69, p 0.0003, five of six
+bands, bank +$3.3k. The knob layer adds +0.010 over the plain plan (n.s.).
+
+Caveats: the ladder has disagreed with local gates twice (tape-sel3 < tape-sel;
+champ-h8 < champ-h7), so watch the rating, not the local number; the
+bundle-vs-dev-tree game-for-game reproduction check was still running at
+submit time (the bundle passed flags read-back, the test suite and the
+isolation smoke). The tape-sel lineage (rated 1750) keeps one active slot;
+this submission evicted its duplicate.
+
+Also this round: `tools/submit.sh`'s self-containment scan now matches
+import statements and path access rather than the bare word `kagent`, which
+every planner-lineage bundle carries in docstrings (champ-h8 included).
+
 ## champ-h8 — feed buffer no longer churned (2026-09-14, submitted)
 
 Same rules.json as champ-h7. One planner change (`kagent/planner.py`, both plan paths):
