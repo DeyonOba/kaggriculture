@@ -11,6 +11,7 @@ unbiased).
 """
 
 import math
+import os
 
 from kagent.constants import (
     ANIMALS,
@@ -345,6 +346,24 @@ def encode(view, memory):
 
 N_FEATURES = None  # resolved lazily on first encode (kept in sync by tests)
 
+# ---- Labour-gated land -----------------------------------------------------
+# Stage B2 traces, ours vs a 1000-1500 opponent, days 10-25: the same eleven
+# hands, but we open a FOURTH quadrant and leave 16-21 tiles idle all mid-game
+# while they work three quadrants with 4-5 idle. The fourth quadrant gated
+# -$6,266 / -$6,017 replicated (memory: labour gates land) and the neural
+# land head buys it anyway. KAGG_MAX_QUADRANTS=N caps ownership at N: the
+# head's "buy" choice is masked, and the land-crunch fallback in apply_to_plan
+# -- which buys regardless of the head once idle tiles fall below 12, i.e.
+# exactly the state above -- is suppressed. 0 (default) is no cap, so bundles
+# and every existing run are unchanged. Read at import so Pool workers and the
+# eval inherit it.
+MAX_QUADRANTS = int(os.environ.get("KAGG_MAX_QUADRANTS", "0"))
+
+
+def land_allowed(view):
+    """May this farm open another quadrant under the cap?"""
+    return MAX_QUADRANTS <= 0 or len(view.me.unlocked_quadrants) < MAX_QUADRANTS
+
 
 def masks(view):
     """Per-head validity masks (list of lists of 0/1), same order as HEADS.
@@ -360,7 +379,8 @@ def masks(view):
         if name == "land" and MODE != "residual":
             owned = me.unlocked_quadrants
             next_idx = sum(1 for q in LAND_ORDER if q in owned)
-            can = next_idx < len(LAND_ORDER) and money >= LAND_PRICES[next_idx] + 400
+            can = (next_idx < len(LAND_ORDER) and money >= LAND_PRICES[next_idx] + 400
+                   and land_allowed(view))
             m = [1 if (v == 0 or can) else 0 for v in vals]
         else:
             m = [1] * len(vals)
@@ -441,9 +461,10 @@ def apply_to_plan(plan, choices, view):
     plan.land_buys = []
     owned = view.me.unlocked_quadrants
     next_idx = sum(1 for q in LAND_ORDER if q in owned)
-    if next_idx < len(LAND_ORDER):
+    if next_idx < len(LAND_ORDER) and land_allowed(view):
         # Learned head, backed by the heuristic's tuned land-crunch fallback
         # so the policy can never simply refuse to expand while tiles run out.
+        # Both sit behind the KAGG_MAX_QUADRANTS cap.
         empty = sum(1 for _ in view.me.empty_tiles())
         crunch = (
             view.day <= 22
@@ -521,7 +542,7 @@ def apply_residual(plan, choices, view):
             empty_by_kind[structure] = -need
 
     plan.hires_target = max(2, plan.hires_target + values["hires"])
-    if values["land"] == 1:
+    if values["land"] == 1 or not land_allowed(view):
         plan.land_buys = []
 
     plan.sell_floors = dict(plan.sell_floors)
