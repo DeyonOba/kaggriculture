@@ -204,3 +204,68 @@ capped nets are reused.
 A seed-1234 result that the other two seeds do not approach is reported as
 a lucky draw, and the between-seed sd becomes the error bar every future arm
 in this track must clear.
+
+## 9 Replication result (2026-09-25, eval landed 16:21)
+
+Guards clean on all four new runs (KL ≤ 2.5e-7, 11.8–13.1 updates per
+iteration, no zero-update iteration). Same 785 games; per seed, paired.
+
+**Capped control vs B2 control — REPLICATES, tightly.**
+
+| seed | wins | Δ win | p | bands + | bank | opp bank | margin |
+|---|---|---|---|---|---|---|---|
+| 1234 | 63 vs 47 | +0.020 | 0.017 | 4 | +$3,909 | −$492 | +$4,401 |
+| 1235 | 59 vs 47 | +0.015 | 0.073 | 4 | +$3,956 | −$784 | +$4,740 |
+| 1236 | 58 vs 47 | +0.014 | 0.117 | 4 | +$2,966 | −$633 | +$3,599 |
+| mean ± between-seed sd | | **+0.017 ± 0.003** | | | +$3,610 | −$636 | +$4,246 |
+
+Sign holds 3 of 3; three-seed mean 8.7 between-seed se from zero and ~3.6
+eval-se from zero. H-rep-control passes. The land cap is worth **+1.7
+points of win rate and +$4.2k of margin**, and the control's training-run
+variance is small (sd 0.003).
+
+**Capped frozen trunk vs B2 frozen — sign replicates, size does not.**
+
+| seed | wins | Δ win | p | bands + | bank | opp bank | margin |
+|---|---|---|---|---|---|---|---|
+| 1234 | 68 vs 21 | +0.060 | <0.0001 | 5 | +$13,929 | −$10,263 | +$24,192 |
+| 1235 | 36 vs 21 | +0.019 | 0.003 | 5 | +$8,777 | −$5,377 | +$14,154 |
+| 1236 | 30 vs 21 | +0.012 | 0.049 | 5 | +$5,905 | +$1,926 | +$3,979 |
+| mean ± sd | | +0.030 ± 0.026 | | | +$9,537 | −$4,572 | +$14,108 |
+
+Sign holds 3 of 3 and the mean sits exactly at the +0.03 bar, but the two
+fresh seeds are +0.019 and +0.012: **the seed-1234 result was a lucky
+training draw**, and the "competes for the market" reading (opponent −$10k)
+does not hold on the fresh seeds (−$5k, +$2k).
+
+**Capped frozen vs capped control, same seed — FAILS: the board arm is
+worse.**
+
+| seed | wins | Δ win | p | bank | opp bank | margin |
+|---|---|---|---|---|---|---|
+| 1234 | 68 vs 63 | +0.006 | 0.61 | +$4,097 | +$1,733 | +$2,364 |
+| 1235 | 36 vs 59 | −0.029 | 0.006 | −$1,102 | +$6,912 | −$8,013 |
+| 1236 | 30 vs 58 | −0.036 | 0.0002 | −$2,983 | +$14,064 | −$17,047 |
+| mean ± sd | | −0.020 ± 0.023 | | +$4 | +$7,570 | −$7,565 |
+
+H-rep-order fails, one of three. On average the frozen board arm is two
+points *worse* than the capped control and hands the opponent $7.6k more —
+the yielding pattern, now seen in a frozen trunk too. The board arm's
+between-seed sd (0.023–0.026) is seven times the control's: **board nets
+are unstable across training runs**, and every prior board-arm conclusion
+in this track (B2 freeze order, B5b's "best agent") sat inside that noise.
+
+**What survives replication:** the land cap on the no-board control, +1.7 ±
+0.3 points and +$4.2k margin, three independent runs at 58–63 of 785 against
+B2's 47. **What does not:** any board arm beating the control. The board
+track is closed for win rate: across seven valid board arms (B2 frozen and
+trainable, B3 trainable, B5b frozen and trainable, B5c frozen ×2) none
+reliably beats the no-board control, the mean is worse, the variance is
+large, and the market-yielding sign recurs.
+
+**Carry forward:** the capped control, no board. Next: the deployment check
+against the shipped champion on the same games (needs a bundle arm in the
+eval script), then the capacity gate as a third land mode, then longer
+training on this configuration. The between-seed sd of 0.003 for the control
+is the error bar future control-family arms must clear; anything with a
+board needs three seeds before it is read at all.
