@@ -150,6 +150,19 @@ def main() -> None:
                 raise SystemExit(f"{name}: no bundle at {bpath}")
             arms.append((name, bpath, False, True))
             continue
+        if path.startswith("dev:"):
+            # The DEV TREE's scripted agent plays our side: dev:champion, or
+            # dev:knobs:<rules.json> (a BANDIT_RULES dict lifted from a bundle).
+            parts = path.split(":", 2)
+            if parts[1] == "champion":
+                spec = {"kind": "champion"}
+            elif parts[1] in ("knobs", "bandit") and len(parts) == 3:
+                with open(parts[2]) as fh:
+                    spec = {"kind": parts[1], "rules": json.load(fh)}
+            else:
+                raise SystemExit(f"{name}: dev arm wants dev:champion or dev:knobs:<rules.json>")
+            arms.append((name, spec, False, "dev"))
+            continue
         with open(path) as fh:
             pol = json.load(fh)["policy"]
         has_board = pol.get("board") is not None
@@ -163,8 +176,9 @@ def main() -> None:
     per_bin = [sum(1 for e in entries if e[2] == b) for b in range(len(EDGES))]
     print(f"{len(entries)} held-out games per arm; per bin "
           + " ".join(f"{_label(b)}:{n}" for b, n in enumerate(per_bin)))
-    print(f"arms: " + ", ".join(f"{n}{' (board)' if hb else ''}{' (bundle)' if ib else ''}"
-                                for n, _, hb, ib in arms))
+    print(f"arms: " + ", ".join(
+        f"{n}{' (board)' if hb else ''}{' (bundle)' if ib is True else ''}{' (dev tree)' if ib == 'dev' else ''}"
+        for n, _, hb, ib in arms))
 
     results = {}
     reused = {}
@@ -186,7 +200,8 @@ def main() -> None:
     with Pool(args.procs) as pool:
         for name, path, _, is_bundle in arms:
             jobs = [{"weights_path": None if is_bundle else path,
-                     "learner_bundle": path if is_bundle else None,
+                     "learner_bundle": path if is_bundle is True else None,
+                     "learner_policy": path if is_bundle == "dev" else None,
                      "temperature": 0.0, "seed": 0,
                      "side": 1 - ss, "opponent": ("session", os.path.join(REPO, p), ss),
                      "mode": "rl"} for p, ss, b, r in entries]
@@ -239,7 +254,8 @@ def main() -> None:
     if args.out:
         with open(args.out, "w") as fh:
             json.dump({"seed": args.seed, "per_bin": args.per_bin,
-                       "arms": {n: p for n, p, _, _ in arms}, "reused": reused,
+                       "arms": {n: (p if isinstance(p, str) else p.get("kind")) for n, p, _, _ in arms},
+                       "reused": reused,
                        "results": results}, fh)
         print(f"\n-> {args.out}")
 

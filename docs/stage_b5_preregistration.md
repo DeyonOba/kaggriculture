@@ -316,8 +316,26 @@ control is +1.8 points on wins in all three seeds and $7k poorer in money.
 share the scripted executor, so the deficit is the planner: the decoded
 champion playbook (which already stops at three quadrants, `CHAMP_LAND_BUYS
 = 2`) beats the learned heads by ten points of win rate. The consolidation
-rules should be developed *on the champion*. First step, cheap (19 min):
-play the current dev tree's champion plan (`speculative=True`) on the same
-games — if it reproduces champ-h8's 0.183 the dev executor is intact and the
-capacity gate can be tested on it at inference; if it is lower, the dev tree
-has regressed since h8 and that regression comes first.
+rules should be developed *on the champion*.
+
+**Correction on what "the champion" is.** Reading the bundles' flag modules:
+champ-h8 = `CHAMPION_PLAN` **plus** a knob-bandit layer (`BANDIT_RULES`,
+kind `knobs`, 291 bytes); champ-h1 = the plain champion plan. So the
+bandit layer, together with the planner and executor changes between h1 and
+h8, is where 0.059 becomes 0.183.
+
+## 12 Dev-tree check, pre-registered before it ran
+
+`tools/dev_champion_check.sh`. Today's `kagent/` plays our side two ways on
+the same 785 games: the plain champion plan (`dev:champion`), and the knob
+bandit with champ-h8's own rules lifted from its bundle (`dev:knobs`). The
+frozen bundles and the capped control are reused.
+
+- **H-dev-h8**: dev tree + h8 rules vs frozen champ-h8: paired delta not
+  significantly negative and within ±0.02. Pass → the dev tree still is the
+  champion, and consolidation rules are developed on it and tested at
+  inference against champ-h8. Fail (significantly below) → the dev tree has
+  regressed since h8, and finding that regression comes before any rule.
+- **H-dev-h1**: dev champion plan vs frozen champ-h1, same criterion; and
+  dev knobs vs dev champion measures the bandit layer's value on today's
+  tree.

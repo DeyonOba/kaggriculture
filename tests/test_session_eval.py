@@ -66,6 +66,28 @@ def test_bundle_plays_our_side():
     assert ep["final_money"] > 0
 
 
+def test_dev_tree_agents_play_our_side():
+    """The dev tree's champion plan, and the knob bandit with champ-h8's
+    rules, as the learner: full episodes, DONE, and the worker's head mode
+    restored to absolute afterwards."""
+    from kagent import features
+    from rl import rollout
+    ep = rollout.run_episode({"weights_path": None, "learner_policy": {"kind": "champion"},
+                              "temperature": 0.0, "seed": 4, "side": 0,
+                              "opponent": "starter", "mode": "rl"})
+    assert all(s == "DONE" for s in ep["statuses"]) and ep["final_money"] > 0
+    rules_path = os.path.join(REPO, "rl", "runs", "deploy_check", "champ-h8_bandit_rules.json")
+    if not os.path.exists(rules_path):
+        pytest.skip("no champ-h8 rules file")
+    import json
+    ep = rollout.run_episode({"weights_path": None,
+                              "learner_policy": {"kind": "knobs", "rules": json.load(open(rules_path))},
+                              "temperature": 0.0, "seed": 4, "side": 1,
+                              "opponent": "starter", "mode": "rl"})
+    assert all(s == "DONE" for s in ep["statuses"]) and ep["final_money"] > 0
+    assert features.MODE == "absolute", "residual mode must not leak to the next job"
+
+
 def test_mcnemar_and_paired_delta():
     assert se.binom_two_sided(0, 0) == 1.0
     assert se.binom_two_sided(3, 13) == pytest.approx(0.0923, abs=1e-4)

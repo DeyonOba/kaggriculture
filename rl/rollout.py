@@ -344,6 +344,38 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
     return agent_fn
 
 
+def _make_dev_policy_agent(spec):
+    """-> (agent_fn, switched_mode). spec: {"kind": "champion"} or
+    {"kind": "knobs", "rules": {...}} (a BANDIT_RULES dict, e.g. champ-h8's).
+    Mirrors kagent/policy.py's bundle wiring: CHAMPION_PLAN ->
+    HeuristicPolicy(ChampionPlanProvider()); BANDIT_RULES -> residual heads +
+    HeuristicPolicy(KnobBanditPolicy | BanditPolicy)."""
+    from kagent.policy import ChampionPlanProvider
+    from kagent.banditpolicy import BanditPolicy, KnobBanditPolicy
+
+    kind = spec.get("kind", "champion")
+    switched = False
+    if kind == "champion":
+        pol = HeuristicPolicy(ChampionPlanProvider())
+    elif kind in ("knobs", "bandit"):
+        rules = spec["rules"]
+        if features.MODE != "residual":
+            features.set_mode("residual")
+            switched = True
+        cls = KnobBanditPolicy if rules.get("kind") == "knobs" else BanditPolicy
+        pol = HeuristicPolicy(cls(rules))
+    else:
+        raise ValueError(f"unknown learner_policy kind {kind!r}")
+    mem = Memory()
+
+    def agent_fn(obs):
+        view = View(obs)
+        mem.observe(view)
+        return pol.act(view, mem)
+
+    return agent_fn, switched
+
+
 _BUNDLE_CACHE = {}
 _SESSION_CACHE = {}
 
@@ -437,7 +469,14 @@ def run_episode(job):
     sample_rng = rng if (mode == "rl" and temperature > 0) else None
 
     extra = {}
-    if job.get("learner_bundle"):
+    switched_mode = False
+    if job.get("learner_policy"):
+        # OUR side played by the DEV TREE's scripted agents: the champion plan,
+        # or the knob bandit over it with a rules dict (lifted from a frozen
+        # bundle). The same objects the bundler freezes into main.py, from
+        # today's kagent/ -- the check that the dev tree still IS the champion.
+        learner, switched_mode = _make_dev_policy_agent(job["learner_policy"])
+    elif job.get("learner_bundle"):
         # OUR side played by a frozen bundle (a shipped main.py), exec'd the way
         # the Kaggle loader does it. No records: nothing to train on, this is
         # the deployment comparison -- the same games, the same seats, the
@@ -457,7 +496,13 @@ def run_episode(job):
 
     t0 = _time.time()
     env = make("kaggriculture", configuration={"seed": job["seed"]}, debug=False)
-    env.run(agents)
+    try:
+        env.run(agents)
+    finally:
+        if switched_mode:
+            # the bandit needs residual heads; put the worker back for the
+            # next job, which may be a neural net on absolute heads
+            features.set_mode("absolute")
     duration = _time.time() - t0
 
     if duration > 60:
