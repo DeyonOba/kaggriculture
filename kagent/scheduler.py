@@ -542,7 +542,10 @@ def assign(view, plan, tasks):
                 continue
             tx, ty = _nearest_shed_tile(x, y)
             d = _dist(x, y, tx, ty)
-            if d > EVESELL_MAX_DIST or view.hour < EVESELL_ARRIVE_HOUR - d:
+            # leave in time to arrive by EVESELL_ARRIVE_HOUR; a unit already
+            # at the shed drops from the hour before, so it does not walk
+            # off to a chore and back
+            if d > EVESELL_MAX_DIST or view.hour < EVESELL_ARRIVE_HOUR - max(d, 1):
                 continue
             if d == 0:
                 if shed_room <= 0:
