@@ -437,10 +437,17 @@ def run_episode(job):
     sample_rng = rng if (mode == "rl" and temperature > 0) else None
 
     extra = {}
-    learner = _make_learner_agent(
-        layers, temperature, sample_rng, records, mode, style=job.get("style", "react"),
-        dev=job.get("dev"), extra=extra,
-    )
+    if job.get("learner_bundle"):
+        # OUR side played by a frozen bundle (a shipped main.py), exec'd the way
+        # the Kaggle loader does it. No records: nothing to train on, this is
+        # the deployment comparison -- the same games, the same seats, the
+        # shipped agent instead of the net.
+        learner = _make_opponent(("bundle", job["learner_bundle"]))
+    else:
+        learner = _make_learner_agent(
+            layers, temperature, sample_rng, records, mode, style=job.get("style", "react"),
+            dev=job.get("dev"), extra=extra,
+        )
     opponent = _make_opponent(job.get("opponent", "heuristic"))
 
     side = job.get("side", 0)

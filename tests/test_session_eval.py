@@ -51,6 +51,21 @@ def test_reuse_accepts_the_same_draw_and_refuses_another():
         se.reuse_results(flipped, entries)
 
 
+def test_bundle_plays_our_side():
+    """A frozen main.py as the learner: a full episode, DONE status, no
+    records (nothing to train on), a real reward."""
+    from rl import rollout
+    bundle = os.path.join(REPO, "arena", "agents", "champ-h8", "main.py")
+    if not os.path.exists(bundle):
+        pytest.skip("no champ-h8 bundle")
+    ep = rollout.run_episode({"weights_path": None, "learner_bundle": bundle,
+                              "temperature": 0.0, "seed": 4, "side": 1,
+                              "opponent": "starter", "mode": "rl"})
+    assert ep["records"] == []
+    assert all(s == "DONE" for s in ep["statuses"])
+    assert ep["final_money"] > 0
+
+
 def test_mcnemar_and_paired_delta():
     assert se.binom_two_sided(0, 0) == 1.0
     assert se.binom_two_sided(3, 13) == pytest.approx(0.0923, abs=1e-4)

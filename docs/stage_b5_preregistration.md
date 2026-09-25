@@ -269,3 +269,23 @@ eval script), then the capacity gate as a third land mode, then longer
 training on this configuration. The between-seed sd of 0.003 for the control
 is the error bar future control-family arms must clear; anything with a
 board needs three seeds before it is read at all.
+
+## 10 Deployment check, pre-registered before it ran
+
+`tools/deploy_check.sh`. The shipped champion bundles `champ-h8` (the
+strongest local champion, the base every gate uses) and `champ-h1` (the one
+recorded as submitted) play *our* side on the same 785 held-out games,
+through a new bundle arm in `rl/session_eval.py` and `rl/rollout.py`
+(`learner_bundle`). The three capped controls (seeds 1234–1236) and B2's
+uncapped control are reused game-by-game. Baseline `champ-h8`.
+
+- **H-deploy**: the capped control beats `champ-h8` on win rate, p < 0.05,
+  positive in ≥ 4 of 6 bands, in at least two of three seeds, with the
+  three-seed mean positive. Money reported alongside; the ladder is
+  win-based, so wins decide.
+- **H-deploy-h1**: the same against `champ-h1`, reported.
+- Passing makes the capped control a submission candidate, with
+  `MAX_QUADRANTS = 3` baked into the bundle at export (a bundle has no
+  environment). Failing says the RL track has not yet caught the heuristic
+  champion on the ladder's own terms, and the cap should be tested on the
+  champion itself.

@@ -138,25 +138,33 @@ def main() -> None:
 
     from rl import rollout
 
-    arms = []
+    arms = []          # (name, path, has_board, is_bundle)
     for a in args.arm:
         name, _, path = a.partition("=")
         if not path:
-            raise SystemExit(f"--arm wants name=path, got {a!r}")
+            raise SystemExit(f"--arm wants name=path or name=bundle:path, got {a!r}")
+        if path.startswith("bundle:"):
+            # A frozen main.py plays OUR side -- the deployment comparison.
+            bpath = os.path.abspath(path[len("bundle:"):])
+            if not os.path.exists(bpath):
+                raise SystemExit(f"{name}: no bundle at {bpath}")
+            arms.append((name, bpath, False, True))
+            continue
         with open(path) as fh:
             pol = json.load(fh)["policy"]
         has_board = pol.get("board") is not None
         if has_board and not rollout._BOARD:
             raise SystemExit(f"{name}: weights carry a board trunk but KAGG_BOARD "
                              f"is not set -- export KAGG_BOARD=1 first")
-        arms.append((name, os.path.abspath(path), has_board))
+        arms.append((name, os.path.abspath(path), has_board, False))
 
     entries = held_out_entries(os.path.join(REPO, "rl", "datasets", "session_index.json"),
                                args.seed, args.per_bin)
     per_bin = [sum(1 for e in entries if e[2] == b) for b in range(len(EDGES))]
     print(f"{len(entries)} held-out games per arm; per bin "
           + " ".join(f"{_label(b)}:{n}" for b, n in enumerate(per_bin)))
-    print(f"arms: " + ", ".join(f"{n}{' (board)' if hb else ''}" for n, _, hb in arms))
+    print(f"arms: " + ", ".join(f"{n}{' (board)' if hb else ''}{' (bundle)' if ib else ''}"
+                                for n, _, hb, ib in arms))
 
     results = {}
     reused = {}
@@ -176,8 +184,10 @@ def main() -> None:
         print(f"  {name:<12} win {p_:.3f} +/- {se:.3f}   (reused from {reused[name]})")
     t0 = time.time()
     with Pool(args.procs) as pool:
-        for name, path, _ in arms:
-            jobs = [{"weights_path": path, "temperature": 0.0, "seed": 0,
+        for name, path, _, is_bundle in arms:
+            jobs = [{"weights_path": None if is_bundle else path,
+                     "learner_bundle": path if is_bundle else None,
+                     "temperature": 0.0, "seed": 0,
                      "side": 1 - ss, "opponent": ("session", os.path.join(REPO, p), ss),
                      "mode": "rl"} for p, ss, b, r in entries]
             out = list(pool.imap(rollout.run_episode, jobs))          # ordered: paired
@@ -194,7 +204,7 @@ def main() -> None:
                   f"{sum(x['bad'] for x in rows)}   ({time.time()-t0:.0f}s)", flush=True)
 
     # Baseline: --baseline, else the first --arm. Played arms print first.
-    results = {**{n: results[n] for n, _, _ in arms}, **{n: results[n] for n in reused}}
+    results = {**{n: results[n] for n, _, _, _ in arms}, **{n: results[n] for n in reused}}
     base_name = args.baseline or arms[0][0]
     if base_name not in results:
         raise SystemExit(f"--baseline {base_name!r} is not a played or reused arm "
@@ -229,7 +239,7 @@ def main() -> None:
     if args.out:
         with open(args.out, "w") as fh:
             json.dump({"seed": args.seed, "per_bin": args.per_bin,
-                       "arms": {n: p for n, p, _ in arms}, "reused": reused,
+                       "arms": {n: p for n, p, _, _ in arms}, "reused": reused,
                        "results": results}, fh)
         print(f"\n-> {args.out}")
 
