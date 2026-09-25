@@ -110,3 +110,33 @@ If the rule passes and retraining does not add to it, consolidation is a
 constraint to be given, not learned, at this budget. If retraining adds to
 it, the planner can use the freed labour. If neither passes, the idle ground
 was a symptom, not a cause, and the two traced games were lucky.
+
+## 6 Result, inference-time cap (2026-09-25, eval landed 04:59): H-cap-rule PASSES
+
+B2's three nets unchanged, `KAGG_MAX_QUADRANTS=3` at inference, 785 paired
+held-out games each, baselines reused game-by-game; `bad == 0` throughout.
+
+| net under the cap vs the same net uncapped | wins | Δ win rate | se | z | discordant | p | 95% CI | bands ≥ 0 | our bank | opp bank | margin (z) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| control | 62 vs 47 | +0.019 | 0.007 | +2.80 | 22 / 7 | 0.008 | [+0.006, +0.032] | 5 of 6, 4 positive | +$3,806 | −$784 | +$4,590 (+9.9) |
+| frozen trunk | 29 vs 21 | +0.010 | 0.004 | +2.32 | 10 / 2 | 0.039 | [+0.002, +0.019] | 6 of 6, 3 positive | +$4,675 | −$63 | +$4,738 (+11.0) |
+| trainable trunk | 59 vs 41 | +0.023 | 0.007 | +3.31 | 24 / 6 | 0.001 | [+0.009, +0.037] | 6 of 6, 5 positive | +$4,992 | −$758 | +$5,750 (+12.0) |
+
+**H-cap-rule: PASSES** on the control — p 0.008, positive in four of six
+bands (the one negative band is 600–1000, 21 games, one flip), and money
+moves with wins: bank up, opponent's bank slightly down, margin +$4,590 at
+z +9.9. The same rule improves all three nets by a similar amount, +$4.6k to
++$5.8k of margin and +1.0 to +2.3 points of win rate, which is what a
+mechanism looks like rather than a fit. Near-miss losses inside $5k double
+for the control (11 → 22): the cap moves games toward the margin.
+
+**First rule in the board track to raise held-out wins**, and the largest
+win-rate gain of any arm in the project's paired evals. The capped control
+at 0.079 is the best held-out configuration to date. The capped trainable
+trunk is at parity with the capped control on wins (−0.004, p 0.80) with
++$2.4k of bank and a −$1.0k margin: the board still does not add wins.
+
+**Consolidation reading (the user's hypothesis):** knowing when to stop
+investing in land is worth about two points of win rate and $4.6k of margin
+as a fixed rule at inference, with no retraining. Whether retraining under
+the constraint adds to it is the second half of this queue.
