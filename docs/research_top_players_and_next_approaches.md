@@ -392,6 +392,35 @@ not floors: it is *when* produce is dropped and sold relative to the price
 path. Test: inference, paired; watch margin as well as wins, with the
 price-at-sale ratio as the mechanism check.
 
+**Sell timing, measured 26 September** (scratch `sell_impact.py` over the
+three traced games and the twelve M & M & P & Q replays; engine
+`_process_market` fills SELL orders unit by unit at the running price, both
+players interleaved). Our orders for the four steep-curve products cut the
+price within one step to 0.62 (strawberry) and 0.53 (wool) of the first
+unit's price; the top agent's orders lose 6–9%. Our realised price over the
+product's game mean is 0.89, theirs 1.04, on 1,087 against 1,639 units,
+and 68% of our units sell at hours 0–3 against 54% of theirs, 39% of
+theirs at hours 20–23 against 11% of ours. The clean comparison is inside
+the same market: on our three traced games the recorded opponents realise
+0.85–1.03 of the mean strawberry price to our 0.68–0.89 and 1.36–1.50 on
+melon to our 1.11, selling 33–42% of their strawberries in the evening.
+Two rules were built and checked on the traces:
+- `sell_pace` (planner knob, off): cap a steep-curve product's order at
+  the units that keep the within-order drop under N% when shops drain it.
+  Order impact 0.6–0.8 → 0.7–0.9, realised price and money flat (±0.5%):
+  the level of the market is set by both farms' supply against the drain,
+  not by our batch size. No eval arm.
+- `evesell` (executor flag, off): a unit carrying ≥ 3 sellable units within
+  5 tiles walks in to DROP by hour 22, so the produce sells at 22–23 before
+  the hour-0 dumps. Evening sale share 0.1–0.2 → 0.3–0.45; realised
+  strawberry price 0.89 → 0.94 alone and 0.90 → 1.08 with the four executor
+  rules on one game, worse alone on another; harvests −3 to −21 a game for
+  the walk. Ambiguous on traces (single games move with the shop re-roll),
+  so it is in the paired queue as `evesell_four` against `exec_four`.
+Melon is a different story: the opponents' 1.4× melon price is the day-10
+harvest race (they clear melons on day 10 at $271; we finish on day 13),
+which is harvest timing, not sell timing.
+
 ### E. The capacity-gated fourth quadrant — the top agent's own pattern
 Open the fourth quadrant only when the first three are full (idle < 3), the
 day is at least 14, and cash after purchase leaves working capital; fill it
