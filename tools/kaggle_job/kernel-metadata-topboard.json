@@ -1,0 +1,15 @@
+{
+  "id": "gideonoba/kaggriculture-topboard",
+  "title": "kaggriculture-topboard",
+  "code_file": "job.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": ["gideonoba/kaggriculture-code", "gideonoba/kaggriculture-datasets"],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
