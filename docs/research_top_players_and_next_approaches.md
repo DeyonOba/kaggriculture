@@ -247,7 +247,18 @@ bounded at about $0, and freed turns convert at zero.
 **Market and selling.** Sell floors are inert (bind on 2.5% of sizing calls,
 0–1 discordant worlds); harvesting melon early −$1.5k; geese substitution
 cut wins 8 → 2 of 144; market denial 0 of 120 games flipped; the premium
-scale sweep is flat.
+scale sweep is flat. **Geese as an addition to the dev tree (25 September,
+`docs/results/rules_geese_eval.log`): 4 geese days 6–18 −8.0 pts (z −6.1,
+24 arm-only vs 87 base-only games), 6 geese −12.6 pts (z −9.0), worse in
+every rating band against the dev tree with h8's rules (0.242).** Our bank
+moved −$1.4k / −$5.5k while the recorded opponent's rose +$5.1k / +$7.7k:
+feeding and caring for the geese displaced strawberry, milk and carrot
+volume (−66, −51, −57 units on a traced 2000–2500 game, with 3 of 8 sheep
+unfed at noon and two animals escaped by day 29), and the opponent sells
+into those same markets, so the price relief is theirs. Eggs earned $8k on
+that game. Third geese refutation, now with the mechanism; the top players
+carry ~6 geese because their chores cost half of ours (§3.1), not because
+eggs pay for the labour at our rate.
 
 **Learned models.** The executor BC ranker fits at 69.4% and gated null
 (later +$1.2k, z 1.95, on the fixed executor: the only learned component
@@ -511,3 +522,20 @@ consistent with the executor being the remaining difference.
 - Check a behavioural switch on one traced game (`tools/game_trace.py`)
   before launching a multi-hour arm; land alone is bought through three code
   paths.
+- **Pairing does not hold the town's shops fixed.** The engine seeds one
+  RNG per day from (world seed, day), spends one draw per *empty tile on
+  both farms* for weed spawning, then draws the new shop on unlock days
+  (every third day, up to eight instances, with replacement). Any arm that
+  changes the empty-tile count on an unlock day re-rolls that day's shop;
+  on a traced geese game the two arms diverged from day 9 (PET_CAFE versus
+  YARN_STORE) and wool sold at $240 all game for one arm and $1 from day
+  16 for the other, moving both banks by tens of thousands. The seed is in
+  `env.info`, not in the agent's configuration or observation, so the draw
+  is unforecastable and the re-roll is uniform: a paired *mean* over 785
+  games is unbiased, but a single traced pair cannot attribute its
+  difference to the change, and the recorded opponent's actions were taken
+  under the recorded shops, so the tape is incoherent with a re-rolled
+  market. Instrument improvement not yet built: force the recorded
+  session's shop sequence in the eval environment (one patched engine
+  call), which fixes demand across arms and restores the tape's coherence.
+  Do it between eval campaigns; it changes every reused arm.
