@@ -162,14 +162,19 @@ def build_tasks(view, plan):
 
     # --- Animals: the care regime is first-class (3x output multiplier) --------
     feeding_day = day < 29
+    # Culled kinds (plan.cull_kinds, from the champion plan's cull knobs) get
+    # no FEED and no CARE: they escape after two unfed days, and the wheat
+    # and the actions go to the crops. Existing yield is still harvested.
+    culled = getattr(plan, "cull_kinds", None) or ()
     for x, y, t in me.animals():
-        if feeding_day and not t.get("fed_today"):
+        keep = t.get("animal") not in culled
+        if feeding_day and keep and not t.get("fed_today"):
             # Feed EVERY animal EVERY day: the CARE bonus (banked only on
             # fed+cared days, paid only on fed production days) is what turns
             # 0.5 milk/cow/day into ~1.5. Survival cases stay hard-urgent.
             pri = P_SURVIVAL if t.get("consecutive_unfed", 0) >= 1 else P_ANIMAL
             tasks.append(Task(pri, x, y, ["FEED"], need="WHEAT"))
-        if feeding_day and t.get("fed_today") and not t.get("cared_today") and day < 28:
+        if feeding_day and keep and t.get("fed_today") and not t.get("cared_today") and day < 28:
             # Crash-pivot: caring boosts output we cannot profitably sell when
             # the product's market has collapsed — release those actions.
             product = ANIMALS.get(t.get("animal"), {}).get("product")

@@ -5,6 +5,7 @@ from kagent.constants import (
     CROPS,
     LAND_ORDER,
     LAND_PRICES,
+    MARKET_PARAMS,
     SHOPS,
     TURNS_PER_DAY,
 )
@@ -187,7 +188,7 @@ class DayPlan:
     __slots__ = (
         "hires_target", "land_buys", "plant_quota", "animal_buys",
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
-        "fert_reserve", "land_margin", "feed_days",
+        "fert_reserve", "land_margin", "feed_days", "cull_kinds",
     )
 
     def __init__(self):
@@ -198,6 +199,9 @@ class DayPlan:
         self.structure_builds = {"COOP": 0, "PASTURE": 0}
         self.sell_floors = {}
         self.liquidation = False
+        # Animal kinds the scheduler must stop feeding today (they escape
+        # after two unfed days). Empty unless a cull knob is on.
+        self.cull_kinds = set()
         self.wheat_reserve = 0
         # Fertilizer units kept out of the market for today's FERTILIZE tasks
         # (set each turn by the policy from the task list).
@@ -403,6 +407,15 @@ KNOB_DEFAULTS = {
     "liquidation_day": LIQUIDATION_DAY,
     "carrot_cap": 20,                     # endgame carrots per day cap
     "feed_days": 2,                       # days of feed kept in stock
+    # Culls (2026-09-25, from M & M & P & Q's twelve replays: 10.7 animals let
+    # go a game vs our 0.8). Cows go when milk collapses -- median 0.14 of base
+    # at the loss, days 16-20; sheep go in the endgame, days 20-29, half after
+    # day 25, at a wool price near base; geese are kept. An unfed animal
+    # escapes after two days, and what the cull releases is the feed wheat
+    # and the feed/care actions. All OFF by default; the bandit rules set them.
+    "cull_milk_ratio": 0.0,               # stop feeding COWS when milk < ratio x base (from day 12)
+    "cull_wool_ratio": 0.0,               # stop feeding SHEEP when wool < ratio x base (from day 12)
+    "endgame_cull_day": 0,                # from this day stop feeding cows and sheep
 }
 
 
@@ -441,6 +454,23 @@ def make_champion_plan(view, memory):
     empty_by_kind = {"COOP": 0, "PASTURE": 0}
     for _, _, t in me.empty_structures():
         empty_by_kind[t["kind"]] = empty_by_kind.get(t["kind"], 0) + 1
+
+    # --- Culls: stop feeding animals whose keep no longer pays ---------------
+    # See KNOB_DEFAULTS. Decided fresh every dawn from today's price, so a
+    # milk crash after the bandit's last decision day still triggers it.
+    plan.cull_kinds = set()
+    if day >= 12:
+        px = view.market_prices
+        r = knobs.get("cull_milk_ratio", 0.0)
+        if r > 0 and px.get("MILK", 999) < r * MARKET_PARAMS["MILK"]["base"]:
+            plan.cull_kinds.add("COW")
+        r = knobs.get("cull_wool_ratio", 0.0)
+        if r > 0 and px.get("WOOL", 999) < r * MARKET_PARAMS["WOOL"]["base"]:
+            plan.cull_kinds.add("SHEEP")
+    d = knobs.get("endgame_cull_day", 0)
+    if d > 0 and day >= d:
+        plan.cull_kinds |= {"COW", "SHEEP"}
+    feeding_animals = sum(n for k, n in herd.items() if k not in plan.cull_kinds)
     empty_tiles = sum(1 for _ in me.empty_tiles())
 
     # --- Hiring: lean until the second quadrant, then ~11 ---------------------
@@ -485,6 +515,8 @@ def make_champion_plan(view, memory):
         # so the herd wins the intra-day cash race the way champions' does.
         targets = _champ_herd_targets(day, knobs)
         for kind in ("SHEEP", "COW", "GOOSE"):  # wool lands first (day 6) and pays for land
+            if kind in plan.cull_kinds:
+                continue                        # never buy what we are letting go
             want = (targets[kind] - herd.get(kind, 0) - view.shed.get(kind, 0)
                     - _pocket.get(kind, 0))
             n = max(0, min(want, 4))
@@ -555,7 +587,7 @@ def make_champion_plan(view, memory):
     # BUY_PRODUCT quotes at inventory-1 and both farms drain the same pool).
     plan.wheat_reserve = (
         0 if plan.liquidation and day >= 29
-        else max(my_animals + 2, plan.feed_days * my_animals)
+        else max(feeding_animals + 2, plan.feed_days * feeding_animals)
     )
     plan.sell_floors = _sell_floors(view)
     if knobs["premium_scale"] != 1.0 and 6 <= day and view.step < 714:
