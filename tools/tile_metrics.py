@@ -185,6 +185,9 @@ def analyse(steps, final):
 
     # land use at hour 0
     idle_shares = []
+    empty_shares = []
+    weed_shares = []
+    estruct_shares = []
     weed_days = 0
     layout = None
     for s in steps:
@@ -197,6 +200,9 @@ def analyse(steps, final):
         estruct = sum(1 for t in flat if isinstance(t, list) and t[0] == 3)
         if unlocked:
             idle_shares.append((empty + weeds + estruct) / unlocked)
+            empty_shares.append(empty / unlocked)
+            weed_shares.append(weeds / unlocked)
+            estruct_shares.append(estruct / unlocked)
         weed_days += weeds
         if s["day"] == 15:
             an = Counter()
@@ -234,6 +240,9 @@ def analyse(steps, final):
         "moves_per_productive": r(moves, productive),
         "productive_ops": productive, "moves": moves,
         "idle_share_mean": st.mean(idle_shares) if idle_shares else None,
+        "idle_empty_share": st.mean(empty_shares) if empty_shares else None,
+        "idle_weed_share": st.mean(weed_shares) if weed_shares else None,
+        "idle_structure_share": st.mean(estruct_shares) if estruct_shares else None,
         "weed_tile_days": weed_days,
         "water_no_effect_share": r(water_bad, n_water), "water_ops": n_water,
         "h23_moves": h23_moves, "h23_move_share": r(h23_moves, moves),
@@ -261,6 +270,9 @@ ROWS = [
     ("productive ops", "productive_ops", "{}"), ("moves", "moves", "{}"),
     ("harvests", "harvest_ops", "{}"), ("plantings", "plant_ops", "{}"),
     ("idle share of unlocked tiles", "idle_share_mean", "{:.3f}"),
+    ("  of which bare", "idle_empty_share", "{:.3f}"),
+    ("  of which weed", "idle_weed_share", "{:.3f}"),
+    ("  of which empty structure", "idle_structure_share", "{:.3f}"),
     ("weed tile-days", "weed_tile_days", "{}"),
     ("water ops with no effect", "water_no_effect_share", "{:.2f}"),
     ("hour-23 move share", "h23_move_share", "{:.3f}"),
