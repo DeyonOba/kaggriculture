@@ -35,11 +35,16 @@ dev + knobs vs frozen champ-h8: +0.059, z +3.69, p 0.0003, five of six
 bands, bank +$3.3k. The knob layer adds +0.010 over the plain plan (n.s.).
 
 Caveats: the ladder has disagreed with local gates twice (tape-sel3 < tape-sel;
-champ-h8 < champ-h7), so watch the rating, not the local number; the
-bundle-vs-dev-tree game-for-game reproduction check was still running at
-submit time (the bundle passed flags read-back, the test suite and the
-isolation smoke). The tape-sel lineage (rated 1750) keeps one active slot;
-this submission evicted its duplicate.
+champ-h8 < champ-h7), so watch the rating, not the local number. The
+tape-sel lineage (rated 1750) keeps one active slot; this submission evicted
+its duplicate.
+
+Reproduction check (landed 21:41, after submission): the frozen champ-h9
+bundle played the same 785 games as the dev-tree arm and matched it **game
+for game** — 785/785 identical wins, bank and opponent bank, 190 wins,
+$84,125. The submitted file is exactly the agent that scored 0.242 locally.
+First ladder reading at 21:38, eleven minutes in: 710.3 (an opening number;
+the rating moves for a day and its noise is ±45).
 
 Also this round: `tools/submit.sh`'s self-containment scan now matches
 import statements and path access rather than the bare word `kagent`, which
