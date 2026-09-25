@@ -429,7 +429,7 @@ def _draw_opponent(rng, roll, entries, bins, unrated, bin_wins, band_w,
 def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bundles=(),
               prior_net=None, prior_kl=0.0,
               patience=4, legacy_shaping=False, eval_per_bin=3,
-              session_mix="frontier", session_frac=0.5):
+              session_mix="frontier", session_frac=0.5, world_seed=None):
     snapshots = []
     league = []          # weight paths of every new-best: future opponents
     best_score = -1.0
@@ -481,6 +481,16 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
     # across all gates (diverse contested play), win rates reported for info.
     gates = ["heuristic"] + [("bundle", b) for b in opp_bundles]
 
+    # Replication. --seed pins torch and python, which is the minibatch
+    # shuffle; the worlds (10_000 + it*episodes + e) and the opponent draw
+    # (Random(it)) are fixed per iteration by construction, so two "seeds"
+    # share every world and every opponent. With --vary-worlds both are
+    # re-seeded from the training seed, so replicates are independent runs.
+    world_base = (10_000 if world_seed is None
+                  else 10_000 + (world_seed % 997) * 100_000)
+    if world_seed is not None:
+        print(f"replicate: worlds from {world_base:,}, opponent draw seeded by {world_seed}")
+
     for it in range(iters):
         t0 = time.time()
         shaping_w = max(0.0, 1.0 - it / (iters * 0.5))
@@ -489,7 +499,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             json.dump(to_layers(net, vnet), f)
 
         jobs = []
-        rng = random.Random(it)
+        rng = random.Random(it if world_seed is None else it * 1000 + world_seed)
         for e in range(episodes):
             roll = rng.random()
             opp, sess_side = _draw_opponent(
@@ -498,7 +508,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             side = sess_side if sess_side is not None else e % 2
             jobs.append(
                 {"weights_path": wpath, "temperature": 1.0,
-                 "seed": 10_000 + it * episodes + e, "side": side,
+                 "seed": world_base + it * episodes + e, "side": side,
                  "opponent": opp, "mode": "rl"}
             )
         if PAIRED:
@@ -926,6 +936,11 @@ def main():
                     help="share of episodes against recorded sessions; the rest "
                          "is bundles/league/heuristic/snapshots in the legacy "
                          "40/16/28/16 split. The eval has no heuristic games")
+    ap.add_argument("--vary-worlds", action="store_true",
+                    help="also re-seed the world seeds and the opponent draw from "
+                         "--seed, so a replicate is an independent training run "
+                         "rather than the same worlds with a different minibatch "
+                         "order. Off by default: every prior run stays reproducible")
     ap.add_argument("--plateau-cool", type=float, default=None,
                     help="LR multiplier per eval without improvement (1.0 = off; residual argmax evals stay flat by design)")
     ap.add_argument("--prior-pt", default=None, help="checkpoint to use as the frozen prior for --prior-kl (default: the resumed/BC net)")
@@ -1039,6 +1054,7 @@ def main():
             prior_net=prior_net, prior_kl=args.prior_kl,
             legacy_shaping=args.legacy_shaping, eval_per_bin=args.eval_per_bin,
             session_mix=args.session_mix, session_frac=args.session_frac,
+            world_seed=(args.seed if args.vary_worlds else None),
         )
 
 

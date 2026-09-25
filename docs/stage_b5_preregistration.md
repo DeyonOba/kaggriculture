@@ -180,3 +180,27 @@ The eval se (0.008–0.010) is the eval's noise for a fixed net; training-run
 variance is unmeasured. The +6.0-point frozen result is the largest effect
 seen and the one that most needs replication across training seeds before
 it is believed at that size.
+
+## 8 Replication (B5c), pre-registered before it ran
+
+`tools/stage_b5c.sh`: the capped control and the capped frozen-trunk arm,
+two more training seeds each (1235, 1236), with `--vary-worlds` so each
+replicate re-seeds the world seeds and the opponent draw as well as the
+minibatch order — an independent training run, not the same worlds
+reshuffled. Same B2 BC checkpoints, same configuration. The four new nets
+are played on the same 785 games; B2 control, B2 frozen and the seed-1234
+capped nets are reused.
+
+- **H-rep-frozen**: the capped frozen arm's paired delta over B2 frozen is
+  positive in all three seeds, and the three-seed mean is at least +0.03
+  (half the seed-1234 size). Reported: mean ± between-seed sd of the delta,
+  of money and of the opponent's bank.
+- **H-rep-control**: the capped control's paired delta over B2 control is
+  positive in all three seeds; three-seed mean reported with its sd.
+- **H-rep-order**: capped frozen vs capped control, same seed, parity or
+  better on wins in at least two of three seeds.
+- Guards as before, per run.
+
+A seed-1234 result that the other two seeds do not approach is reported as
+a lucky draw, and the between-seed sd becomes the error bar every future arm
+in this track must clear.
