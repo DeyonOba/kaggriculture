@@ -29,7 +29,10 @@ def _obs(day, bare):
     farm = obs["farms"][0]
     farm["money"] = 8_000
     # NW quadrant: `bare` empty tiles, the rest standing strawberries (no
-    # wheat, so the wheat engine wants its full cap regardless of the fill)
+    # wheat, so the wheat engine wants its full cap regardless of the fill).
+    # NE quadrant: the full herd already housed, so the plan queues no
+    # structure builds (those would take the bare ground first).
+    farm["unlocked_quadrants"] = ["NW", "NE"]
     n = 0
     for y in range(5):
         for x in range(5):
@@ -38,6 +41,18 @@ def _obs(day, bare):
             else:
                 farm["tiles"][y][x] = _plant("STRAWBERRY", day - 3)
             n += 1
+    for i in range(25):
+        x, y = 5 + i % 5, i // 5
+        if i < 8:
+            farm["tiles"][y][x] = {"kind": "PASTURE", "animal": "COW", "fed_today": True,
+                                   "cared_today": True, "fertilizer_available": False,
+                                   "yield_units": 0, "consecutive_unfed": 0}
+        elif i < 16:
+            farm["tiles"][y][x] = {"kind": "PASTURE", "animal": "SHEEP", "fed_today": True,
+                                   "cared_today": True, "fertilizer_available": False,
+                                   "yield_units": 0, "consecutive_unfed": 0}
+        else:
+            farm["tiles"][y][x] = _plant("STRAWBERRY", day - 3)
     return obs
 
 
