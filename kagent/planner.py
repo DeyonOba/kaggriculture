@@ -188,7 +188,7 @@ class DayPlan:
     __slots__ = (
         "hires_target", "land_buys", "plant_quota", "animal_buys",
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
-        "fert_reserve", "land_margin", "feed_days", "cull_kinds",
+        "fert_reserve", "land_margin", "feed_days", "cull_kinds", "sell_pace",
     )
 
     def __init__(self):
@@ -198,6 +198,10 @@ class DayPlan:
         self.animal_buys = {}
         self.structure_builds = {"COOP": 0, "PASTURE": 0}
         self.sell_floors = {}
+        # Sell pacing for the steep-curve products (market._sell_orders):
+        # -1 = off (shipped sizing); >= 0 = the largest within-order price
+        # drop allowed, in percent, while the shops drain the market.
+        self.sell_pace = -1
         self.liquidation = False
         # Animal kinds the scheduler must stop feeding today (they escape
         # after two unfed days). Empty unless a cull knob is on.
@@ -421,6 +425,15 @@ KNOB_DEFAULTS = {
     # the bare tiles. 0 = off (the crop targets and the wheat engine are caps
     # and leave 10-12% of unlocked tiles bare at dawn; the top agent leaves 3%).
     "fill_idle": 0.0,
+    # Sell pacing (2026-09-26, measured on traces vs M & M & P & Q's replays):
+    # our strawberry orders cut the price 38% within the step (theirs 6%),
+    # wool 47% (theirs 7%), because the sizing sells down to the floor along
+    # the steep part of the curve, and the shops drain it back within the day
+    # (price 24 steps later 1.05x). With sell_pace >= 0 a steep-curve product
+    # with open shop demand is sold per step only as far as keeps the
+    # within-order price drop under sell_pace percent; the rest waits for
+    # the drain. -1 = off.
+    "sell_pace": -1,
 }
 
 
@@ -612,6 +625,7 @@ def make_champion_plan(view, memory):
         else max(feeding_animals + 2, plan.feed_days * feeding_animals)
     )
     plan.sell_floors = _sell_floors(view)
+    plan.sell_pace = knobs.get("sell_pace", -1)
     if knobs["premium_scale"] != 1.0 and 6 <= day and view.step < 714:
         for item in ("STRAWBERRY", "MILK", "WOOL"):
             plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * knobs["premium_scale"]))

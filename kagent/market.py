@@ -2,9 +2,14 @@
 
 from kagent.constants import (
     ANIMALS, CROPS, LAND_ORDER, LAND_PRICES, MARKET_PARAMS, MAX_MARKET_ORDERS,
+    TOWN_CENTER_SELL_INTERVAL, TURNS_PER_DAY,
 )
 from kagent import econ
 from kagent.planner import FINAL_STEP
+
+# Products whose price falls on a steep curve above I0 (linear / sq above
+# functions): the ones sell pacing applies to.
+PACED = ("STRAWBERRY", "MILK", "WOOL", "MELON")
 
 
 def build_orders(view, plan, memory):
@@ -104,6 +109,20 @@ def _sell_orders(view, plan, memory):
     # the shed runs hot, dump the biggest stacks at any price.
     pressure = view.shed_total > 80
     final_push = view.step >= FINAL_STEP - 8
+    # Sell pacing (plan.sell_pace >= 0; KNOB_DEFAULTS["sell_pace"]): the four
+    # steep-curve products are quoted unit by unit down the curve, and our
+    # orders cut the price 38-47% within one step where the top agent's lose
+    # 6-9% (measured 2026-09-26); the shops drain the market back within the
+    # day. So an order is capped at the units that keep the within-order drop
+    # under `pace` percent of the first unit's price; the rest is sold in
+    # later steps as the drain lifts the price. Only with open shop demand: a
+    # product the town does not buy (wool without a yarn store, melon,
+    # fertilizer) never drains, so its earliest sale is its best. The
+    # shed-pressure valve, the final push and the crashed-market release all
+    # bypass the cap.
+    pace = getattr(plan, "sell_pace", -1)
+    drain = econ.town_drain_per_day(view.unlocked_shops) if pace >= 0 else {}
+    center_only = TURNS_PER_DAY / TOWN_CENTER_SELL_INTERVAL
     candidates = []
     for item, stock in view.shed.items():
         if stock <= 0 or item in ANIMALS:
@@ -134,6 +153,12 @@ def _sell_orders(view, plan, memory):
         n = econ.units_sellable_above(item, inv, floor, cap=stock)
         if n <= 0:
             continue
+        if (pace >= 0 and item in PACED and floor > 1 and not pressure and not final_push
+                and drain.get(item, 0.0) > center_only + 1e-9):
+            first = econ.price(item, inv)
+            n = min(n, econ.units_sellable_above(item, inv, first * (1 - pace / 100.0), cap=stock))
+            if n <= 0:
+                continue
         revenue = econ.sell_revenue(item, inv, n)
         candidates.append((revenue, item, n))
 
