@@ -87,6 +87,14 @@ class PlannerNet(nn.Module):
                     "PlannerNet was built with board=True but no board tensor "
                     "was passed -- set KAGG_BOARD=1 so rl/rollout.py records it")
             x = torch.cat([x, self.board(b)], dim=1)
+        return self.forward_z(x, None)
+
+    def forward_z(self, x, z):
+        """Readout with the trunk output PRECOMPUTED (z), or already
+        concatenated (z=None). BC over a frozen trunk computes z once for the
+        whole corpus instead of a conv pass per minibatch."""
+        if z is not None:
+            x = torch.cat([x, z], dim=1)
         h = self.act(self.ln1(self.h1(x)))
         h = self.act(self.ln2(self.h2(h)))
         return self.logits(h)

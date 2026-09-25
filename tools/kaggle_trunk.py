@@ -126,6 +126,9 @@ def main() -> None:
                     help="keep the id %% 5 == 0 sessions rl/train.py holds "
                          "out as its field eval. The shipped trunk "
                          "(trunk_margin_kaggle.pt) was built WITH them")
+    ap.add_argument("--min-rating", type=float, default=None,
+                    help="only sessions with a seat rated at least this (needs "
+                         "the session index); the TOP-PLAYER trunk")
     args = ap.parse_args()
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
@@ -140,6 +143,19 @@ def main() -> None:
         paths = [p for p in paths if not is_held_out(p)]
         print(f"  excluded {before - len(paths):,} PPO held-out sessions "
               f"(id % 5 == 0)", flush=True)
+    if args.min_rating is not None:
+        idx_path = os.path.join(REPO, "rl", "datasets", "session_index.json")
+        with open(idx_path) as fh:
+            idx = json.load(fh)
+        top = set()
+        for v in idx.values():
+            sc = [x for x in (v.get("scores") or []) if x is not None]
+            if v.get("path") and sc and max(sc) >= args.min_rating:
+                top.add(os.path.basename(v["path"]))
+        before = len(paths)
+        paths = [p for p in paths if os.path.basename(p) in top]
+        print(f"  top-player filter: {len(paths):,} of {before:,} sessions have a "
+              f"seat rated >= {args.min_rating:.0f}", flush=True)
     paths = band_order(paths, args.seed)
 
     # Outcomes WITHOUT the index. The index is generated, not tracked, so

@@ -268,6 +268,125 @@ def _potentials(recs):
     return [r["pv"] * PHI_SCALE for r in recs]
 
 
+def bc_session_phase(net, path, epochs=40, batch=1024, val_frac=0.05, patience=5):
+    """Behaviour cloning from `rl/session_bc.py` samples: the planner readout
+    on TOP PLAYERS' implied standing targets, with the board.
+
+    Every BC run so far cloned our own heuristic, which never reads the
+    board, so the board columns of the readout learned nothing worth
+    keeping. Here the teacher is the recorded top players, whose choices do
+    depend on their boards. The trunk stays frozen in this phase and its
+    output is computed ONCE for the whole corpus, so a 700k-sample epoch is
+    a readout pass, not a conv pass; PPO trains the trunk afterwards.
+
+    Outcome-weighted imitation as in bc_phase: winners 1-2x by margin,
+    losers 0.25. Split by SESSION for validation, via the sidecar
+    `<path>_sessions.json` the extractor writes.
+    """
+    import numpy as np
+
+    boards_path = path.replace(".jsonl", "_boards.npy")
+    side_path = path.replace(".jsonl", "_sessions.json")
+    n = sum(1 for _ in open(path))
+    print(f"== BC from sessions: {n:,} samples in {path} ==")
+    x = np.zeros((n, 0), dtype="float32")
+    masks = choices = None
+    w = np.ones(n, dtype="float32")
+    bi = np.zeros(n, dtype="int64")
+    with open(path) as fh:
+        for i, line in enumerate(fh):
+            r = json.loads(line)
+            if i == 0:
+                x = np.zeros((n, len(r["x"])), dtype="float32")
+                masks = np.zeros((n, sum(len(m) for m in r["masks"])), dtype="float32")
+                choices = np.zeros((n, len(r["choices"])), dtype="int64")
+            x[i] = r["x"]
+            masks[i] = sum(r["masks"], [])
+            choices[i] = r["choices"]
+            bi[i] = r.get("bi", i)
+            win, margin = r.get("w"), r.get("m")
+            if win is not None and margin is not None and margin == margin:
+                w[i] = (1.0 + min(max(margin, 0.0), 60000.0) / 60000.0) if win >= 0.5 else 0.25
+    if x.shape[1] != features.N_FEATURES and features.N_FEATURES is not None:
+        raise SystemExit(f"session samples carry {x.shape[1]} features, the net "
+                         f"expects {features.N_FEATURES}: different encoder")
+
+    # session id per row, from the sidecar; val split by session
+    with open(side_path) as fh:
+        used = json.load(fh)["sessions"]
+    counts = np.asarray([u["n"] for u in used], int)
+    if counts.sum() != n:
+        raise SystemExit(f"sidecar lists {counts.sum():,} samples, file has {n:,}")
+    sid = np.repeat(np.arange(len(used)), counts)
+    rng = np.random.default_rng(0)
+    gids = np.arange(len(used)); rng.shuffle(gids)
+    nv = max(1, int(len(gids) * val_frac))
+    is_val = np.isin(sid, gids[:nv])
+    tr_i, va_i = np.flatnonzero(~is_val), np.flatnonzero(is_val)
+    print(f"   {len(used):,} sessions; split by session: {len(tr_i):,} train / {len(va_i):,} val")
+
+    # precompute the frozen trunk's output once
+    z = None
+    if getattr(net, "board", None) is not None:
+        B = np.load(boards_path, mmap_mode="r")
+        if B.shape[0] < n:
+            raise SystemExit(f"{boards_path} has {B.shape[0]:,} boards for {n:,} samples")
+        z = np.zeros((n, net.h1.in_features - x.shape[1]), dtype="float32")
+        net.board.eval()
+        t0 = time.time()
+        with torch.no_grad():
+            for s in range(0, n, 2048):
+                idx = bi[s:s + 2048]
+                zb = net.board(torch.from_numpy(np.asarray(B[idx], dtype="float32")))
+                z[s:s + 2048] = zb.numpy()
+        print(f"   trunk features precomputed for {n:,} boards in {time.time()-t0:.0f}s")
+
+    xt, mt, ct, wt = (torch.from_numpy(a) for a in (x, masks, choices, w))
+    zt = torch.from_numpy(z) if z is not None else None
+    opt = torch.optim.Adam(_bc_params(net), lr=1e-3)
+
+    def nll_acc(rows):
+        tot, hit = 0.0, 0
+        with torch.no_grad():
+            for s in range(0, len(rows), 4096):
+                idx = rows[s:s + 4096]
+                logits = net.forward_z(xt[idx], None if zt is None else zt[idx])
+                dists = masked_dists(logits, mt[idx])
+                lp = sum(d.log_prob(ct[idx][:, h]) for h, d in enumerate(dists))
+                tot += float(-lp.sum())
+                ok = torch.ones(len(idx), dtype=torch.bool)
+                for h, d in enumerate(dists):
+                    ok &= d.probs.argmax(-1) == ct[idx][:, h]
+                hit += int(ok.sum())
+        return tot / max(1, len(rows)), hit / max(1, len(rows))
+
+    best, best_state, bad = float("inf"), None, 0
+    for ep in range(epochs):
+        perm = tr_i[np.random.default_rng(ep).permutation(len(tr_i))]
+        tot = 0.0
+        for s in range(0, len(perm), batch):
+            idx = perm[s:s + batch]
+            logits = net.forward_z(xt[idx], None if zt is None else zt[idx])
+            dists = masked_dists(logits, mt[idx])
+            lp = sum(d.log_prob(ct[idx][:, h]) for h, d in enumerate(dists))
+            loss = -(lp * wt[idx]).sum() / wt[idx].sum()
+            opt.zero_grad(); loss.backward(); opt.step()
+            tot += float(loss) * len(idx)
+        v_nll, v_acc = nll_acc(va_i)
+        print(f"   epoch {ep+1:>3}: train nll {tot/len(perm):.3f}  val nll {v_nll:.3f}  "
+              f"val exact-plan acc {v_acc:.2%}", flush=True)
+        if v_nll < best - 1e-3:
+            best, bad = v_nll, 0
+            best_state = {k: t.clone() for k, t in net.state_dict().items()}
+        else:
+            bad += 1
+            if bad >= patience:
+                print("   early stop"); break
+    if best_state is not None:
+        net.load_state_dict(best_state)
+    return best
+
+
 def _episode_advantages(ep, shaping_w, legacy=False):
     """Per-decision rewards, then GAE.
 
@@ -936,6 +1055,12 @@ def main():
                     help="share of episodes against recorded sessions; the rest "
                          "is bundles/league/heuristic/snapshots in the legacy "
                          "40/16/28/16 split. The eval has no heuristic games")
+    ap.add_argument("--bc-session", default=None,
+                    help="rl/session_bc.py JSONL: clone the planner readout from "
+                         "RECORDED (top-player) choices instead of our heuristic; "
+                         "boards from the companion memmap, trunk frozen and "
+                         "precomputed in this phase. Replaces --bc-games")
+    ap.add_argument("--bc-session-epochs", type=int, default=40)
     ap.add_argument("--vary-worlds", action="store_true",
                     help="also re-seed the world seeds and the opponent draw from "
                          "--seed, so a replicate is an independent training run "
@@ -1034,7 +1159,11 @@ def main():
         print(f"loaded {len(extra)} champion samples from {args.bc_extra}")
 
     with Pool(args.procs) as pool:
-        if args.bc_games > 0 and not args.resume:
+        if args.bc_session and not args.resume:
+            bc_session_phase(net, args.bc_session, epochs=args.bc_session_epochs)
+            torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
+                       os.path.join(run_dir, "bc.pt"))
+        elif args.bc_games > 0 and not args.resume:
             bc_phase(net, pool, args.bc_games, extra=extra)
             torch.save({"policy": net.state_dict(), "value": vnet.state_dict()},
                        os.path.join(run_dir, "bc.pt"))

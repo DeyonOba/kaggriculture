@@ -168,20 +168,37 @@ def main() -> None:
                     help="keep the id %% 5 == 0 sessions train.py holds out. "
                          "Only for a dataset that will never train anything "
                          "PPO is then evaluated on")
+    ap.add_argument("--min-rating", type=float, default=None,
+                    help="TOP-PLAYER mode: every session with a seat rated at "
+                         "least this (max of the two seats), instead of the "
+                         "band-stratified draw; --n 0 takes all of them")
     args = ap.parse_args()
 
-    paths = pick_sessions(args.n, True, args.seed)
-    if not args.include_held_out:
-        before = len(paths)
-        paths = [p for p in paths if not is_held_out(p)]
-        print(f"  excluded {before - len(paths)} PPO held-out sessions "
-              f"(id % 5 == 0); {len(paths)} remain")
     # Outcomes come from the index, not from a second replay: `finals` is
     # already there, and margin is seat-relative.
     import json as _json
     with open(os.path.join(REPO, "rl", "datasets", "session_index.json")) as fh:
         _idx = _json.load(fh)
     _by = {v["path"]: v for v in _idx.values() if v.get("path")}
+
+    if args.min_rating is not None:
+        paths = []
+        for v in _idx.values():
+            sc = [x for x in (v.get("scores") or []) if x is not None]
+            if v.get("path") and sc and max(sc) >= args.min_rating:
+                paths.append(os.path.join(REPO, v["path"]))
+        paths.sort()
+        np.random.default_rng(args.seed).shuffle(paths)
+        if args.n and 0 < args.n < len(paths):
+            paths = paths[:args.n]
+        print(f"  {len(paths)} sessions with a seat rated >= {args.min_rating:.0f}")
+    else:
+        paths = pick_sessions(args.n, True, args.seed)
+    if not args.include_held_out:
+        before = len(paths)
+        paths = [p for p in paths if not is_held_out(p)]
+        print(f"  excluded {before - len(paths)} PPO held-out sessions "
+              f"(id % 5 == 0); {len(paths)} remain")
 
     def _outcome(p):
         rel = p[len(REPO) + 1:] if p.startswith(REPO) else p

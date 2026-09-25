@@ -242,6 +242,45 @@ def test_rl_records_carry_lead_ingredients(tmp_path):
     assert ep["records"][-1]["lead"]["day"] == len(ep["records"]) - 1
 
 
+def test_bc_session_phase_runs_on_a_synthetic_corpus(tmp_path, monkeypatch):
+    """A tiny rl/session_bc-shaped dataset (jsonl + boards memmap + sidecar):
+    the phase parses it, precomputes the frozen trunk, trains the readout,
+    and leaves the trunk untouched."""
+    import json
+
+    import numpy as np
+
+    from kagent import features
+    from rl.common import BOARD_CH
+
+    monkeypatch.setenv("KAGG_BOARD_ARM", "T_crop_103")
+    n_feat, n_sess, per = 168, 6, 8
+    n = n_sess * per
+    rng = np.random.default_rng(0)
+    sizes = features.HEAD_SIZES
+    path = tmp_path / "s.jsonl"
+    with open(path, "w") as fh:
+        for i in range(n):
+            fh.write(json.dumps({
+                "x": rng.uniform(-1, 1, n_feat).tolist(),
+                "masks": [[1] * k for k in sizes],
+                "choices": [int(rng.integers(k)) for k in sizes],
+                "m": float(rng.normal(0, 10_000)), "w": float(rng.integers(2)),
+                "bi": i}) + "\n")
+    np.save(tmp_path / "s_boards.npy", rng.uniform(0, 1, (n, BOARD_CH, 10, 10)).astype("float16"))
+    json.dump({"sessions": [{"path": f"s{k}", "n": per} for k in range(n_sess)]},
+              open(tmp_path / "s_sessions.json", "w"))
+    torch.manual_seed(0)
+    net = PlannerNet(n_feat, board=True)
+    before = {k: v.clone() for k, v in net.board.state_dict().items()}
+    h1_before = net.h1.weight.clone()
+    best = train.bc_session_phase(net, str(path), epochs=2, batch=16, val_frac=0.34)
+    assert best < float("inf")
+    for k, v in before.items():
+        assert torch.equal(net.board.state_dict()[k], v), "trunk must stay frozen in BC"
+    assert not torch.equal(net.h1.weight, h1_before), "the readout must train"
+
+
 def test_eval_band_weights_come_from_the_paired_eval_draw():
     w = train._eval_band_weights(os.path.join(REPO, "rl", "datasets", "session_index.json"))
     assert len(w) == 6 and abs(sum(w) - 1.0) < 1e-9

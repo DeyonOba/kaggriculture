@@ -339,3 +339,31 @@ frozen bundles and the capped control are reused.
 - **H-dev-h1**: dev champion plan vs frozen champ-h1, same criterion; and
   dev knobs vs dev champion measures the bandit layer's value on today's
   tree.
+
+## 13 Dev-tree check result (2026-09-25, landed 17:46): the dev tree is the best agent, unshipped
+
+Same 785 games, `bad == 0` for both dev arms.
+
+| agent, our side | wins / 785 | win rate | money | margin |
+|---|---|---|---|---|
+| **dev tree + h8's knob rules** | **190** | **0.242** | **$84,125** | **−$9,734** |
+| dev tree, plain champion plan | 182 | 0.232 | $83,231 | −$10,801 |
+| frozen champ-h8 | 144 | 0.183 | $80,802 | −$13,894 |
+| frozen champ-h1 | 46 | 0.059 | $72,137 | −$29,765 |
+| capped RL control, seed 1234 | 63 | 0.080 | $64,981 | −$36,667 |
+
+| paired | Δ win | z | discordant | p | bands + | bank | opp bank | margin |
+|---|---|---|---|---|---|---|---|---|
+| dev + knobs vs frozen champ-h8 | +0.059 | +3.69 | 102 / 56 | 0.0003 | 5 of 6 | +$3,324 | −$836 | +$4,160 |
+| dev plain vs frozen champ-h1 | +0.173 | +11.81 | 146 / 10 | <0.0001 | 6 of 6 | +$11,093 | −$7,871 | +$18,964 |
+| dev plain vs frozen champ-h8 | +0.048 | +3.19 | 91 / 53 | 0.002 | 5 of 6 | +$2,429 | −$664 | +$3,093 |
+| dev + knobs vs dev plain | +0.010 | +1.03 | 34 / 26 | 0.37 | 4 of 6 | +$895 | −$172 | +$1,067 |
+
+**No regression — the opposite.** Today's tree beats the frozen champ-h8 by
+5 to 6 points and the frozen champ-h1 by 17, on every band, and the knob
+layer adds one point on top of it (not significant). The month of planner
+and executor work since h8 is worth more than everything in the RL track
+combined, and none of it is in a shipped bundle. **The dev tree bundled
+today is the submission candidate**, at 3× the RL track's best win rate.
+The capacity gate and the other consolidation rules are developed on it,
+tested at inference against `dev_champion` on the same games.
