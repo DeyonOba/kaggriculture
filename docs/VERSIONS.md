@@ -46,6 +46,17 @@ $84,125. The submitted file is exactly the agent that scored 0.242 locally.
 First ladder reading at 21:38, eleven minutes in: 710.3 (an opening number;
 the rating moves for a day and its noise is ±45).
 
+**Ladder, settled 26 September 00:29** (readings 704.4, 768.9, 781.5,
+802.0, 784.6, then 755.9 for the last four polls, an hour inside the ±45
+band): **755.9**. The champ-h8 bundles' last readings before they went
+inactive were 703.2 and 787.0, so the +5.9 points measured locally became
+nothing on the ladder — the third time a locally better champion-lineage
+agent has failed to rate higher (tape-sel3 < tape-sel, champ-h8 < champ-h7,
+now champ-h9 = champ-h8). The active tape-sel reads 1318.4, about 560
+points above the whole champion lineage. Keep champ-h9 active (it is not
+worse) and treat the 785-game instrument as a win-rate gate that the
+ladder does not necessarily reflect.
+
 Also this round: `tools/submit.sh`'s self-containment scan now matches
 import statements and path access rather than the bare word `kagent`, which
 every planner-lineage bundle carries in docstrings (champ-h8 included).
