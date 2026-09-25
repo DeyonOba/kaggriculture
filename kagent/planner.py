@@ -416,6 +416,11 @@ KNOB_DEFAULTS = {
     "cull_milk_ratio": 0.0,               # stop feeding COWS when milk < ratio x base (from day 12)
     "cull_wool_ratio": 0.0,               # stop feeding SHEEP when wool < ratio x base (from day 12)
     "endgame_cull_day": 0,                # from this day stop feeding cows and sheep
+    # Fill bare ground with the labour that stood idle yesterday (2026-09-26):
+    # extra wheat tiles = fill_idle x yesterday's PASS unit-turns, capped by
+    # the bare tiles. 0 = off (the crop targets and the wheat engine are caps
+    # and leave 10-12% of unlocked tiles bare at dawn; the top agent leaves 3%).
+    "fill_idle": 0.0,
 }
 
 
@@ -547,6 +552,7 @@ def make_champion_plan(view, memory):
             elif 0 <= t.get("max_lifespan_step", -1) <= (day + 1) * TURNS_PER_DAY:
                 ripe_today += 1
         free = max(0, empty_tiles + ripe_today - sum(plan.structure_builds.values()))
+        free0 = free
         if day <= 1:
             for crop, n in CHAMP_OPENING.items():
                 if crop == "MELON":
@@ -577,6 +583,22 @@ def make_champion_plan(view, memory):
                     free = max(0, free - _n)
                     wheat_target = min(wheat_target, crops.get("WHEAT", 0) + free)
             quota["WHEAT"] = max(0, wheat_target - crops.get("WHEAT", 0))
+        # --- Fill bare ground with idle labour (knob fill_idle, off by default).
+        # Measured 2026-09-26 (tools/tile_metrics.py): 10-12% of our unlocked
+        # tiles are bare at dawn against the top agent's 3%, and the executor
+        # rules do not move it, because the crop targets and the wheat engine
+        # are caps. Top the quota up with wheat, but only by what the labour
+        # that stood idle yesterday can carry (a standing wheat tile costs
+        # about one action a day): bare ground worked by busy hands would
+        # displace higher-value chores, which is how every volume knob lost.
+        fill = knobs.get("fill_idle", 0.0)
+        if fill > 0 and 2 <= day <= WHEAT_LAST_PLANT_DAY:
+            idle_turns = (getattr(memory, "yesterday_idle", 0.0)
+                          * (getattr(memory, "yesterday_hands", 0) + 1) * TURNS_PER_DAY)
+            room = max(0, free0 - sum(quota.values()))
+            extra = min(room, int(idle_turns * fill))
+            if extra > 0:
+                quota["WHEAT"] = quota.get("WHEAT", 0) + extra
     plan.plant_quota = {k: v for k, v in quota.items() if v > 0}
 
     # Never sell feed we are about to buy back. The sell path used to reserve

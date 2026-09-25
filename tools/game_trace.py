@@ -142,6 +142,8 @@ def main() -> None:
     if args.rules:
         with open(args.rules) as fh:
             rules = json.load(fh)
+        if rules.get("exec") and not args.exec:
+            scheduler.set_exec(rules["exec"])      # the same flags the eval arm applies
         learner, _ = rollout._make_dev_policy_agent({"kind": "knobs", "rules": rules})
     elif args.champion:
         learner, _ = rollout._make_dev_policy_agent({"kind": "champion"})
