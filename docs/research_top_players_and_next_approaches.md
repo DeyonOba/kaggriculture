@@ -55,7 +55,9 @@ through that same instrument for the first time this week.*
 | dev tree + h8 knob rules | 190 | **0.242** | $84,125 | −$9,734 | today's `kagent/`, unshipped |
 | dev tree, plain champion plan | 182 | 0.232 | $83,231 | −$10,801 | knob layer adds +1.0 pt, n.s. |
 | champ-h8 (frozen, strongest shipped) | 144 | 0.183 | $80,802 | −$13,894 | champion plan + 4 knob rules |
-| capped RL control, 3 seeds | 58–63 | 0.074–0.080 | $64.7k | −$36.8k | best of the RL track |
+| RL board planner cloned from top players, seed 1234 | 141 | 0.180 | $80,817 | −$16,161 | K below: BC from 11,350 top-band sessions, trainable trunk, PPO |
+| RL no-board planner cloned from top players, seed 1234 | 124 | 0.158 | $80,900 | −$17,299 | same BC, no board |
+| capped RL control, 3 seeds | 58–63 | 0.074–0.080 | $64.7k | −$36.8k | BC from our own heuristic; same PPO budget as the two rows above |
 | champ-h1 (frozen, recorded as submitted) | 46 | 0.059 | $72,137 | −$29,765 | plain champion plan of weeks ago |
 | RL control, uncapped (B2) | 47 | 0.060 | $61,072 | −$41,068 | |
 | frozen-trunk RL, uncapped (B2) | 21 | 0.027 | $55,150 | −$58,495 | worst |
@@ -423,7 +425,7 @@ below 0.5 late, take variance; above, kill it. The tape selector's P(win)
 curve recovers on day 13 and loses on day 26; the champion's decays to zero
 by day 19. Cheap; test at inference.
 
-### K. The board model on the whole top-player corpus — running now
+### K. The board model on the whole top-player corpus — first seed landed
 Per the standing request: the trunk pretrained on margin over all 11,350
 top-band training sessions, the planner readout cloned from the top
 players' *own* implied choices with the board (every earlier BC cloned our
@@ -437,6 +439,37 @@ architecture and the executor, not data volume — the most data-rich trunk
 was the worst arm, and the trainable trunk's drift toward yielding market
 share appeared in every run.
 
+**Result, local minimal test (seed 1234, 25 September 22:41,
+`docs/results/top_board_local_eval.log`).** The dataset is 681,000 samples
+from 11,350 sessions with a seat rated ≥ 2500, the 2,861 held-out eval
+sessions excluded before replay; the trunk reaches held-out margin R² +0.28
+to +0.31; the cloned readouts reproduce the top players' exact day plan on
+80.7 % (board) and 79.8 % (no board) of validation samples. PPO then ran
+with the identical budget as the capped control (20 iterations, 64
+episodes, land cap 3, varied worlds, seed 1234; 12 policy updates per
+iteration, worker/trainer KL 4e-7).
+
+| arm | wins / 785 | win rate | money | vs capped control (same games) | vs champ-h8 | vs dev tree + h8 rules |
+|---|---|---|---|---|---|---|
+| top-player board planner | 141 | 0.180 | $80,817 | **+9.9 pts, z +7.1, 6/6 bands, +$15.8k bank, opponent −$4.7k** | −0.4, p 0.88 | −6.2, z −3.9 |
+| top-player no-board planner | 124 | 0.158 | $80,900 | **+7.8 pts, z +6.0, 6/6 bands, +$15.9k bank, opponent −$3.4k** | −2.5, p 0.13 | −8.4 |
+| capped control (our heuristic's BC) | 63 | 0.080 | $64,981 | — | −10.3 | −16.2 |
+
+Board versus no-board on the same games: +2.2 pts (z +1.6, p 0.135, 2/6
+bands), inside one board seed's between-seed noise (0.023–0.026); the two
+Kaggle seeds decide it. Reading: the only thing that separates the no-board
+row from the capped control is *whose plans the readout was cloned from*
+(the top players' instead of our heuristic's), and that alone is worth +7.8
+points and $15.9k of bank — the largest single move the RL track has made,
+larger than the land cap (+1.7), the potential (−1.9) and the curriculum
+(−2.3) combined, and it won in every rating band although the clone set was
+the top band only. Half of the pre-registered expectation held: the
+top-player readout did move the planner, and the RL planner still does not
+reach the dev tree (0.180 versus 0.232–0.242, z −3.9). What it did reach is
+parity with the frozen champ-h8. The gap that remains to the dev tree is
+the same size as the executor and planner changes made since h8, which is
+consistent with the executor being the remaining difference.
+
 ---
 
 ## 6. What is running, and how to read it when it lands
@@ -446,6 +479,15 @@ share appeared in every run.
   the paired table against `champ_h8` and `cap_control`; the pre-registered
   bar for the board planner is beating the capped control on wins in ≥ 2 of 3
   seeds, and for relevance to the ladder, approaching `dev_champion`.
+  **Seed 1234 landed (K): both arms clear the capped control by 8–10 points
+  in every band.** `tools/top_board_seeds.sh` queues seeds 1235 and 1236
+  (board and no-board) after the rule tests, with a paired eval into
+  `rl/runs/top_board/seeds_eval.json`; that decides board versus no-board.
+- Kaggle kernel `gideonoba/kaggriculture-topboard` (`tools/kaggle_job/job_topboard.json`):
+  the same pipeline, seed 1234, on the kernel's corpus with the eleven new
+  daily datasets indexed in-kernel; its eval is per-bin 100 against the
+  champ-h8 bundle and `dev:champion`. It is the free-compute path the
+  daily-download training will run on.
 - `tools/episodes_pipeline.py run --since 2026-09-14`: the eleven daily
   episode datasets (14–24 September, ~7,000 episodes, top score 3,100–3,240)
   the corpus has never seen, extracted in a Kaggle kernel four days at a
