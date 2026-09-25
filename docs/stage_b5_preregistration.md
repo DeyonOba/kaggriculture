@@ -140,3 +140,43 @@ trunk is at parity with the capped control on wins (−0.004, p 0.80) with
 investing in land is worth about two points of win rate and $4.6k of margin
 as a fixed rule at inference, with no retraining. Whether retraining under
 the constraint adds to it is the second half of this queue.
+
+## 7 Result, retrained under the cap (2026-09-25, eval landed 12:01)
+
+Guards: KL ≤ 1.9e-7, 10.7–13.1 updates per iteration, no zero-update
+iteration, `bad == 0`. Same 785 games; B2 nets and the inference-cap nets
+reused game-by-game.
+
+| retrained under cap vs … | Δ win | z | discordant | p | bands + | our bank | opp bank | margin (z) |
+|---|---|---|---|---|---|---|---|---|
+| control vs B2 control (63 vs 47) | +0.020 | +2.54 | 28 / 12 | 0.017 | 4 of 6 | +$3,909 | −$492 | +$4,401 (+6.0) |
+| control vs inference-cap control (63 vs 62) | +0.001 | +0.15 | 22 / 21 | 1.00 | 1 of 6 | +$103 | +$292 | −$189 (−0.3) |
+| frozen vs B2 frozen (68 vs 21) | +0.060 | +6.16 | 54 / 7 | <0.0001 | 5 of 6 | +$13,929 | −$10,263 | +$24,192 (+22.2) |
+| frozen vs inference-cap frozen (68 vs 29) | +0.050 | +4.91 | 52 / 13 | <0.0001 | 5 of 6 | +$9,254 | −$10,200 | +$19,454 (+17.9) |
+| trainable vs B2 trainable (27 vs 41) | −0.018 | −2.34 | 11 / 25 | 0.029 | 1 of 6 | −$7,054 | +$5,402 | −$12,457 (−11.4) |
+| trainable vs inference-cap trainable (27 vs 59) | −0.041 | −4.49 | 10 / 42 | <0.0001 | 0 of 6 | −$12,046 | +$6,160 | −$18,207 (−16.3) |
+| frozen vs control, both retrained under cap | +0.006 | +0.64 | 33 / 28 | 0.61 | 2 of 6 | +$4,097 | +$1,733 | +$2,364 (+2.6) |
+
+**H-land (retrained control): PASSES** — +2.0 points, p 0.017, four of six
+bands, money with it. **Retraining adds nothing to the rule for the
+control** (+0.001 against the inference-time cap): for the control,
+consolidation is a constraint to be given, not learned, at this budget.
+
+**The frozen trunk retrained under the cap is the best agent to date:** 68
+of 785, 0.087, money $69k, margin −$34k against B2 control's −$41k. It gains
++6.0 points over the same net uncapped and +5.0 over the same net with the
+cap at inference only, on five of six bands, and the opponent's bank falls
+by $10k: with the land purchase removed, this policy learned to compete for
+the shared market rather than yield it. Against the retrained capped control
+it is parity on wins (+0.6 points, p 0.61) and +$2.4k of margin (z +2.6).
+
+**The trainable trunk retrained under the cap got worse** on every measure,
+handing the opponent +$5–6k. The trunk-drift sign pattern now holds in three
+runs: every trainable trunk trained by PPO raised the opponent's bank (B2
++$3.3k, B3 +$6.0k, B5b +$5.4k) while every frozen trunk did not.
+
+**Caveat that applies to every arm in this track:** one training seed each.
+The eval se (0.008–0.010) is the eval's noise for a fixed net; training-run
+variance is unmeasured. The +6.0-point frozen result is the largest effect
+seen and the one that most needs replication across training seeds before
+it is believed at that size.
