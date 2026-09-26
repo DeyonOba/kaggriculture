@@ -14,6 +14,18 @@ STAGE=$(mktemp -d)
 mkdir -p "$STAGE/ds"
 # Code tarball: tracked files only (no .git, no datasets, no runs).
 COPYFILE_DISABLE=1 git ls-files -z | COPYFILE_DISABLE=1 tar --null -czf "$STAGE/ds/kaggriculture-code.tar.gz" -T -
+# The tarball lists TRACKED files but archives the WORKING TREE copy of each,
+# so a module edited to import a brand-new file that is not yet `git add`ed
+# ships the import without its target. That cost a 1.9h kernel run on
+# 2026-09-26 (kagent/policy.py imported kagent/boardstate.py, untracked at
+# push time). Import the agent out of the tarball before shipping it.
+VERIFY=$(mktemp -d); tar -xzf "$STAGE/ds/kaggriculture-code.tar.gz" -C "$VERIFY"
+if ! ( cd "$VERIFY" && PYTHONPATH="$VERIFY" python3 -c "
+import kagent.policy, kagent.scheduler, kagent.planner, rl.train, rl.session_bc, rl.session_eval, rl.rollout
+print('tarball imports OK')" ); then
+  echo 'TARBALL IS NOT SELF-CONSISTENT -- commit or stash the missing files before pushing'; rm -rf "$VERIFY"; exit 1
+fi
+rm -rf "$VERIFY"
 cat > "$STAGE/ds/dataset-metadata.json" <<META
 {"title": "kaggriculture-code", "id": "gideonoba/kaggriculture-code", "licenses": [{"name": "CC0-1.0"}]}
 META
