@@ -391,6 +391,31 @@ hands walk between chores again, and the bank falls $7.9k while the
 opponent's rises $8.1k. The evening shed run (D below) is the one executor
 arm still in the queue.
 
+**Batch 2 on the 995-game draw (26 September 10:31, `docs/results/draw995_batch2.log`,
+paired against the dev tree with h8's rules, 0.313).** Every arm carries
+`lastwater` + `h23`; `ship2` is those two alone.
+
+| arm | wins / 995 | delta vs dev tree | z / p | bands better | our bank | opponent's bank |
+|---|---|---|---|---|---|---|
+| ship2 (last-day water + no hour-23 moves) | 313 | +0.2 pt | +0.2 / 0.94 | 3/6 | +$1,886 | −$583 |
+| **ship2 + harvest_visit** | **352** | **+4.1 pts** | **+3.2 / 0.0019** | **5/6** | **+$1,649** | **−$3,105** |
+| ship2 + spent (dig a finished plant) | 312 | +0.1 | +0.1 / 1.00 | 3/6 | +$2,123 | −$154 |
+| ship2 + layout (wheat beside the animals) | 327 | +1.6 | +1.1 / 0.30 | 6/6 | +$2,221 | +$1,304 |
+| ship2 + fert_gate 2.0 | 310 | −0.1 | −0.1 / 1.00 | 3/6 | +$2,288 | +$283 |
+| all five | 334 | +2.3 | +1.6 / 0.13 | 5/6 | +$1,928 | +$149 |
+
+**Harvesting every production of an ongoing crop is the first executor rule
+to clear the bar.** Against `ship2` alone it is +3.9 points (z +4.61,
+p < 0.0001, 56 arm-only against 17 base-only games, 5/6 bands), and it is the
+only arm that takes the opponent's bank down $3.1k as well as raising ours:
+the strawberry and tomato units we collect on the visit are units the
+recorded opponent no longer sells into an emptier market. It costs nothing
+in labour because the unit is already on the tile for the water. Ship it.
+The layout rule is positive in all six bands but not significant, and it
+lifts the opponent's bank, so it needs its own replication; `spent` and the
+fertiliser gate are money-positive and win-flat; the five together are worse
+than `harvest_visit` alone, the same non-additivity seen on the old draw.
+
 Expected size: unknown individually; together they account for the
 measured 1,200 extra unit-steps a game and 200 fewer harvests, on the same
 executor the dev tree ships. Test each alone and then the bundle, at
