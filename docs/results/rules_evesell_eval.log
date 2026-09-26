@@ -1,0 +1,21 @@
+785 held-out games per arm; per bin 0-600:64 600-1000:21 1000-1500:175 1500-2000:175 2000-2500:175 2500+:175
+arms: evesell_four (dev tree)
+  exec_four    win 0.248 +/- 0.015   (reused from rl/runs/rules_tests/exec_eval.json:exec_four)
+  dev_knobs_h8 win 0.242 +/- 0.015   (reused from rl/runs/deploy_check/dev_tree_eval.json:dev_knobs_h8)
+  champ_h8     win 0.183 +/- 0.014   (reused from rl/runs/deploy_check/session_eval.json:champ_h8)
+  evesell_four win 0.234 +/- 0.015   money    84,339   bad 0   (1056s)
+
+arm              win     se     money        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+evesell_four   0.234  0.015    84,339        0.453      0.286      0.240      0.166      0.234      0.211
+exec_four      0.248  0.015    85,404        0.484      0.286      0.246      0.200      0.240      0.217
+dev_knobs_h8   0.242  0.015    84,125        0.469      0.238      0.257      0.166      0.257      0.206
+champ_h8       0.183  0.014    80,802        0.266      0.238      0.217      0.120      0.206      0.154
+
+PAIRED vs dev_knobs_h8 (same sessions, same seats), McNemar on discordant games
+arm            delta     se     z  arm-only  base-only       p        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+evesell_four  -0.008  0.015 -0.50        70         76   0.679       -0.016     +0.048     -0.017     +0.000     -0.023     +0.006
+exec_four     +0.006  0.015  0.42        72         67   0.735       +0.016     +0.048     -0.011     +0.034     -0.017     +0.011
+champ_h8      -0.059  0.016 -3.69        56        102   0.000       -0.203     +0.000     -0.040     -0.046     -0.051     -0.051
+delta = arm win rate minus baseline's on identical games; the per-band columns are the same delta within each rating bin.
+
+-> rl/runs/rules_tests/evesell_eval.json

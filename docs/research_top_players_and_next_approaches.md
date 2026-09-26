@@ -437,8 +437,12 @@ Two rules were built and checked on the traces:
   the hour-0 dumps. Evening sale share 0.1–0.2 → 0.3–0.45; realised
   strawberry price 0.89 → 0.94 alone and 0.90 → 1.08 with the four executor
   rules on one game, worse alone on another; harvests −3 to −21 a game for
-  the walk. Ambiguous on traces (single games move with the shop re-roll),
-  so it is in the paired queue as `evesell_four` against `exec_four`.
+  the walk. **Paired, 26 September 01:51 (`docs/results/rules_evesell_eval.log`):
+  on top of the four executor rules −1.4 pts (z −1.4, p 0.21, 0/6 bands,
+  26 vs 37 discordant), bank −$1.1k, the opponent's +$1.8k; against the
+  dev tree −0.8 (n.s.).** The walk costs more harvests than the earlier
+  sale earns, and the produce we bring in early is supply the opponent's
+  evening orders were selling ahead of. Closed.
 Melon is a different story: the opponents' 1.4× melon price is the day-10
 harvest race (they clear melons on day 10 at $271; we finish on day 13),
 which is harvest timing, not sell timing.
