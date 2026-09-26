@@ -87,9 +87,26 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              its zone: every unit respawns at the shed at hour 0, so the
 #              walk home buys nothing (the top agent: 0.71 moves per
 #              productive op, ours 1.1-1.4). Metric: moves per productive op
+#   dailywater water every ongoing crop every day at tend priority instead
+#              of alternate days as filler: a plant dies after two dry
+#              nights, the alternate-day scheme leans on the survival water
+#              the next day always landing, and on our traces 33-42
+#              strawberries a game die into weeds where Boey and DSM lose
+#              none (weed tile-days 3 vs our 36). Metric: weed tile-days,
+#              plant deaths, harvests
+#   endwater   from ENDWATER_DAY, an ongoing crop with a production still
+#              due before the season ends is watered daily at animal
+#              priority (above tend, below harvest): the weed census on the
+#              traced games shows 32-53 strawberries a game dying of two dry
+#              nights on days 21-28, when the liquidation harvests and the
+#              shed shuttles saturate the crew and filler waters are
+#              skipped; Boey and DSM lose none. Metric: weed tile-days on
+#              days 20-29, late strawberry harvests
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell",
               "harvest_visit", "spent", "layout",
-              "handfeed", "oneshed", "hv_underfoot", "nodrift")
+              "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
+              "endwater")
+ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
 LASTWATER_HARVEST_HOUR = 20  # from here harvest the crop even if unwatered
 HANDFEED_UNTIL = 14          # after this hour the shed feeds what the harvest has not
@@ -338,7 +355,15 @@ def build_tasks(view, plan):
             since_first = day + 1 - t["planted_day"] - crop["first_yield_day"]
             produces_tonight = since_first >= 0 and since_first % crop["interval"] == 0
             fertilized = t.get("fertilized_until_day", -1) >= day
-            pri = P_TEND if (produces_tonight and fertilized) else P_FILLER
+            pri = P_TEND if (produces_tonight and fertilized) or EXEC["dailywater"] else P_FILLER
+            if (EXEC["endwater"] and day >= ENDWATER_DAY and pri > P_ANIMAL
+                    and t.get("max_lifespan_step", -1) < 0 and crop["interval"] > 0):
+                # next production night and its ordinal; water daily while
+                # one is still due before the last sellable morning (day 29)
+                n_ahead = (-since_first) % crop["interval"]
+                count = (since_first + n_ahead) // crop["interval"] + 1
+                if day + n_ahead <= 28 and count <= crop["max_yield"]:
+                    pri = P_ANIMAL
         tasks.append(Task(pri, x, y, ["WATER"]))
 
     # --- Animals: the care regime is first-class (3x output multiplier) --------
