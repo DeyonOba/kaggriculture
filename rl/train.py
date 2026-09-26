@@ -548,7 +548,11 @@ def _draw_opponent(rng, roll, entries, bins, unrated, bin_wins, band_w,
 def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, opp_bundles=(),
               prior_net=None, prior_kl=0.0,
               patience=4, legacy_shaping=False, eval_per_bin=3,
-              session_mix="frontier", session_frac=0.5, world_seed=None):
+              session_mix="frontier", session_frac=0.5, world_seed=None, start_iter=0):
+    """`start_iter`: resume a run that already completed that many iterations
+    (--resume its last.pt, --start-iter k): the iteration counter, hence the
+    worlds, the opponent draw, the eval cadence and the value warmup, carry on
+    from k instead of replaying the first worlds and warming up again."""
     snapshots = []
     league = []          # weight paths of every new-best: future opponents
     best_score = -1.0
@@ -610,9 +614,10 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
     if world_seed is not None:
         print(f"replicate: worlds from {world_base:,}, opponent draw seeded by {world_seed}")
 
-    for it in range(iters):
+    total_iters = start_iter + iters
+    for it in range(start_iter, total_iters):
         t0 = time.time()
-        shaping_w = max(0.0, 1.0 - it / (iters * 0.5))
+        shaping_w = max(0.0, 1.0 - it / (total_iters * 0.5))
         wpath = os.path.join(run_dir, f"w{it}.json")
         with open(wpath, "w") as f:
             json.dump(to_layers(net, vnet), f)
@@ -972,6 +977,8 @@ def main():
     ap.add_argument("--procs", type=int, default=max(2, (os.cpu_count() or 8) - 2))
     ap.add_argument("--run", default=None)
     ap.add_argument("--resume", default=None, help="path to a .pt to resume from")
+    ap.add_argument("--start-iter", type=int, default=0,
+                    help="continue an interrupted PPO run: iterations already done (with --resume its last.pt)")
     ap.add_argument(
         "--opp-bundles",
         default=None,
@@ -1178,7 +1185,7 @@ def main():
                 prm.requires_grad_(False)
         ppo_phase(
             net, vnet, pool, run_dir, args.iters, args.episodes, args.procs,
-            eval_every=args.eval_every,
+            eval_every=args.eval_every, start_iter=args.start_iter,
             opp_bundles=bundles, patience=args.patience,
             prior_net=prior_net, prior_kl=args.prior_kl,
             legacy_shaping=args.legacy_shaping, eval_per_bin=args.eval_per_bin,

@@ -2,15 +2,43 @@
   "engine": "1.32.7",
   "procs": 4,
   "budget_s": 39600,
-  "steps": [
-    "{python} -u tools/opp_coupling.py --n 1",
-    "KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=1 {python} -u rl/session_bc.py --min-rating 2500 --n 0 --procs {procs} --out {repo}/rl/datasets/session_bc_top.jsonl",
-    "KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=2 {python} -u tools/kaggle_trunk.py --min-rating 2500 --chunk 1000 --passes 2 --procs {procs} --budget-s 7200 --out {out}/trunk_margin_top.pt",
-    "KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=3 {python} -u rl/train.py --bc-session {repo}/rl/datasets/session_bc_top.jsonl --bc-session-epochs 40 --bc-games 0 --iters 0 --seed 1234 --board --trunk-init {out}/trunk_margin_top.pt --run {out}/bc_board",
-    "KAGG_BOARD=0 KAGG_THREADS=3 {python} -u rl/train.py --bc-session {repo}/rl/datasets/session_bc_top.jsonl --bc-session-epochs 40 --bc-games 0 --iters 0 --seed 1234 --run {out}/bc_control",
-    "KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/train.py --resume {out}/bc_board/bc.pt --bc-games 0 --seed 1234 --vary-worlds --iters 20 --episodes 64 --procs {procs} --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8 --board --trunk-init {out}/trunk_margin_top.pt --run {out}/top_board_s1234",
-    "KAGG_BOARD=0 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/train.py --resume {out}/bc_control/bc.pt --bc-games 0 --seed 1234 --vary-worlds --iters 20 --episodes 64 --procs {procs} --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8 --run {out}/top_control_s1234",
-    "KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/session_eval.py --arm top_board_s1234={out}/top_board_s1234/eval.json --arm top_control_s1234={out}/top_control_s1234/eval.json --arm champ_h8=bundle:arena/agents/champ-h8/main.py --arm dev_champion=dev:champion --baseline champ_h8 --per-bin 100 --procs {procs} --out {out}/session_eval.json"
+  "collect": [],
+  "_notes": [
+    "Resumable top-player board pipeline (2026-09-26). The first run spent 5.3 h of its 11 h",
+    "extracting the 971k-sample clone set, 2 h on the trunk, finished the board PPO and ran out",
+    "before the no-board PPO and the eval. Every step now skips when its output already exists",
+    "(the previous run's checkpoints are mounted from the kaggriculture-checkpoints dataset and",
+    "copied into out/), PPO steps continue from last.pt with the remaining iterations, the eval",
+    "runs whatever arms exist, and a step that cannot fit the remaining budget is skipped so the",
+    "eval at the end always gets its hour. Push checkpoints after each run with",
+    "tools/kaggle_job/push_checkpoints.sh; extraction only re-runs when bc.pt is missing."
   ],
-  "collect": []
+  "steps": [
+    {"cmd": "{python} -u tools/opp_coupling.py --n 1"},
+    {"cmd": "KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=1 {python} -u rl/session_bc.py --min-rating 2500 --n 0 --procs {procs} --out {repo}/rl/datasets/session_bc_top.jsonl",
+     "skip_if": ["{out}/bc_control/bc.pt", "{repo}/rl/datasets/session_bc_top.jsonl"],
+     "min_left_s": 25200},
+    {"cmd": "KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=2 {python} -u tools/kaggle_trunk.py --min-rating 2500 --chunk 1000 --passes 2 --procs {procs} --budget-s 7200 --out {out}/trunk_margin_top.pt",
+     "skip_if": "{out}/trunk_margin_top.pt",
+     "min_left_s": 10800},
+    {"cmd": "KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=3 {python} -u rl/train.py --bc-session {repo}/rl/datasets/session_bc_top.jsonl --bc-session-epochs 40 --bc-games 0 --iters 0 --seed 1234 --board --trunk-init {out}/trunk_margin_top.pt --run {out}/bc_board",
+     "skip_if": "{out}/bc_board/bc.pt",
+     "require": "{repo}/rl/datasets/session_bc_top.jsonl",
+     "min_left_s": 5400},
+    {"cmd": "KAGG_BOARD=0 KAGG_THREADS=3 {python} -u rl/train.py --bc-session {repo}/rl/datasets/session_bc_top.jsonl --bc-session-epochs 40 --bc-games 0 --iters 0 --seed 1234 --run {out}/bc_control",
+     "skip_if": "{out}/bc_control/bc.pt",
+     "require": "{repo}/rl/datasets/session_bc_top.jsonl",
+     "min_left_s": 5400},
+    {"cmd": "KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/train.py --resume {out}/bc_board/bc.pt --bc-games 0 --seed 1234 --vary-worlds --iters 20 --episodes 64 --procs {procs} --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8 --board --trunk-init {out}/trunk_margin_top.pt --run {out}/top_board_s1234",
+     "resume_run": "{out}/top_board_s1234", "iters": 20,
+     "require": "{out}/bc_board/bc.pt",
+     "min_left_s": 5400},
+    {"cmd": "KAGG_BOARD=0 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/train.py --resume {out}/bc_control/bc.pt --bc-games 0 --seed 1234 --vary-worlds --iters 20 --episodes 64 --procs {procs} --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8 --run {out}/top_control_s1234",
+     "resume_run": "{out}/top_control_s1234", "iters": 20,
+     "require": "{out}/bc_control/bc.pt",
+     "min_left_s": 5400},
+    {"cmd": "KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/session_eval.py --arm top_board_s1234={out}/top_board_s1234/eval.json --arm top_control_s1234={out}/top_control_s1234/eval.json --arm champ_h8=bundle:arena/agents/champ-h8/main.py --arm dev_champion=dev:champion --baseline champ_h8 --per-bin 50 --procs {procs} --out {out}/session_eval.json 2>&1 | tee {out}/session_eval.log",
+     "require": ["{out}/top_board_s1234/eval.json", "{out}/top_control_s1234/eval.json"],
+     "min_left_s": 7200}
+  ]
 }

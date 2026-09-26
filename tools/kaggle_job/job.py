@@ -145,6 +145,83 @@ def setup(cfg):
         n = len(glob.glob(os.path.join(ds_root, "sessions", "session-*.json")))
         print(f"restored datasets: {n} sessions", flush=True)
     os.makedirs(OUT_DIR, exist_ok=True)
+    restore_checkpoints()
+
+
+def restore_checkpoints():
+    """Copy a previous run's checkpoints (the kaggriculture-checkpoints
+    Dataset, pushed by tools/kaggle_job/push_checkpoints.sh, served either as
+    the tarball or auto-extracted) into OUT_DIR, so every step below can skip
+    or resume. Nothing is overwritten: files already in OUT_DIR win."""
+    tarball = _discover(marker_file="kaggriculture-checkpoints.tar.gz", exclude=(CODE_IN,))
+    tree = _discover(marker_file="trunk_margin_top.pt", exclude=(CODE_IN, WORK))
+    n = 0
+    if tarball:
+        with tarfile.open(os.path.join(tarball, "kaggriculture-checkpoints.tar.gz"), "r:gz") as tf:
+            for m in tf.getmembers():
+                dst = os.path.join(OUT_DIR, m.name)
+                if m.isfile() and not os.path.exists(dst):
+                    tf.extract(m, OUT_DIR)
+                    n += 1
+    elif tree:
+        for d, _, files in os.walk(tree):
+            for name in files:
+                src = os.path.join(d, name)
+                dst = os.path.join(OUT_DIR, os.path.relpath(src, tree))
+                if not os.path.exists(dst):
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    shutil.copy2(src, dst)
+                    n += 1
+    print(f"checkpoints restored: {n} files from {tarball or tree or 'nothing'}", flush=True)
+
+
+def _telemetry_iters(run_dir):
+    p = os.path.join(run_dir, "telemetry.jsonl")
+    if not os.path.exists(p):
+        return 0
+    with open(p) as f:
+        return sum(1 for line in f if line.strip())
+
+
+def resolve_step(spec, fmt, remaining_s):
+    """-> (cmd or None, reason). A step is a command string or a dict:
+      cmd         the command, with {python} {out} {repo} {procs} placeholders
+      skip_if     path(s): skip when any exists (the step's output is there)
+      require     path(s): skip unless all exist (an input is missing)
+      resume_run  a PPO run dir with `iters` target: skip when complete
+                  (telemetry >= iters and eval.json), else continue from its
+                  last.pt with the remaining iterations (--start-iter)
+      min_left_s  skip when less budget than this is left"""
+    import re
+    if isinstance(spec, str):
+        spec = {"cmd": spec}
+    cmd = spec["cmd"].format(**fmt)
+
+    def paths(key):
+        v = spec.get(key, [])
+        v = [v] if isinstance(v, str) else list(v)
+        return [p.format(**fmt) for p in v]
+
+    hit = [p for p in paths("skip_if") if os.path.exists(p)]
+    if hit:
+        return None, f"skip: output exists {hit[0]}"
+    missing = [p for p in paths("require") if not os.path.exists(p)]
+    if missing:
+        return None, f"skip: input missing {missing[0]}"
+    if spec.get("resume_run"):
+        run_dir = spec["resume_run"].format(**fmt)
+        target = int(spec.get("iters", 20))
+        done = _telemetry_iters(run_dir)
+        if done >= target and os.path.exists(os.path.join(run_dir, "eval.json")):
+            return None, f"skip: {run_dir} complete ({done} iterations)"
+        last = os.path.join(run_dir, "last.pt")
+        if done > 0 and os.path.exists(last):
+            cmd = re.sub(r"--resume\s+\S+", f"--resume {last}", cmd)
+            cmd = re.sub(r"--iters\s+\d+", f"--iters {target - done}", cmd)
+            cmd += f" --start-iter {done}"
+    if remaining_s < spec.get("min_left_s", 300):
+        return None, f"skip: {remaining_s / 3600:.1f}h left, needs {spec.get('min_left_s', 300) / 3600:.1f}h"
+    return cmd, "run"
 
 
 def run(cfg):
@@ -152,12 +229,13 @@ def run(cfg):
     procs = cfg.get("procs", os.cpu_count() or 4)
     budget = cfg.get("budget_s", 11 * 3600)  # Kaggle CPU sessions cap at 12h
     t0 = time.time()
+    fmt = dict(procs=procs, out=OUT_DIR, repo=REPO, python=sys.executable)
     for step in cfg["steps"]:
-        cmd = step.format(procs=procs, out=OUT_DIR, repo=REPO, python=sys.executable)
         remaining = budget - (time.time() - t0)
-        if remaining < 300:
-            print("budget exhausted; stopping before:", cmd, flush=True)
-            break
+        cmd, why = resolve_step(step, fmt, remaining)
+        if cmd is None:
+            print(f"== {why}: {(step if isinstance(step, str) else step['cmd'])[:120]}", flush=True)
+            continue
         print(f"== step ({remaining / 3600:.1f}h left): {cmd}", flush=True)
         try:
             rc = subprocess.run(cmd, shell=True, cwd=REPO, env=env, timeout=remaining).returncode
