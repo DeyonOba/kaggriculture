@@ -1,0 +1,36 @@
+metric                                ours_b2  ours_b3  ours_b4     mmpq     boey      dsm
+games                                       1        1        1       12       14       14
+final money                            62,026   71,777   75,875  122,509  106,631  105,192
+opponent money                         78,324   85,295  109,372  124,791  105,234  100,503
+all products units                        905      990      965     1349    16416     1626
+all products orders                       128      145      140      193     3669      346
+all products realized_over_mean         0.931    0.859    0.927    1.064    0.955    1.016
+all products evening_share               0.12     0.08     0.11     0.31     0.22     0.29
+strawberry units                          353      192      221      155      319      196
+strawberry units_per_order               13.6     11.3     10.0      8.4      3.4      3.6
+strawberry impact                       0.775    0.411    0.599    0.936    0.953    0.888
+strawberry recovery24                   1.112    1.019    0.999    0.912    0.849    0.896
+strawberry realized_over_mean           0.890    0.161    0.682    1.048    1.028    0.940
+strawberry evening_share                 0.14     0.07     0.19     0.35     0.23     0.15
+strawberry inv_minus_I0_at_sale           -71       54       -7      -59      -31       -8
+milk units                                143      183      205      130      531      185
+milk units_per_order                      7.9      8.0      7.1      6.1      3.4      3.8
+milk impact                             0.508    0.977    0.962    0.882    0.952    0.850
+milk recovery24                         0.872    0.990    0.993    0.881    0.847    0.870
+milk realized_over_mean                 0.882    1.042    1.046    1.043    0.891    0.944
+milk evening_share                       0.10     0.04     0.12     0.50     0.19     0.13
+milk inv_minus_I0_at_sale                  39      -52      -38       21       29       27
+wool units                                 93      163       98      154      286      150
+wool units_per_order                      7.2      7.1      5.4      7.0      2.7      3.1
+wool impact                             0.352    0.638    0.527    0.904    0.760    0.695
+wool recovery24                         0.806    0.920    1.091    0.906    0.850    0.761
+wool realized_over_mean                 0.738    1.001    0.773    1.078    1.124    1.322
+wool evening_share                       0.00     0.01     0.03     0.40     0.14     0.11
+wool inv_minus_I0_at_sale                  47       29       43       -1       24       34
+melon units                                84       90       71       82      371       73
+melon units_per_order                    10.5     12.9     11.8     13.6      4.6      6.8
+melon impact                            0.852    0.793    0.869    0.861    0.976    0.927
+melon recovery24                        0.721    0.643    0.739    0.798    0.800    0.767
+melon realized_over_mean                1.106    1.119    1.110    0.952    1.165    1.177
+melon evening_share                      0.29     0.33     0.17     0.24     0.24     0.00
+melon inv_minus_I0_at_sale                 77       93       78       75       75       53

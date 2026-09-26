@@ -1,0 +1,57 @@
+metric                                            ours  ours_allin        mmpq        boey         dsm
+games                                                3           3          12          14          14
+final money                                     69,893     103,072     122,509     106,631     105,192
+opponent money                                  90,997     115,708     124,791     105,234     100,503
+win                                               0.00        0.00        1.00        1.00        1.00
+wheat units / harvest                             3.17        5.15        4.38        4.58        4.67
+carrot units / harvest                            2.00        2.98        2.94        3.26        3.41
+melon units / harvest                             5.97        6.00        6.00        5.98        5.99
+one-time units total                             335.3         615       888.5      1043.1      1076.7
+last-day unwatered harvest share, wheat           1.00        0.26        0.09        0.02        0.01
+last-day unwatered harvest share, carrot          1.00        0.09        0.05        0.03        0.05
+replant within 1 step                             0.60        0.53        0.78        0.86        0.88
+replant gap median (steps)                         3.8         1.0         1.0         1.0         1.0
+never replanted                                   33.3        37.7        57.6        59.2        53.3
+chores per visit                                  1.42        1.59        2.08        1.90        1.91
+  on animal tiles                                 1.64        1.79        2.77        1.82        1.98
+  on crop tiles                                   1.19        1.40        1.76        1.95        1.85
+visits with >= 2 chores                           0.32        0.43        0.60        0.52        0.54
+shed ops (PICKUP+DROP) per unit-day              14.21       16.40        8.93       10.07       10.54
+pickups at hours 0-3                              0.82        0.80        1.00        0.63        0.64
+pickups at hours 4-11                             0.11        0.07        0.01        0.23        0.25
+pickups at hours 12-19                            0.06        0.10           -        0.13        0.10
+pickups at hours 20-23                            0.02        0.03           -        0.01        0.01
+hire orders                                        269         267       257.2       276.6         284
+hire orders at hours 0-3                          1.00        1.00        1.00        1.00        1.00
+buy orders                                       239.7         178        86.3      1458.4       288.1
+buy orders at hours 0-3                           0.27        0.35        1.00        0.22        0.08
+moves per productive op                           1.39        1.10        0.71        0.83        0.81
+productive ops                                  2841.3      3116.3      3595.3      3733.9      3807.4
+moves                                             3934      3414.3      2556.6      3095.6      3073.5
+harvests                                         276.7       332.3       470.3         511       522.1
+plantings                                        152.7       177.7       266.1       275.6       270.7
+idle share of unlocked tiles                     0.130       0.178       0.065       0.040       0.037
+  of which bare                                  0.105       0.131       0.035       0.034       0.032
+  of which weed                                  0.017       0.041       0.022       0.002       0.001
+  of which empty structure                       0.007       0.006       0.007       0.004       0.004
+weed tile-days                                    36.3          89        61.2         3.4         2.9
+water ops with no effect                          0.09        0.06        0.09        0.01        0.01
+hour-23 move share                               0.051       0.000       0.000       0.045       0.026
+pickups per feed                                  0.99        1.10        0.55        0.46        0.48
+feeds from wheat in hand                          0.02        0.04        0.29        0.16        0.16
+fertilize ops                                      116         134       219.8       208.5       223.3
+feed ops                                         357.3       360.7       356.2       408.5       396.9
+dig ops                                           35.7        40.7        29.9        27.5        26.1
+animal shed distance (day 15)                     2.45        2.15        3.53        2.07        2.10
+plant shed distance (day 15)                      4.38        4.41        4.17        4.72        4.73
+animals (day 15)                                  16.3        16.7        20.6        20.9        20.9
+plants (day 15)                                   57.3          54        54.3        53.5          54
+wheat tiles (day 15)                                16        20.7        13.6        22.7        19.2
+wheat tiles beside an animal (day 15)             0.09        0.68        0.46        0.36        0.42
+strawberry tiles (day 15)                           40          33        25.4        25.9        27.5
+carrot tiles (day 15)                                0           0         2.8         2.6         3.3
+tomato tiles (day 15)                                0           0         2.8           0           0
+melon tiles (day 15)                               1.3         0.3         9.8         2.4           4
+animals per quadrant (day 15)                        -           -           -           -           -
+plants per quadrant (day 15)                         -           -           -           -           -
+-> docs/results/top3_tile_metrics.json
