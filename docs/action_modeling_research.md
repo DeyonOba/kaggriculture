@@ -215,6 +215,19 @@ v1 scalar vector. A ~104k-parameter CNN: a 1×1 conv gives one logit per
 tile, a pooled head gives the SHED and STAY logits, and the mask is applied
 to the 102.
 
+**What this design does NOT cover: PLACEMENT.** The model never chooses
+which tile a new crop or a new animal goes on. `kagent.scheduler.build_tasks`
+sorts empty tiles by distance to the shed and fills them in that order, for
+both `PLANT` and `PLACE`, and the model only sees the result as one of the
+eight request classes. That is the one executor decision we have never
+tested, and it is where the leaders visibly differ: their animals stand 3.9
+tiles from the shed against our 2.4, and their wheat rows sit beside the
+pastures, which is how 26% of their feeds come from grain already in hand
+against 0% of ours. The `layout` rule tested on 26 September moved the wheat
+without moving the animals, read better in all six bands and still missed
+significance (+1.6, z 1.10) -- consistent with half a layout change. Treat
+placement as untested rather than refuted.
+
 ## Curation: train on seats that play like the leaders
 
 A rating floor mixes in seats that win some other way, which blurs the
