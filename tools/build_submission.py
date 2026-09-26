@@ -27,6 +27,7 @@ MODULES = [
     "market",
     "features",
     "nnpolicy",
+    "boardstate",
     "mpcpolicy",
     "banditpolicy",
     "weights",

@@ -161,9 +161,18 @@ def test_forward_policy_refuses_short_input():
         nnpolicy.forward_policy(layers["policy"], x)
 
 
-def test_weights_data_refuses_board_net():
-    """The b85 submission format has no trunk slot and the bundle no board
-    builder; exporting a board net would be the truncation in the agent."""
+def test_weights_data_ships_the_board_net():
+    """Board nets used to be REFUSED here, because the b85 format had no
+    trunk slot and the bundle no board builder -- which is why no board
+    planner was ever submittable. Both halves exist now (the trunk travels
+    in its own b85 block, kagent/boardstate.py builds the tensor), so the
+    export must succeed and the trunk must come back unchanged. The
+    truncation this once guarded against is caught by the width guard in
+    forward_policy (test_forward_policy_refuses_width_mismatch above) and by
+    tests/test_board_export.py."""
     torch.manual_seed(0)
-    with pytest.raises(ValueError, match="board"):
-        to_weights_data(PlannerNet(N_FEAT, board=True))
+    data = to_weights_data(PlannerNet(N_FEAT, board=True))
+    assert data.get("board85") and data.get("board_shapes")
+    back = nnpolicy.decode_weights(data)["policy"]
+    assert back.get("board") is not None
+    assert len(back["blocks"][0][0]) == N_FEAT + 48

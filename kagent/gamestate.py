@@ -112,6 +112,11 @@ class Memory:
         self.util_day = -1
         self.yesterday_idle = 0.0
         self.yesterday_hands = 0
+        # Dawn and midday observations for the board trunk's lag planes
+        # (kagent/boardstate.py). Only set in a board bundle; cleared here so
+        # a reused process cannot carry one episode's frames into the next.
+        self.bs_dawn = {}
+        self.bs_mid = {}
 
     def observe(self, view):
         if view.step <= self.last_step:

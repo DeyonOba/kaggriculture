@@ -157,19 +157,51 @@ def to_layers(net, vnet=None):
     return {"policy": policy_layers(net), "value": value_layers(vnet) if vnet else None}
 
 
+# Order the conv-trunk parameters travel in. Fixed, because the b85 payload
+# is a flat float array and the reader reshapes by `board_shapes`.
+BOARD_KEYS = ("c1w", "c1b", "c2w", "c2b", "lnw", "lnb", "fcw", "fcb")
+
+
+def _flat(x, out):
+    """Append a nested list of floats to `out` depth-first."""
+    if isinstance(x, list):
+        for v in x:
+            _flat(v, out)
+    else:
+        out.append(float(x))
+
+
+def _shape_of(x):
+    s = []
+    while isinstance(x, list):
+        s.append(len(x))
+        x = x[0]
+    return s
+
+
 def to_weights_data(net):
-    """Submission export: POLICY ONLY, packed as base85 float32."""
-    if getattr(net, "board", None) is not None:
-        # The b85 format carries blocks + out and nothing else, and the
-        # bundle (kagent/policy.py) never builds a board tensor or sets
-        # provider.board. Exporting a board net here would ship a 216-row
-        # first layer with no trunk -- the original silent truncation, in
-        # the submitted agent. Refuse until the bundle has a board builder.
-        raise ValueError(
-            "to_weights_data: board nets cannot be exported for submission "
-            "yet -- the bundle has no board tensor builder. Use to_layers() "
-            "for local play, and build the bundle-side board path first.")
-    p = policy_layers(net)
+    """Submission export: POLICY ONLY, packed as base85 float32.
+
+    A board trunk travels too, in its own b85 block with an explicit shape
+    map. It used to be refused outright: the payload carried blocks+out and
+    nothing else, so a 216-row first layer shipped with no trunk and
+    `nnpolicy._matvec` silently ignored rows 168..215 -- the original board
+    truncation, in the submitted agent. Two things make it safe now: the
+    trunk is serialised here and restored by `nnpolicy.decode_weights`, and
+    the bundle builds the tensor itself (`kagent/boardstate.py`). The width
+    guard in `forward_policy` still fires if either half goes missing.
+    """
+    return pack_policy(policy_layers(net))
+
+
+def pack_policy(p):
+    """A `policy_layers`-shaped dict -> the kagent/weights.py payload.
+
+    Split out from `to_weights_data` so a weights FILE (rl/common.to_layers
+    output, e.g. a run's eval.json) can be packed without rebuilding the
+    torch module -- which is what lets us ship the exact numbers an eval arm
+    played with, rather than a re-derived copy of them.
+    """
     flat, sizes = [], []
     for w, b, g, beta in p["blocks"]:
         sizes.append([len(w), len(w[0])])
@@ -184,7 +216,35 @@ def to_weights_data(net):
         flat.extend(row)
     flat.extend(b)
     raw = struct.pack("<%df" % len(flat), *flat)
-    return {"arch": 2, "sizes": sizes, "b85": base64.b85encode(raw).decode("ascii")}
+    data = {"arch": 2, "sizes": sizes,
+            "b85": base64.b85encode(raw).decode("ascii")}
+
+    bl = p.get("board")
+    if bl is not None:
+        bflat, shapes = [], {}
+        for k in BOARD_KEYS:
+            if k not in bl:
+                raise ValueError(f"to_weights_data: board trunk is missing {k!r}")
+            shapes[k] = _shape_of(bl[k])
+            _flat(bl[k], bflat)
+        braw = struct.pack("<%df" % len(bflat), *bflat)
+        data["board_shapes"] = shapes
+        data["board85"] = base64.b85encode(braw).decode("ascii")
+        # Round-trip now, in the exporter, rather than discovering a shape
+        # bug in a submitted agent.
+        from kagent.nnpolicy import decode_weights
+        back = decode_weights(data)["policy"].get("board")
+        if back is None:
+            raise ValueError("to_weights_data: board trunk did not round-trip")
+        for k in BOARD_KEYS:
+            f1, f2 = [], []
+            _flat(bl[k], f1)
+            _flat(back[k], f2)
+            if len(f1) != len(f2) or any(
+                    abs(a - b) > 1e-6 for a, b in zip(f1, f2)):
+                raise ValueError(
+                    f"to_weights_data: board trunk {k!r} did not round-trip")
+    return data
 
 
 def masked_dists(logits, masks):

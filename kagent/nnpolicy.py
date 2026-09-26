@@ -44,13 +44,55 @@ def decode_weights(data):
             blocks.append([matrix(n_in, n_out), take(n_out), take(n_out), take(n_out)])
         n_in, n_out = sizes[-1]
         out = [matrix(n_in, n_out), take(n_out)]
-        return {"policy": {"arch": 2, "blocks": blocks, "out": out}, "value": None}
+        policy = {"arch": 2, "blocks": blocks, "out": out}
+        board = _decode_board(data)
+        if board is not None:
+            policy["board"] = board
+        return {"policy": policy, "value": None}
 
     # Legacy v1: [(W, b)] x 4 (h1, h2, logits, value), tanh activations.
     layers = []
     for n_in, n_out in sizes:
         layers.append((matrix(n_in, n_out), take(n_out)))
     return {"policy": {"arch": 1, "layers": layers}, "value": None}
+
+
+def _reshape(flat, shape, pos):
+    """Nested lists of `shape` taken from `flat` at `pos` -> (nested, new pos)."""
+    if not shape:
+        return flat[pos], pos + 1
+    if len(shape) == 1:
+        return flat[pos:pos + shape[0]], pos + shape[0]
+    out = []
+    for _ in range(shape[0]):
+        sub, pos = _reshape(flat, shape[1:], pos)
+        out.append(sub)
+    return out, pos
+
+
+def _decode_board(data):
+    """Conv trunk from its own b85 block, or None for a board-free bundle.
+
+    Exported by rl/common.to_weights_data. Shipping the trunk is what makes a
+    board planner submittable at all: without it the policy's first layer is
+    wider than the feature vector and forward_policy refuses (it used to
+    silently drop the board columns instead).
+    """
+    if not data.get("board85"):
+        return None
+    shapes = data.get("board_shapes") or {}
+    raw = base64.b85decode(data["board85"].encode("ascii"))
+    flat = list(struct.unpack("<%df" % (len(raw) // 4), raw))
+    board, pos = {}, 0
+    for k in ("c1w", "c1b", "c2w", "c2b", "lnw", "lnb", "fcw", "fcb"):
+        if k not in shapes:
+            raise ValueError(f"decode_weights: board payload is missing {k!r}")
+        board[k], pos = _reshape(flat, list(shapes[k]), pos)
+    if pos != len(flat):
+        raise ValueError(
+            f"decode_weights: board payload has {len(flat)} floats but the "
+            f"shapes consume {pos} -- refusing a truncated trunk")
+    return board
 
 
 def _matvec(w, b, x):

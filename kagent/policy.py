@@ -12,7 +12,7 @@ import time
 import traceback
 
 from kagent.gamestate import Memory, View
-from kagent import features, market, planner, scheduler
+from kagent import boardstate, features, market, planner, scheduler
 from kagent.banditpolicy import BanditPolicy, KnobBanditPolicy
 from kagent.mpcpolicy import MPCPlanProvider
 from kagent.nnpolicy import NeuralPolicy, decode_weights
@@ -61,6 +61,22 @@ class HeuristicPolicy:
         return planner.make_day_plan(view, memory)
 
     def act(self, view, memory):
+        # Board bundles only (`provider._bundle_arm`, set below when the
+        # shipped weights carry a trunk). The dev/rollout paths set
+        # provider.board themselves, so this must never run there.
+        provider = self.plan_provider
+        arm = getattr(provider, "_bundle_arm", None)
+        if arm:
+            obs = getattr(memory, "last_raw_obs", None)
+            if obs is not None:
+                boardstate.observe(memory, view, obs)
+                # Built only on the step a plan is made -- the tensor is ~6
+                # board passes and there are 30 plans in 720 steps. On the
+                # other steps the provider gets None, so a plan made
+                # unexpectedly mid-day raises instead of reading a stale board.
+                need_plan = memory.day_plan is None or memory.day_plan_day != view.day
+                provider.board = (boardstate.build(memory, view, obs, arm=arm)
+                                  if need_plan else None)
         if memory.day_plan is None or memory.day_plan_day != view.day:
             # Roll the labor-utilization ledger before the new day's plan so
             # the hires head sees yesterday's idle payroll.
@@ -168,6 +184,19 @@ elif _LAYERS is not None:
         _provider = MPCPlanProvider(_LAYERS)
     else:
         _provider = NeuralPolicy(_LAYERS, residual=RESIDUAL)
+        # A trunk-carrying planner must be handed the board tensor before it
+        # plans. Until the export path shipped the trunk this was impossible
+        # and board nets were refused at export; now the bundle builds the
+        # tensor itself. The arm is read off the trunk so the width cannot
+        # disagree with the weights.
+        _board_layers = (_LAYERS.get("policy") or {}).get("board")
+        if _board_layers is not None:
+            # bare name, not `boardstate.`: in a flat bundle the module
+            # aliases are bound only after every source has executed, so a
+            # qualified reference is a NameError at import time (the same
+            # reason set_mode/set_exec are looked up this way above).
+            _arm_fn = globals().get("arm_for_trunk") or boardstate.arm_for_trunk
+            _provider._bundle_arm = _arm_fn(_board_layers)
     _fallback = HeuristicPolicy(ChampionPlanProvider()) if RESIDUAL else HeuristicPolicy()
     _AGENT = SafeAgent(HeuristicPolicy(_provider), fallback=_fallback)
 else:
