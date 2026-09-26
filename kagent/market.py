@@ -6,16 +6,15 @@ from kagent.constants import (
 )
 from kagent import econ
 from kagent.planner import FINAL_STEP
+# Cross-module reference, same shape as `econ` and `planner` above: the bundler
+# strips these import lines and binds the module aliases into one shared
+# namespace AFTER every body has run, so `scheduler` must only ever be touched
+# inside a function, never at module level. An inline `from kagent import
+# scheduler` inside a function does not survive that (there is no kagent
+# package in a bundle) -- it raised, SafeAgent swallowed it, and the agent
+# scored exactly its starting money.
+from kagent import scheduler
 
-
-def _SHEDGUARD_ON():
-    from kagent import scheduler as _s
-    return bool(_s.EXEC.get("shedguard"))
-
-
-def _SHEDGUARD_HOUR():
-    from kagent import scheduler as _s
-    return _s.SHEDGUARD_HOUR
 
 # Products whose price falls on a steep curve above I0 (linear / sq above
 # functions): the ones sell pacing applies to.
@@ -118,7 +117,7 @@ def _sell_orders(view, plan, memory):
     # Shed pressure valve: midnight overflow is silently destroyed, so when
     # the shed runs hot, dump the biggest stacks at any price.
     pressure = view.shed_total > 80
-    if _SHEDGUARD_ON() and view.hour >= _SHEDGUARD_HOUR():
+    if scheduler.EXEC.get("shedguard") and view.hour >= scheduler.SHEDGUARD_HOUR:
         # what will actually be dropped tonight, not just what is banked now
         carried = sum(n for i, _, _ in view.me.units
                       for item, n in view.unit_inv(i).items()
@@ -151,8 +150,8 @@ def _sell_orders(view, plan, memory):
         # the crew is CARRYING is at risk every evening, not only on the last
         # day. Under `shedguard` the evening sizing counts it; without the flag
         # this is exactly the shipped behaviour.
-        from kagent import scheduler as _sched
-        _evening = _sched.EXEC.get("shedguard") and view.hour >= _sched.SHEDGUARD_HOUR
+        _evening = (scheduler.EXEC.get("shedguard")
+                    and view.hour >= scheduler.SHEDGUARD_HOUR)
         if final_push or _evening:
             stock += sum(view.unit_inv(i).get(item, 0) for i, _, _ in view.me.units)
         if item == "WHEAT":
