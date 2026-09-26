@@ -159,8 +159,19 @@ def main() -> None:
             elif parts[1] in ("knobs", "bandit") and len(parts) == 3:
                 with open(parts[2]) as fh:
                     spec = {"kind": parts[1], "rules": json.load(fh)}
+            elif parts[1] == "execnet" and len(parts) == 3:
+                # dev:execnet:<weights.pt>[:<rules.json>[:<confidence>]] -- the
+                # learned executor (rl/execnet) over the knob-bandit plan
+                fields = parts[2].split(":")
+                spec = {"kind": "execnet", "weights": os.path.abspath(fields[0])}
+                if len(fields) > 1 and fields[1]:
+                    with open(fields[1]) as fh:
+                        spec["rules"] = json.load(fh)
+                if len(fields) > 2 and fields[2]:
+                    spec["conf"] = float(fields[2])
             else:
-                raise SystemExit(f"{name}: dev arm wants dev:champion or dev:knobs:<rules.json>")
+                raise SystemExit(f"{name}: dev arm wants dev:champion, dev:knobs:<rules.json> "
+                                 f"or dev:execnet:<weights.pt>[:<rules.json>[:<conf>]]")
             arms.append((name, spec, False, "dev"))
             continue
         with open(path) as fh:

@@ -114,6 +114,8 @@ def main() -> None:
                     help="knob-bandit rules JSON (a dev:knobs arm, e.g. tools/rules/rules_h8.json)")
     ap.add_argument("--exec", default=None,
                     help="executor rule flags, comma-separated (kagent/scheduler.EXEC_FLAGS)")
+    ap.add_argument("--execnet", default=None,
+                    help="learned executor: <weights.pt>[:<rules.json>[:<confidence>]] (rl/execnet)")
     ap.add_argument("--session", required=True)
     ap.add_argument("--script-side", type=int, required=True, help="the tape's seat")
     ap.add_argument("--label", default=None, help="name shown in the viewer")
@@ -139,7 +141,18 @@ def main() -> None:
         raise SystemExit("weights carry a board trunk: set KAGG_BOARD=1")
 
     records = []
-    if args.rules:
+    if args.execnet:
+        fields = args.execnet.split(":")
+        spec = {"kind": "execnet", "weights": fields[0]}
+        if len(fields) > 1 and fields[1]:
+            with open(fields[1]) as fh:
+                spec["rules"] = json.load(fh)
+            if spec["rules"].get("exec") and not args.exec:
+                scheduler.set_exec(spec["rules"]["exec"])
+        if len(fields) > 2 and fields[2]:
+            spec["conf"] = float(fields[2])
+        learner, _ = rollout._make_dev_policy_agent(spec)
+    elif args.rules:
         with open(args.rules) as fh:
             rules = json.load(fh)
         if rules.get("exec") and not args.exec:

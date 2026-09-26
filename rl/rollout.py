@@ -364,6 +364,21 @@ def _make_dev_policy_agent(spec):
             switched = True
         cls = KnobBanditPolicy if rules.get("kind") == "knobs" else BanditPolicy
         pol = HeuristicPolicy(cls(rules))
+    elif kind == "execnet":
+        # The learned executor (rl/execnet): the planner as above (the knob
+        # bandit with a rules dict, or the plain champion plan), the model
+        # replacing scheduler.assign's action per unit.
+        from rl.execnet.policy import load_policy
+        rules = spec.get("rules")
+        if rules:
+            if features.MODE != "residual":
+                features.set_mode("residual")
+                switched = True
+            cls = KnobBanditPolicy if rules.get("kind") == "knobs" else BanditPolicy
+            provider = cls(rules)
+        else:
+            provider = ChampionPlanProvider()
+        pol = load_policy(spec["weights"], provider, conf=float(spec.get("conf", 0.0)))
     else:
         raise ValueError(f"unknown learner_policy kind {kind!r}")
     mem = Memory()
