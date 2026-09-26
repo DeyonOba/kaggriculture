@@ -351,6 +351,28 @@ code, and each cheap to test at inference on the dev champion plan:
 5. **No moves at hour 23**, and PASS once the day's work is done rather than
    drifting: 5.5% of our moves are structurally wasted.
 
+**Result, 26 September 01:33 (`docs/results/rules_exec_eval.log`, 785
+paired games against the dev tree with h8's rules, 0.242; rules as
+`kagent/scheduler.EXEC` flags, off by default):**
+
+| arm | wins | delta | z / p | bands better | our bank | opponent's bank |
+|---|---|---|---|---|---|---|
+| last-day water before harvest (rule 1) | 197 | +0.9 pt | +0.6 / 0.60 | 2/6 | **+$2,098** | −$139 |
+| rules 1, 2, weeds, no hour-23 moves | 195 | +0.6 | +0.4 / 0.73 | 4/6 | +$1,278 | +$168 |
+| per-quadrant priority queue alone | 99 | **−11.6** | −7.0 / <0.0001 | 0/6 | −$7,925 | +$8,052 |
+| all five | 180 | −1.3 | −0.8 / 0.46 | 1/6 | +$1,370 | +$1,810 |
+
+The yield fix is real and free: wheat 3.0–3.3 → 4.0–4.4 units per harvest,
+carrot 2.0 → 2.9 on the traces, +$2.1k a game with the opponent's bank
+unchanged (the extra units are ours, not withdrawn supply). It buys +0.9
+points of wins, inside noise, because wheat and carrots are the cheap
+products and most losses are $10–30k wide. The chore chain, the weed
+priority and the hour-23 rule add nothing measurable on top. The
+per-quadrant queue is closed: with priority classes ahead of distance the
+hands walk between chores again, and the bank falls $7.9k while the
+opponent's rises $8.1k. The evening shed run (D below) is the one executor
+arm still in the queue.
+
 Expected size: unknown individually; together they account for the
 measured 1,200 extra unit-steps a game and 200 fewer harvests, on the same
 executor the dev tree ships. Test each alone and then the bundle, at
