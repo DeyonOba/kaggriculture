@@ -1,0 +1,105 @@
+
+== OUTCOME =======================================================================
+metric                               champ-h10        mmpq        boey         dsm
+eval_games                                 995           -           -           -
+win_rate                                 0.354           -           -           -
+win_band0                                0.440           -           -           -
+win_band1                                0.367           -           -           -
+win_band2                                0.366           -           -           -
+win_band3                                0.200           -           -           -
+win_band4                                0.406           -           -           -
+win_band5                                0.349           -           -           -
+eval_money                              88,057           -           -           -
+eval_margin                             -2,350           -           -           -
+trace_win_rate                            0.33           -           -           -
+final_money                             91,911     122,509     106,631     105,192
+opp_money                              107,197     124,791     105,234     100,503
+margin                                 -15,286      -2,282      +1,396      +4,690
+
+== PLANNER =======================================================================
+metric                               champ-h10        mmpq        boey         dsm
+hands_peak                              11.000      12.250      11.750      12.000
+quadrants_end                            3.000       3.500       3.000       3.000
+quadrant2_day                            6.000       6.000       6.000       6.000
+quadrant3_day                            9.833       9.500       8.250       8.000
+quadrant4_day                                -      15.000           -           -
+day6_wheat                               2.200      13.250       1.000       1.000
+day6_strawberry                          1.500       4.000       3.750       8.000
+day6_melon                              12.833       4.333      10.750       8.000
+day6_cow                                 3.833       4.750       5.500       5.000
+day6_sheep                               2.000       3.500       2.500       3.750
+day6_goose                                   -       2.000       2.250           -
+day12_wheat                             15.000      15.250      24.750      29.250
+day12_carrot                                 -       6.000      10.000       4.500
+day12_strawberry                        38.167      21.000      21.750      18.500
+day12_melon                              2.600      10.500       6.250       4.000
+day12_cow                                7.500       5.500       7.000       6.000
+day12_sheep                              7.000       9.750       6.750       6.250
+day12_goose                                  -       7.000       5.500       8.750
+day20_wheat                             15.400      15.750      17.000      23.500
+day20_carrot                             1.000       6.667      12.250      17.500
+day20_strawberry                        41.167      22.500      23.500      12.750
+day20_cow                                7.500       4.333       7.250       5.750
+day20_sheep                              8.667       8.750       7.750       6.000
+day20_goose                                  -       6.250       5.250       8.750
+idle_share_mean                          0.124       0.065       0.040       0.037
+weed_tile_days                              45          61           3           3
+
+== MARKET ========================================================================
+metric                               champ-h10        mmpq        boey         dsm
+units_offered                             1125           -           -           -
+demand_satisfied_share                   0.344           -           -           -
+opp_demand_satisfied_share               0.700           -           -           -
+crashed_sale_share                       0.173           -           -           -
+sell_realized_over_mean                  1.010       1.064       0.955       1.016
+sell_evening_share                       0.089       0.314       0.215       0.286
+sell_impact_strawberry                   0.827       0.936       0.953       0.888
+sell_impact_milk                         0.840       0.882       0.952       0.850
+sell_impact_wool                         0.526       0.904       0.760       0.695
+share_wheat                              0.327           -           -           -
+share_carrot                             0.132           -           -           -
+share_strawberry                         0.559           -           -           -
+share_melon                              2.811           -           -           -
+share_egg                                0.000           -           -           -
+share_milk                               0.540           -           -           -
+share_wool                               1.032           -           -           -
+
+== EXECUTOR ======================================================================
+metric                               champ-h10        mmpq        boey         dsm
+moves_per_productive                     1.233       0.712       0.831       0.808
+chores_per_visit                         1.453       2.076       1.898       1.913
+chores_per_visit_animal                  1.617       2.773       1.824       1.978
+chores_per_visit_crop                    1.267       1.764       1.949       1.846
+pickups_per_feed                         1.083       0.550       0.455       0.481
+feeds_from_hand_share                    0.007       0.289       0.156       0.159
+shed_ops_per_unit_day                   14.939       8.928      10.069      10.540
+harvest_ops                                344         470         511         522
+plant_ops                                  150         266         276         271
+fertilize_ops                              124         220         208         223
+one_time_units_total                       388         888        1043        1077
+units_per_harvest_wheat                  4.221       4.379       4.576       4.670
+units_per_harvest_carrot                 2.921       2.941       3.262       3.413
+replant_within_1_step                    0.548       0.780       0.860       0.881
+h23_move_share                           0.000       0.000       0.045       0.026
+water_no_effect_share                    0.092       0.091       0.006       0.013
+
+== GAP TO THE LEADERS ========================================
+share of the dev tree (cached) -> best-leader distance this agent has closed
+(0.00 = level with that anchor, 1.00 = level with the best leader)
+  OUTCOME    n/a
+  PLANNER    -0.10   furthest behind: weed_tile_days -0.26, idle_share_mean +0.06
+  MARKET     n/a
+  EXECUTOR   +0.16   furthest behind: replant_within_1_step -0.19, pickups_per_feed -0.17, shed_ops_per_unit_day -0.14
+
+furthest from the leaders' mean, regardless of anchor (metric: ours vs theirs, relative):
+  OUTCOME    margin -15,285.83 vs 1,267.85 (-1306%),  final_money 91,910.83 vs 111,444.03 (-18%),  opp_money 107,196.67 vs 110,176.18 (-3%)
+  PLANNER    idle_share_mean 0.12 vs 0.05 (+161%),  day20_strawberry 41.17 vs 19.58 (+110%),  weed_tile_days 45.00 vs 22.48 (+100%)
+  MARKET     sell_evening_share 0.09 vs 0.27 (-67%),  sell_impact_wool 0.53 vs 0.79 (-33%),  sell_impact_strawberry 0.83 vs 0.93 (-11%)
+  EXECUTOR   water_no_effect_share 0.09 vs 0.04 (+153%),  pickups_per_feed 1.08 vs 0.50 (+119%),  h23_move_share 0.00 vs 0.02 (-100%)
+
+limiting dimension: PLANNER (-0.10)
+
+== HEAD TO HEAD vs champ-h10 (6 games) ==
+  wins 3/6 (0.500)   mean margin +0
+
+-> docs/results/scorecard_champ_h10.json
