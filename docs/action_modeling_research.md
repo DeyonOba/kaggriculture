@@ -498,3 +498,21 @@ most. Changing the action space from per-op to per-destination did not
 rescue it, so the failure is not the vocabulary. The learned executor is
 closed at both levels; the executor gains that survive are the two rules
 that add production without moving labour at all.
+
+
+## Hybrid: learned planner under learned executor (26 September 18:50)
+
+`docs/results/draw995_hybrid.log`, 995 paired games. Baseline champ-h10 (0.354).
+
+| arm | wins / 995 | win rate | money | margin | vs champ-h10 |
+|---|---|---|---|---|---|
+| champ-h10 (shipped) | 352 | 0.354 | $88,057 | −$2,350 | — |
+| kernel planner + our scheduler | 216 | 0.217 | $85,917 | −$14,157 | −13.7 pts (z −8.5) |
+| kernel planner + destination model | 137 | 0.138 | $80,198 | −$22,869 | −21.6 (z −13.9) |
+
+The two learned halves compound rather than cancel: the planner alone is
+−13.7, and adding the learned executor takes it to −21.6, close to the sum.
+The margin column is the clearest reading of the whole track — champ-h10
+loses by $2.4k on average, the learned planner by $14.2k, the pair by
+$22.9k. Every learned component we have built banks respectably and fails
+to contest the opponent's supply, and stacking them multiplies that.
