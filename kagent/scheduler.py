@@ -64,10 +64,37 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              coops, other crops elsewhere, so the unit that harvests the
 #              wheat feeds the animals from hand without a shed trip (26% of
 #              the top agent's feeds, 0% of ours)
+#   handfeed   feed from the harvest: the morning zone provisioning skips
+#              animals with a harvestable wheat tile orthogonally adjacent
+#              (until HANDFEED_UNTIL; survival feeds are never skipped), and
+#              a unit holding wheat feeds an unfed animal next to it before
+#              anything else. Metric: feeds from wheat in hand (ours 1-5%,
+#              top agent 26-30%), pickups per feed (1.0-1.2 vs 0.5)
+#   oneshed    consolidated provisioning: the farm's whole wheat and
+#              fertilizer need is fetched by the fewest units nearest the
+#              shed (five wheat / three fertilizer each) at hours
+#              0-ONESHED_LAST_HOUR, none later except for a starving animal,
+#              instead of every zone hand making its own 1-3 wheat pickup;
+#              the early-drop threshold on days 0-9 rises from 2 to 5 units.
+#              Metric: wheat pickups (ours 266-296 a game, top agent 144),
+#              pickups per feed (1.0-1.2 vs 0.5)
+#   hv_underfoot  harvest_visit restricted to the tile a unit is standing
+#              on: the 1-2 unit harvest of an ongoing crop is taken by the
+#              unit already there, never walked to, so it cannot take turns
+#              from watering (all-five tripled weed tile-days). Metric:
+#              harvests up, weed tile-days flat
+#   nodrift    a unit with nothing to do PASSes instead of walking back to
+#              its zone: every unit respawns at the shed at hour 0, so the
+#              walk home buys nothing (the top agent: 0.71 moves per
+#              productive op, ours 1.1-1.4). Metric: moves per productive op
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell",
-              "harvest_visit", "spent", "layout")
+              "harvest_visit", "spent", "layout",
+              "handfeed", "oneshed", "hv_underfoot", "nodrift")
 EXEC = {k: False for k in EXEC_FLAGS}
 LASTWATER_HARVEST_HOUR = 20  # from here harvest the crop even if unwatered
+HANDFEED_UNTIL = 14          # after this hour the shed feeds what the harvest has not
+ONESHED_LAST_HOUR = 2        # zone provisioning pickups only up to this hour
+ONESHED_EARLY_DROP = 5       # days 0-9 pocket size that triggers a shed trip
 EVESELL_MIN_CARRY = 3        # sellable units in the pocket that justify the run
 EVESELL_MAX_DIST = 5         # farther units keep working; midnight drops them
 EVESELL_ARRIVE_HOUR = 22     # DROP by this hour, sold at 22-23, before hour 0
@@ -216,6 +243,7 @@ def build_tasks(view, plan):
     me = view.me
 
     fert_targets = set()
+    unit_tiles = {(ux, uy) for _, ux, uy in me.units}
 
     # --- Plants: water / harvest / fertilize ---------------------------------
     for x, y, t in me.plants():
@@ -236,10 +264,15 @@ def build_tasks(view, plan):
             if (yields >= crop["max_yield"] - 1
                     or (yields > 0 and (decaying or finished or plan.liquidation))):
                 tasks.append(Task(P_HARVEST, x, y, ["HARVEST"]))
-            elif EXEC["harvest_visit"] and yields >= 1:
+            elif yields >= 1 and (EXEC["harvest_visit"]
+                                  or (EXEC["hv_underfoot"] and (x, y) in unit_tiles)):
                 tasks.append(Task(P_TEND, x, y, ["HARVEST"]))
             if finished and yields == 0 and not plan.liquidation:
-                tasks.append(Task(P_GROW, x, y, ["DIG"]))
+                # tend priority: the plant is a weed within 24-48 steps of
+                # its last production, and a dig at planting priority
+                # (measured: 29 of 33 strawberries still died) rarely
+                # arrives in time
+                tasks.append(Task(P_TEND, x, y, ["DIG"]))
                 continue
         else:
             if (
@@ -408,6 +441,31 @@ def build_tasks(view, plan):
     return tasks
 
 
+HANDFEED_RADIUS = 3          # an animal this close to a ripe wheat tile is fed from its harvest
+
+
+def _handfed_tiles(view):
+    """Unfed animal tiles that today's wheat harvests can feed from hand
+    (EXEC["handfeed"]): each harvestable WHEAT plant (age at its last window
+    day or later, units on it) covers up to its units of the nearest unfed
+    animals within HANDFEED_RADIUS. Animals never covered are left to the
+    shed provisioning."""
+    myd = CROPS["WHEAT"]["max_yield_day"]
+    ready = []
+    for x, y, t in view.me.plants():
+        if t.get("crop") == "WHEAT" and view.day - t.get("planted_day", view.day) >= myd \
+                and t.get("yield_units", 0) > 0:
+            ready.append((x, y, int(t["yield_units"])))
+    unfed = [(x, y) for x, y, t in view.me.animals() if not t.get("fed_today")]
+    out = set()
+    for wx, wy, units in ready:
+        near = sorted(((_dist(wx, wy, ax, ay), ax, ay) for ax, ay in unfed
+                       if (ax, ay) not in out and _dist(wx, wy, ax, ay) <= HANDFEED_RADIUS))
+        for _, ax, ay in near[:units]:
+            out.add((ax, ay))
+    return out
+
+
 def _feed_pickup_needs(view, zone_of, n_zones):
     """Wheat each unit should carry for the unfed animals in ITS zone."""
     needs = {}
@@ -541,7 +599,7 @@ def assign(view, plan, tasks):
             continue
         threshold = 1 if (aggressive and view.hour >= 4) or view.step >= FINAL_STEP - 6 else DROP_THRESHOLD
         if view.day < 10:
-            threshold = min(threshold, EARLY_DROP_THRESHOLD)
+            threshold = min(threshold, ONESHED_EARLY_DROP if EXEC["oneshed"] else EARLY_DROP_THRESHOLD)
         if plan.liquidation and not aggressive:
             threshold = 8
         if total < threshold:
@@ -608,6 +666,30 @@ def assign(view, plan, tasks):
         _count_moves(actions, _seen, "evesell")
         _seen = set(actions)
 
+    handfed = _handfed_tiles(view) if EXEC["handfeed"] else set()
+    if EXEC["handfeed"] or EXEC["oneshed"]:
+        # ---- 1c. Wheat in hand feeds first: a unit holding wheat takes the
+        # nearest unfed animal before any provisioning trip or zone pick --
+        # within two tiles under handfeed (the harvester feeds its
+        # neighbours), anywhere under oneshed (the few provisioned feeders
+        # serve the whole farm, since no one else holds wheat).
+        radius = 99 if EXEC["oneshed"] else 2
+        for idx in sorted(free - _hold):
+            x, y = units[idx]
+            if view.unit_inv(idx).get("WHEAT", 0) < 1:
+                continue
+            best = None
+            for t in tasks:
+                if t.op[0] != "FEED" or (t.x, t.y, "FEED") in claimed:
+                    continue
+                d = _dist(x, y, t.x, t.y)
+                if d <= radius and (best is None or (d, t.pri) < best[0]):
+                    best = ((d, t.pri), t)
+            if best is not None and try_execute(idx, best[1]):
+                free.discard(idx)
+        _count_moves(actions, _seen, "handfeed")
+        _seen = set(actions)
+
     # ---- 1.5 Global need-provisioning: animals, fertilizer, and any wheat the
     # morning zone pickups missed. Without this, bought animals strand in the
     # shed forever (measured: 47 structures built, zero animals ever placed).
@@ -651,12 +733,21 @@ def assign(view, plan, tasks):
     # ---- 2. Zone provisioning: each zone's hand fetches ITS zone's wheat and
     # fertilizer from the shed (any hour), so deliveries stay intra-zone.
     zone_needs = {}
+    zone_starving = set()
     for t in tasks:
         if t.need in ("WHEAT", "FERTILIZER"):
             z = zone_of.get((t.x, t.y))
-            if z is not None:
-                zone_needs.setdefault(z, {}).setdefault(t.need, 0)
-                zone_needs[z][t.need] += 1
+            if z is None:
+                continue
+            if t.op[0] == "FEED" and t.pri == P_SURVIVAL:
+                zone_starving.add(z)
+            # handfeed: the harvest next door feeds this animal; the shed
+            # provisioning skips it until HANDFEED_UNTIL (never a survival feed)
+            if (handfed and t.op[0] == "FEED" and t.pri != P_SURVIVAL
+                    and (t.x, t.y) in handfed and view.hour < HANDFEED_UNTIL):
+                continue
+            zone_needs.setdefault(z, {}).setdefault(t.need, 0)
+            zone_needs[z][t.need] += 1
     zone_carry = {}
     for idx, _, _ in me.units:
         z = uz[idx]
@@ -664,26 +755,58 @@ def assign(view, plan, tasks):
             zone_carry.setdefault(z, {}).setdefault(item, 0)
             zone_carry[z][item] += view.unit_inv(idx).get(item, 0)
     shed_left = {item: view.shed.get(item, 0) for item in ("WHEAT", "FERTILIZER")}
-    for idx in sorted(free):
-        z = uz[idx]
-        for item in ("WHEAT", "FERTILIZER"):
-            need = zone_needs.get(z, {}).get(item, 0) - zone_carry.get(z, {}).get(item, 0)
-            n = min(need, shed_left[item], 5 if item == "WHEAT" else 3)
-            if n <= 0:
-                continue
-            x, y = units[idx]
-            tx, ty = _nearest_shed_tile(x, y)
-            if (x, y) == (tx, ty):
-                actions[idx] = ["PICKUP", item, n]
-            else:
-                step = _step_toward(x, y, tx, ty)
-                if not step:
+    if EXEC["oneshed"]:
+        # Consolidated provisioning: the farm's whole wheat and fertilizer
+        # need is fetched by the fewest units nearest the shed, five wheat /
+        # three fertilizer each, at hours 0-ONESHED_LAST_HOUR only (later
+        # only for a starving animal). Measured: every one of our 12 hands
+        # made its own 1-3 wheat pickup each morning (266-296 wheat pickups
+        # a game for 350-373 feeds); the top agent makes 144 for 405.
+        starving = sum(1 for t in tasks if t.op[0] == "FEED" and t.pri == P_SURVIVAL)
+        for item, cap in (("WHEAT", 5), ("FERTILIZER", 3)):
+            need = sum(v.get(item, 0) for v in zone_needs.values())
+            need -= sum(view.unit_inv(i).get(item, 0) for i, _, _ in me.units)
+            if view.hour > ONESHED_LAST_HOUR:
+                if item != "WHEAT" or starving == 0:
                     continue
-                actions[idx] = [step]
-            shed_left[item] -= n
-            zone_carry[z][item] = zone_carry[z].get(item, 0) + n
-            free.discard(idx)
-            break
+                need = min(need, starving)
+            while need > 0 and free and shed_left[item] > 0:
+                idx = min(free, key=lambda i: _dist(units[i][0], units[i][1],
+                                                    *_nearest_shed_tile(units[i][0], units[i][1])))
+                n = min(cap, need, shed_left[item])
+                x, y = units[idx]
+                tx, ty = _nearest_shed_tile(x, y)
+                if (x, y) == (tx, ty):
+                    actions[idx] = ["PICKUP", item, n]
+                else:
+                    step = _step_toward(x, y, tx, ty)
+                    if not step:
+                        break
+                    actions[idx] = [step]
+                shed_left[item] -= n
+                need -= n
+                free.discard(idx)
+    else:
+        for idx in sorted(free):
+            z = uz[idx]
+            for item in ("WHEAT", "FERTILIZER"):
+                need = zone_needs.get(z, {}).get(item, 0) - zone_carry.get(z, {}).get(item, 0)
+                n = min(need, shed_left[item], 5 if item == "WHEAT" else 3)
+                if n <= 0:
+                    continue
+                x, y = units[idx]
+                tx, ty = _nearest_shed_tile(x, y)
+                if (x, y) == (tx, ty):
+                    actions[idx] = ["PICKUP", item, n]
+                else:
+                    step = _step_toward(x, y, tx, ty)
+                    if not step:
+                        continue
+                    actions[idx] = [step]
+                shed_left[item] -= n
+                zone_carry[z][item] = zone_carry[z].get(item, 0) + n
+                free.discard(idx)
+                break
 
     _count_moves(actions, _seen, "morning")
     _seen = set(actions)
@@ -829,6 +952,8 @@ def assign(view, plan, tasks):
             tx, ty = _nearest_shed_tile(x, y)
             step = _step_toward(x, y, tx, ty)
             actions[idx] = [step] if step else (["DROP"] if shed_room > 0 else ["PASS"])
+        elif EXEC["nodrift"] and _unlocked(view, x, y):
+            actions[idx] = ["PASS"]
         else:
             z = uz[idx]
             home = [tile for tile, zz in zone_of.items() if zz == z]

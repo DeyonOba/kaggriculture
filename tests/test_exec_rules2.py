@@ -90,7 +90,7 @@ def test_spent_digs_a_finished_ongoing_crop():
     assert not any(op == "DIG" for op, _ in _tasks_at(scheduler.build_tasks(view, plan), 1, 1))
     scheduler.set_exec("spent")
     on = _tasks_at(scheduler.build_tasks(view, plan), 1, 1)
-    assert ("DIG", scheduler.P_GROW) in on and not any(op == "WATER" for op, _ in on)
+    assert ("DIG", scheduler.P_TEND) in on and not any(op == "WATER" for op, _ in on)
     # still holding its last unit: harvest at harvest priority, no dig yet
     obs["farms"][0]["tiles"][1][1] = _plant("STRAWBERRY", planted_day=10, yield_units=1, mls=mls)
     view, plan = _plan(obs)
