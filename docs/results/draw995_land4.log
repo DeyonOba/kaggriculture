@@ -1,0 +1,18 @@
+995 held-out games per arm; per bin 0-600:175 600-1000:120 1000-1500:175 1500-2000:175 2000-2500:175 2500+:175
+arms: land4 (dev tree)
+  dev_knobs_h8 win 0.313 +/- 0.015   (reused from rl/runs/draw995/baselines.json:dev_knobs_h8)
+  champ_h8     win 0.230 +/- 0.013   (reused from rl/runs/draw995/baselines.json:champ_h8)
+  land4        win 0.247 +/- 0.014   money    84,897   bad 0   (1353s)
+
+arm              win     se     money        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+land4          0.247  0.014    84,897        0.337      0.275      0.206      0.120      0.269      0.286
+dev_knobs_h8   0.313  0.015    86,408        0.440      0.283      0.286      0.189      0.326      0.343
+champ_h8       0.230  0.013    82,345        0.291      0.175      0.234      0.149      0.251      0.263
+
+PAIRED vs dev_knobs_h8 (same sessions, same seats), McNemar on discordant games
+arm            delta     se     z  arm-only  base-only       p        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+land4         -0.065  0.012 -5.36        43        108   0.000       -0.103     -0.008     -0.080     -0.069     -0.057     -0.057
+champ_h8      -0.082  0.015 -5.59        70        152   0.000       -0.149     -0.108     -0.051     -0.040     -0.074     -0.080
+delta = arm win rate minus baseline's on identical games; the per-band columns are the same delta within each rating bin.
+
+-> rl/runs/draw995/land4_eval.json
