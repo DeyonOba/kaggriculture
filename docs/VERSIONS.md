@@ -9,6 +9,40 @@ are fresh-seed games, both player positions. Frozen bundles live in `arena/agent
 
 ---
 
+## champ-h10 — three measured executor rules (2026-09-26, submitted 12:45, ref 56579530, sha256 63a727ee)
+
+The dev tree + champ-h8's four knob rules + the three executor rules that
+cleared the paired instrument, carried in the bundle by `EXEC_RULES`
+(`rl/export.py --clear --champion --bandit-rules tools/rules/rules_h8.json
+--exec lastwater,h23,harvest_visit --freeze champ-h10`). The hook is inert in
+dev mode, so `kagent/` behaviour and every running eval arm are unchanged.
+
+| on 995 band-stratified held-out games | wins | win rate |
+|---|---|---|
+| champ-h10 (= the `ship2_hv` arm) | 352 | **0.354** |
+| champ-h9 / dev tree + h8 rules | 311 | 0.313 |
+| champ-h8 (frozen) | 229 | 0.230 |
+
++4.1 points over champ-h9 (z +3.19, p 0.0019, better in 5 of 6 bands), our
+bank +$1,649 and the recorded opponent's −$3,105. The three rules:
+`lastwater` (water a one-time crop on the last bonus-window day before
+harvesting it — the engine adds the yield unit in the WATER op, so we were
+taking wheat at 3 of 4 units and carrot at 2 of 3), `h23` (no moves on the
+day's last turn, since units respawn at the shed), and `harvest_visit`
+(harvest an ongoing crop whenever it holds a unit, at tend priority).
+Refuted and left off: the per-quadrant priority queue (−11.6), one-shed
+provisioning (−8.9), hand-feed + wheat layout (−10.2), all six stacked
+(−14.5); `docs/results/draw995_batch{2,3}.log`.
+
+Verification before submitting: the frozen bundle reproduced the `ship2_hv`
+dev arm **game for game** on three spot checks across bands 1000–2500;
+141 tests pass; isolation smoke from a foreign cwd OK; sha matches main.py.
+
+**Cost of this submission, accepted deliberately:** only the two most recent
+submissions stay active, so champ-h10 evicted `tape-sel` (1292.1) from the
+active pair. The active pair is now champ-h10 and champ-h9 (750.2), and our
+best active agent drops ~540 points until the tape is resubmitted.
+
 ## champ-h9 — the dev tree, bundled (2026-09-25, submitted 20:27, ref 56559654, sha256 e71e58cd)
 
 Same rules.json as champ-h8. Everything else is today's `kagent/`: the planner
