@@ -55,8 +55,8 @@ through that same instrument for the first time this week.*
 | dev tree + h8 knob rules | 190 | **0.242** | $84,125 | −$9,734 | today's `kagent/`, unshipped |
 | dev tree, plain champion plan | 182 | 0.232 | $83,231 | −$10,801 | knob layer adds +1.0 pt, n.s. |
 | champ-h8 (frozen, strongest shipped) | 144 | 0.183 | $80,802 | −$13,894 | champion plan + 4 knob rules |
-| RL board planner cloned from top players, seed 1234 | 141 | 0.180 | $80,817 | −$16,161 | K below: BC from 11,350 top-band sessions, trainable trunk, PPO |
-| RL no-board planner cloned from top players, seed 1234 | 124 | 0.158 | $80,900 | −$17,299 | same BC, no board |
+| RL board planner cloned from top players, 3 seeds | 129–141 | 0.164–0.180 | $80.5–80.8k | −$16 to −18k | K below: BC from 11,350 top-band sessions, trainable trunk, PPO; sd 0.006 |
+| RL no-board planner cloned from top players, 3 seeds | 100–131 | 0.127–0.167 | $78.8–82.8k | −$17 to −20k | same BC, no board; sd 0.017 |
 | capped RL control, 3 seeds | 58–63 | 0.074–0.080 | $64.7k | −$36.8k | BC from our own heuristic; same PPO budget as the two rows above |
 | champ-h1 (frozen, recorded as submitted) | 46 | 0.059 | $72,137 | −$29,765 | plain champion plan of weeks ago |
 | RL control, uncapped (B2) | 47 | 0.060 | $61,072 | −$41,068 | |
@@ -546,6 +546,22 @@ reach the dev tree (0.180 versus 0.232–0.242, z −3.9). What it did reach is
 parity with the frozen champ-h8. The gap that remains to the dev tree is
 the same size as the executor and planner changes made since h8, which is
 consistent with the executor being the remaining difference.
+
+**Replication, seeds 1235 and 1236 (26 September 05:40,
+`docs/results/top_board_seeds_eval.log`, same 785 games, guards clean on
+all four arms).** The top-player clone holds on every seed: no-board
++5.2 / +7.8 / +9.3 points over the capped control of the same seed (z 4.3
+to 7.3, 6/6 bands each, bank +$13.8k to +$18.8k), board +9.3 / +9.9 / +9.0
+(z 6.8 to 7.1). Board against no-board on the same games: +2.2 (z 1.6),
++4.1 (z 2.9, p 0.005, 4/6 bands), −0.3 (z −0.2); mean +2.0 points, sign 2
+of 3. What the board mostly buys is stability: the three board arms sit at
+0.164–0.180 (between-seed sd 0.006) where the no-board arms range
+0.127–0.167 (sd 0.017), the reverse of the Stage B5 picture in which board
+nets were the seed-variable ones. All three board arms are at parity with
+frozen champ-h8 (−0.4 to −1.9, n.s.); the dev tree stays 6–8 points above
+every RL arm. Standing: the top-player readout is the RL track's best
+starting point and the board trunk is worth about two points on top of
+it, with three seeds not enough to call that size.
 
 ---
 
