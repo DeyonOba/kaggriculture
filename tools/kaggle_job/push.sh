@@ -20,8 +20,12 @@ COPYFILE_DISABLE=1 git ls-files -z | COPYFILE_DISABLE=1 tar --null -czf "$STAGE/
 # 2026-09-26 (kagent/policy.py imported kagent/boardstate.py, untracked at
 # push time). Import the agent out of the tarball before shipping it.
 VERIFY=$(mktemp -d); tar -xzf "$STAGE/ds/kaggriculture-code.tar.gz" -C "$VERIFY"
-if ! ( cd "$VERIFY" && PYTHONPATH="$VERIFY" python3 -c "
-import kagent.policy, kagent.scheduler, kagent.planner, rl.train, rl.session_bc, rl.session_eval, rl.rollout
+VPY=$(command -v uv >/dev/null && echo "uv run python3" || echo python3)
+if ! ( cd "$VERIFY" && PYTHONPATH="$VERIFY" $VPY -c "
+import compileall
+assert compileall.compile_dir('kagent', quiet=2), 'kagent does not compile'
+assert compileall.compile_dir('rl', quiet=2), 'rl does not compile'
+import kagent.policy, kagent.scheduler, kagent.planner, kagent.boardstate
 print('tarball imports OK')" ); then
   echo 'TARBALL IS NOT SELF-CONSISTENT -- commit or stash the missing files before pushing'; rm -rf "$VERIFY"; exit 1
 fi
