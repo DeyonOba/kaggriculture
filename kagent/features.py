@@ -63,6 +63,7 @@ ABS_HEADS = [
 
 ANCHORED = {"wheat_tiles": "WHEAT", "straw_tiles": "STRAWBERRY",
             "cow_target": "MILK", "sheep_target": "WOOL"}
+ANCHOR_QUANTILE = 0.35    # v3 only: conservative read of the unlock draw
 ANCHOR_CAPS = {"wheat_tiles": 44, "straw_tiles": 40, "cow_target": 18, "sheep_target": 14,
                "goose_target": 12, "carrot_tiles": 26, "tomato_tiles": 16, "melon_tiles": 24,
                "hires": 16}
@@ -77,6 +78,51 @@ _PER_TILE_DAY = {"STRAWBERRY": 0.5, "CARROT": 1.0, "TOMATO": 0.36, "MELON": 0.46
 _STRAW_PER_TILE_DAY = 0.5   # fertilized+watered ongoing strawberry
 
 
+
+def tile_flow(view, horizon=3):
+    """The board as a FLOW, which is what a day plan actually decides on.
+
+    Standing counts say what the farm IS; a plan has to say what to put on
+    the ground that is about to be free. Returns, per crop and in total:
+      free_now      tiles bare right now (plus weeds, one DIG away)
+      freeing[k]    tiles whose crop finishes within k days -- a one-shot
+                    crop at/after its max-yield day, an ongoing crop whose
+                    last production has been scheduled (max_lifespan_step)
+      pending       units already standing on our board that will reach the
+                    market, which is OUR half of the supply the price sees
+    The opponent's half is `supply_projection(view.opp, ...)`, so the two
+    together are the glut the plan is trying not to walk into."""
+    day, step = view.day, view.step
+    free_now = sum(1 for _ in view.me.empty_tiles()) + sum(1 for _ in view.me.weeds())
+    freeing = [0] * (horizon + 1)
+    pending = {}
+    for _, _, t in view.me.plants():
+        crop = CROPS.get(t.get("crop"))
+        if crop is None:
+            continue
+        age = day - t.get("planted_day", day)
+        held = t.get("yield_units", 0)
+        pending[t["crop"]] = pending.get(t["crop"], 0) + held
+        if not crop["ongoing"]:
+            k = max(0, crop["max_yield_day"] - age)
+            rem = max(0, crop["max_yield_day"] - max(age, (crop["max_yield_day"] + 1) // 2 - 1))
+            pending[t["crop"]] = pending.get(t["crop"], 0) + min(crop["max_yield"] - held, rem)
+        else:
+            mls = t.get("max_lifespan_step", -1)
+            k = max(0, (mls - step) // TURNS_PER_DAY) if mls >= 0 else horizon + 1
+            done = ((age - crop["first_yield_day"]) // crop["interval"] + 1
+                    if age >= crop["first_yield_day"] else 0)
+            pending[t["crop"]] = pending.get(t["crop"], 0) + max(0, crop["max_yield"] - done)
+        if k <= horizon:
+            for j in range(int(k), horizon + 1):
+                freeing[j] += 1
+    for _, _, t in view.me.animals():
+        a = ANIMALS.get(t.get("animal"))
+        if a:
+            pending[a["product"]] = pending.get(a["product"], 0) + t.get("yield_units", 0)
+    return {"free_now": free_now, "freeing": freeing, "pending": pending}
+
+
 def anchors(view):
     """Supply=demand production anchors: season demand forecast MINUS the
     opponent's projected supply (their farm is public). Sharing a demand pool
@@ -85,7 +131,12 @@ def anchors(view):
     winner pivoted lines."""
     day = view.day
     days_left = max(1, 29 - day)
-    fc = econ.forecast_drain(view.unlocked_shops, day)
+    # v3 prices future demand conservatively: ANCHOR_QUANTILE of the exact
+    # distribution over the remaining shop draws rather than its mean, so a
+    # product that lives in one shop of eight (wool) is not planned for until
+    # the shop actually opens. v1/v2 keep the mean they were trained on.
+    fc = econ.forecast_drain(view.unlocked_shops, day,
+                             quantile=ANCHOR_QUANTILE if HEADS_VERSION >= 3 else None)
     opp = supply_projection(view.opp, day, horizon=29 - day)
     herd_total = sum(1 for _ in view.me.animals())
 
@@ -457,6 +508,26 @@ def encode(view, memory):
     # Episode memory
     f.append(getattr(memory, "melons_sold", 0) / 150.0)
 
+    if HEADS_VERSION >= 3:
+        # v3 frames the day plan as a FLOW decision, so the observation has to
+        # carry the flow: ground free now, ground freeing over the next three
+        # days, and -- per product -- what OUR board will still bring to market
+        # against what the OPPONENT'S will. Standing counts alone cannot say
+        # "eight tiles come free tomorrow and the opponent already covers the
+        # carrot demand", which is the decision being made.
+        fl = tile_flow(view, horizon=3)
+        opp_sup = supply_projection(view.opp, day, horizon=max(1, 29 - day))
+        f.append(min(fl["free_now"], 40) / 40.0)
+        for k in (1, 2, 3):
+            f.append(min(fl["freeing"][k], 20) / 20.0)
+        for item in ("WHEAT", "CARROT", "TOMATO", "STRAWBERRY", "MELON", "EGG", "MILK", "WOOL"):
+            mine = fl["pending"].get(item, 0.0)
+            theirs = opp_sup.get(item, 0.0)
+            f.append(min(mine, 200.0) / 200.0)
+            f.append(min(theirs, 200.0) / 200.0)
+            # the share of the coming supply that is ours: 1.0 means we are
+            # the whole glut, 0.0 means it is entirely theirs
+            f.append(mine / (mine + theirs) if (mine + theirs) > 0 else 0.5)
     return f
 
 
@@ -531,6 +602,13 @@ def apply_to_plan(plan, choices, view):
 
     quota = {}
     budget_day = PLANTS_PER_DAY_CAP
+    if HEADS_VERSION >= 3:
+        # Plant into the ground that is free now or frees today, never past
+        # it: the scheduler can only plant on a bare tile, so a quota larger
+        # than the capacity is silently clipped and the model never learns
+        # that its ask was impossible.
+        _fl = tile_flow(view, horizon=1)
+        budget_day = min(budget_day, _fl["free_now"] + _fl["freeing"][1])
     for head, crop in QUOTA_CROP.items():
         target = values[head]
         deficit = max(0, target - crop_counts.get(crop, 0))

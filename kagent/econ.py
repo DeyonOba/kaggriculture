@@ -149,20 +149,64 @@ def remaining_unlocks(day, current_count):
     return max(0, min(MAX_SHOP_INSTANCES - current_count, scheduled))
 
 
-def forecast_drain(unlocked_shops, day, horizon_end=29):
-    """Expected total market drain per product from `day` to season end:
-    deterministic drain from open shops + expected drain from future unlocks
-    (each contributing from its unlock day onward)."""
+def _unlock_outcomes(item):
+    """Per future unlock, the (probability, per-day drain) outcomes for one
+    product. The town draws ONE shop uniformly from the eight types, with
+    replacement, so a single unlock either carries this product or does not."""
+    ticks = TURNS_PER_DAY / TOWN_SHOP_SELL_INTERVAL
+    n = len(SHOPS)
+    rates = {}
+    for items in SHOPS.values():
+        r = (2 if len(items) == 1 else 1) * ticks if item in items else 0.0
+        rates[r] = rates.get(r, 0) + 1
+    return [(c / n, r) for r, c in rates.items()]
+
+
+def forecast_drain(unlocked_shops, day, horizon_end=29, quantile=None):
+    """Total market drain per product from `day` to season end: the certain
+    drain from shops already open, plus what future unlocks will add.
+
+    `quantile=None` takes the EXPECTED future contribution (each unlock
+    weighted by the chance it carries the product). A quantile in (0, 1)
+    takes that percentile of the exact distribution instead: the unlock
+    schedule is known, each draw is uniform over the eight shop types, and
+    at most eight remain, so the sum is a short convolution rather than an
+    approximation. Below 0.5 it is the conservative read -- plan for demand
+    that probably arrives, not demand that might. This is the risk term: it
+    shrinks the anchor early, when few shops are open and the draw could go
+    either way, and converges on the mean late once the unlocks have happened."""
     current = town_drain_per_day(unlocked_shops)
     days_left = max(0, horizon_end - day)
     total = {item: current.get(item, 0.0) * days_left for item in PRODUCTS}
-    weights = shop_weight_per_day()
     budget = remaining_unlocks(day, len(unlocked_shops))
     future_days = [u for u in _UNLOCK_DAYS if u > day][:budget]
-    for u in future_days:
-        active = max(0, horizon_end - u)
-        for item, w in weights.items():
-            total[item] = total.get(item, 0.0) + w * active
+    if quantile is None:
+        weights = shop_weight_per_day()
+        for u in future_days:
+            active = max(0, horizon_end - u)
+            for item, w in weights.items():
+                total[item] = total.get(item, 0.0) + w * active
+        return total
+    q = min(max(float(quantile), 0.0), 1.0)
+    for item in PRODUCTS:
+        outcomes = _unlock_outcomes(item)
+        dist = {0.0: 1.0}
+        for u in future_days:
+            active = max(0, horizon_end - u)
+            nxt = {}
+            for acc, pa in dist.items():
+                for pb, rate in outcomes:
+                    v = acc + rate * active
+                    nxt[v] = nxt.get(v, 0.0) + pa * pb
+            dist = nxt
+        cum = 0.0
+        pick = 0.0
+        for v in sorted(dist):
+            cum += dist[v]
+            pick = v
+            if cum >= q:
+                break
+        total[item] = total.get(item, 0.0) + pick
     return total
 
 
