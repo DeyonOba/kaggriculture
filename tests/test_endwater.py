@@ -65,7 +65,12 @@ def test_unchanged_before_the_endgame_when_finished_or_past_the_last_morning():
     obs = _obs(day=24)                                   # finished: lifespan set
     obs["farms"][0]["tiles"][1][1] = _straw(8, mls=26 * 24)
     assert _water_pri(obs, 1, 1) == {scheduler.P_FILLER}
-    obs = _obs(day=28)                                   # planted day 13: last production night day 29, unsellable
-    obs["farms"][0]["tiles"][1][1] = _straw(13)
-    # productions at days 23, 25, 27, 29 -> the one due is the night of day 29
+    # planted day 14: productions land on the mornings of days 24, 26, 28 and
+    # 30 -> on day 28 the next one is after the last sellable morning
+    obs = _obs(day=28)
+    obs["farms"][0]["tiles"][1][1] = _straw(14)
     assert _water_pri(obs, 1, 1) == {scheduler.P_FILLER}
+    # planted day 13: the fourth production lands on the morning of day 29,
+    # sellable, so the day-28 water is worth animal priority
+    obs["farms"][0]["tiles"][1][1] = _straw(13)
+    assert _water_pri(obs, 1, 1) == {scheduler.P_ANIMAL}

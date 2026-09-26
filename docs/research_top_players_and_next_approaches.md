@@ -645,6 +645,16 @@ it, with three seeds not enough to call that size.
 - Check a behavioural switch on one traced game (`tools/game_trace.py`)
   before launching a multi-hour arm; land alone is bought through three code
   paths.
+- **Weeds: census before rules.** On the traced games 44–57 weeds appear a
+  game, and 47 of 51, 28 of 32 and 30 of 32 of the strawberry weeds are
+  plants at age 17 — the fourth and last production was made at age 16,
+  the plant is finished, we stop watering it and it dries into a weed two
+  nights later. They are not lost production. Boey and DSM show 3 weed
+  tile-days because they clear the finished plant at once. Two watering
+  rules built on the wrong reading (`dailywater`, `endwater`) changed
+  nothing and stay off; the `spent` dig is the fix, and its priority
+  matters (29 of 33 finished plants still became weeds at planting
+  priority, so it runs at tend priority in batch 3).
 - **Pairing does not hold the town's shops fixed.** The engine seeds one
   RNG per day from (world seed, day), spends one draw per *empty tile on
   both farms* for weed spawning, then draws the new shop on unlock days
