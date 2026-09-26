@@ -145,7 +145,28 @@ SELL_TIMING_HEADS = [
     ("sell_pace", [-1, 5, 10, 20]),
     ("liquidation_day", [24, 26, 27, 29]),
 ]
-ABS_HEADS_V2 = ABS_HEADS + SELL_TIMING_HEADS
+# v2 also RE-SPACES the absolute quantity heads. Measured 2026-09-26 over 40
+# leader games, standing counts at dawn on days 2-29 (mode: share):
+#   GOOSE   2:19%  0:12%  5:10%  3:10%  7:9%  8:8%   median 4
+#   CARROT  0:44%  3:5%   1:5%   2:4%   4:4%  9:3%   median 2
+#   TOMATO  0:84%  10:2%  5:1%   6:1%   3:1%         median 0
+#   MELON   0:36%  8:8%   5:7%   4:5%   12:5% 7:5%   median 4
+#   hands   8.6-10.5 a game
+# v1's grids are spaced for large counts and cannot say any of the low
+# single digits where most of the mass sits: geese 0/4/6/10/16 cannot say
+# 2, 3, 5 or 7 (48% of leader dawns), carrots 0/6/12/18/26 cannot say 1-4
+# (58%), melon 0/6/12/18/24 cannot say 4, 5, 7 or 8 (25%), and hires
+# 4/8/12/14/16 cannot say 9, 10 or 11, which is where every leader sits.
+# Resolution now follows the observed mass. Head WIDTHS are unchanged, so
+# this costs no extra logits; only v2 moves, v1 is frozen for trained nets.
+_V2_RESPACED = {
+    "melon_tiles":  [0, 4, 8, 12, 20],
+    "carrot_tiles": [0, 2, 4, 9, 17],
+    "tomato_tiles": [0, 3, 6, 10],
+    "goose_target": [0, 2, 3, 5, 8],
+    "hires":        [4, 8, 10, 12, 16],
+}
+ABS_HEADS_V2 = [(n, list(_V2_RESPACED.get(n, v))) for n, v in ABS_HEADS] + SELL_TIMING_HEADS
 RESIDUAL_HEADS_V2 = RESIDUAL_HEADS + SELL_TIMING_HEADS
 
 # Which head set is live. 1 is the shipped action space; every net trained

@@ -43,7 +43,15 @@ def test_v1_is_the_default_and_v2_only_appends():
     v1 = list(F.HEADS)
     F.set_heads_version(2)
     assert len(F.HEADS) == 15 and F.N_ACTION_LOGITS == 65
-    assert F.HEADS[:13] == v1, "v2 must append, so every v1 index keeps its meaning"
+    assert [n for n, _ in F.HEADS[:13]] == [n for n, _ in v1], "same heads, same order"
+    # v2 re-spaces the absolute quantity heads onto the leaders' observed
+    # counts; v1 itself must be untouched, which the round-trip below checks.
+    assert dict(F.HEADS)["goose_target"] == [0, 2, 3, 5, 8]
+    assert dict(F.HEADS)["hires"] == [4, 8, 10, 12, 16]
+    assert [len(v) for _, v in F.HEADS[:13]] == [len(v) for _, v in v1], "widths unchanged"
+    F.set_heads_version(1)
+    assert F.HEADS == v1, "v1 is frozen: every trained net depends on it"
+    F.set_heads_version(2)
     assert [n for n, _ in F.HEADS[13:]] == ["sell_pace", "liquidation_day"]
     for mode in ("absolute", "residual"):
         F.set_mode(mode)
