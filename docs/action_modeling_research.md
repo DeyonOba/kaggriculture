@@ -458,3 +458,21 @@ learned planner to reach the egg line.
 `dev_knobs_h8` and `champ_h8` reused; out
 `rl/runs/draw995/hybrid_eval.json`. It waits for batch 4 and for the five
 processes to free, so it is last in the chain.
+
+
+## Paired verdict, v1 (26 September 14:40, `docs/results/draw995_execnet.log`)
+
+995 games, paired, against the dev tree (0.313) and champ-h10 (0.354).
+
+| arm | wins / 995 | vs dev tree | vs champ-h10 |
+|---|---|---|---|
+| chores only, conf 0 | 209 | −10.3 pts (z −6.9) | −14.4 (z −9.2) |
+| chores only, conf 0.5 | 231 | −8.0 (z −5.5) | −12.2 (z −8.0) |
+| all ops, conf 0.7 | 97 | −21.5 (z −15.6) | −25.6 (z −17.6) |
+
+The model is not a bad fit: 0.776 agreement with the top players where our
+scheduler manages 0.355, and when it steers the chores it reproduces their
+headline statistics (moves per productive op 1.38 → 0.86, chores per visit
+1.43 → 1.73, harvests +26%). It still loses 10 to 14 points of win rate.
+Per-op imitation of the executor is closed; see
+`kaggriculture-learned-executor-refuted-again` in memory.
