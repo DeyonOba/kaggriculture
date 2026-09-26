@@ -411,7 +411,15 @@ CHAMP_HIRES = [5, 4, 4, 5, 4, 5, 7, 9, 9, 10,
 KNOB_DEFAULTS = {
     "straw_target": CHAMP_STRAW_TARGET,   # standing strawberry tiles from day 10
     "straw_early": CHAMP_STRAW_EARLY,     # before the day-10 melon money
-    "cows": 8, "sheep": 8, "geese": 0,    # herd caps (geese from day 6)
+    "cows": 8, "sheep": 8, "geese": 0,    # herd caps (geese from knobs["geese_day"])
+    # The goose is structurally the best animal we own and the champion plan
+    # has never bought one: cheapest ($300 vs 400/500), first yield on day 4
+    # (vs 8/6), produces EVERY day (interval 1 vs 2/3), and EGG is one of the
+    # two markets whose price survives volume (log/0.20, like WHEAT; MILK is
+    # linear/1.6 and WOOL sq/3.2). All three leaders run 5-6 geese and
+    # harvest eggs 60-77 times a game; we harvest 0. The earlier refutations
+    # tested "+4 or +6 geese from day 6" on the OLD executor.
+    "geese_day": 6,                       # first day the geese target applies
     "wheat_engine": CHAMP_WHEAT_ENGINE,
     "carrot_standing": 0,                 # standing carrot patch, days 6-26
     "tomato_standing": 0,                 # standing tomato tiles, days 6-18
@@ -474,7 +482,7 @@ def _champ_herd_targets(day, knobs=None):
     cow = 2 if day < 3 else min(knobs["cows"], 2 + (day - 2))
     # Recorded pace: 4 sheep by day 8, 6 by day 10, 8 by day 12-14.
     sheep = 2 if day < 7 else min(knobs["sheep"], 2 + (day - 6))
-    geese = knobs["geese"] if 6 <= day <= 18 else 0
+    geese = knobs["geese"] if knobs.get("geese_day", 6) <= day <= 18 else 0
     return {
         "GOOSE": geese,
         "COW": cow if day <= 18 else 0,

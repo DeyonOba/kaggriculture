@@ -102,7 +102,15 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              shed shuttles saturate the crew and filler waters are
 #              skipped; Boey and DSM lose none. Metric: weed tile-days on
 #              days 20-29, late strawberry harvests
-EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell",
+#   animal_visit  harvest an animal whenever it holds ANY produce, at tend
+#              priority, the same free-labour argument that made
+#              `harvest_visit` worth +4.1 pts on crops: a unit visits every
+#              animal every day anyway to FEED and CARE, so the shipped
+#              `held >= 2` threshold makes produce sit a day for nothing.
+#              It matters most for GEESE (interval 1, max_held 4: one egg a
+#              day, so half of them always wait) and is why the three
+#              leaders harvest eggs 60-77 times a game where we harvest 0.
+EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater")
@@ -397,6 +405,8 @@ def build_tasks(view, plan):
         # Harvest every production so yields never clip at max_held.
         if held >= 2 or (held > 0 and (plan.liquidation or day >= 27)):
             tasks.append(Task(P_HARVEST, x, y, ["HARVEST"]))
+        elif EXEC["animal_visit"] and held >= 1:
+            tasks.append(Task(P_TEND, x, y, ["HARVEST"]))
 
     # --- Growth: builds, animal placement, planting ------------------------------
     empties = sorted(
