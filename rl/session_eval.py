@@ -172,8 +172,14 @@ def main() -> None:
                             raise SystemExit(
                                 f"{name}: the planner's weights carry a board trunk "
                                 f"but KAGG_BOARD is not set -- export KAGG_BOARD=1")
+            elif parts[1] == "rlv3":
+                # dev:rlv3:<preset>[,k=v...] -- the adaptive package. Parsed by
+                # rlv3.arm so the preset/dose grammar lives with the package;
+                # rl/rollout._make_dev_policy_agent dispatches the spec.
+                from rlv3.arm import parse as _rlv3_parse
+                spec = _rlv3_parse(parts[2] if len(parts) > 2 else "")
             else:
-                raise SystemExit(f"{name}: dev arm wants dev:champion, dev:knobs:<rules.json> "
+                raise SystemExit(f"{name}: dev arm wants dev:champion, dev:knobs:<rules.json>, dev:rlv3:<preset> "
                                  f"or dev:execnet:<weights.pt>[:<rules.json|planner-weights.json>[:<conf>[:<mode>]]]")
             arms.append((name, spec, False, "dev"))
             continue

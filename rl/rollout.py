@@ -350,6 +350,17 @@ def _make_dev_policy_agent(spec):
     Mirrors kagent/policy.py's bundle wiring: CHAMPION_PLAN ->
     HeuristicPolicy(ChampionPlanProvider()); BANDIT_RULES -> residual heads +
     HeuristicPolicy(KnobBanditPolicy | BanditPolicy)."""
+    # rlv3 (the adaptive package) dispatches FIRST and returns, so every other
+    # kind still reaches the shipped implementation untouched. It lives here
+    # rather than in a monkeypatch because multiprocessing starts `spawn` on
+    # this machine: a patch applied in the parent is invisible in the worker,
+    # which would import a clean rl.rollout and raise "unknown learner_policy
+    # kind 'rlv3'". Putting the branch in the module means every worker gets
+    # it on import, so rl/session_eval.py's Pool can run an rlv3 arm.
+    if spec.get("kind") == "rlv3":
+        from rlv3.agent import make_dev_agent
+        return make_dev_agent(spec)
+
     from kagent.policy import ChampionPlanProvider
     from kagent.banditpolicy import BanditPolicy, KnobBanditPolicy
 
