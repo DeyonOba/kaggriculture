@@ -1,0 +1,27 @@
+995 held-out games per arm; per bin 0-600:175 600-1000:120 1000-1500:175 1500-2000:175 2000-2500:175 2500+:175
+arms: av (dev tree), geese5 (dev tree), av_geese5 (dev tree)
+  ship2_hv     win 0.354 +/- 0.015   (reused from rl/runs/draw995/batch2.json:ship2_hv)
+  dev_knobs_h8 win 0.313 +/- 0.015   (reused from rl/runs/draw995/baselines.json:dev_knobs_h8)
+  champ_h8     win 0.230 +/- 0.013   (reused from rl/runs/draw995/baselines.json:champ_h8)
+  av           win 0.351 +/- 0.015   money    87,811   bad 0   (1323s)
+  geese5       win 0.189 +/- 0.012   money    81,875   bad 0   (2579s)
+  av_geese5    win 0.188 +/- 0.012   money    81,508   bad 0   (3866s)
+
+arm              win     se     money        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+av             0.351  0.015    87,811        0.429      0.358      0.366      0.200      0.394      0.360
+geese5         0.189  0.012    81,875        0.274      0.200      0.120      0.097      0.234      0.211
+av_geese5      0.188  0.012    81,508        0.286      0.192      0.131      0.086      0.211      0.223
+ship2_hv       0.354  0.015    88,057        0.440      0.367      0.366      0.200      0.406      0.349
+dev_knobs_h8   0.313  0.015    86,408        0.440      0.283      0.286      0.189      0.326      0.343
+champ_h8       0.230  0.013    82,345        0.291      0.175      0.234      0.149      0.251      0.263
+
+PAIRED vs ship2_hv (same sessions, same seats), McNemar on discordant games
+arm            delta     se     z  arm-only  base-only       p        0-600   600-1000  1000-1500  1500-2000  2000-2500      2500+
+av            -0.003  0.006 -0.54        14         17   0.720       -0.011     -0.008     +0.000     +0.000     -0.011     +0.011
+geese5        -0.165  0.013-12.84        13        177   0.000       -0.166     -0.167     -0.246     -0.103     -0.171     -0.137
+av_geese5     -0.166  0.013-12.66        16        181   0.000       -0.154     -0.175     -0.234     -0.114     -0.194     -0.126
+dev_knobs_h8  -0.041  0.013 -3.19        63        104   0.002       +0.000     -0.083     -0.080     -0.011     -0.080     -0.006
+champ_h8      -0.124  0.016 -7.84        69        192   0.000       -0.149     -0.192     -0.131     -0.051     -0.154     -0.086
+delta = arm win rate minus baseline's on identical games; the per-band columns are the same delta within each rating bin.
+
+-> rl/runs/draw995/batch4.json

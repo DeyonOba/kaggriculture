@@ -291,9 +291,28 @@ game for 179-216 units**, ~5-6 geese standing at day 20. We build 0 coops
 and harvest 0 eggs in every game. The goose is the cheapest animal ($300 vs
 $400/$500), first yields on day 4 (vs 8/6), produces every day, and EGG is
 one of only two markets whose price survives volume (above: log/0.20, the
-wheat shape; MILK linear/1.6 and WOOL sq/3.2 are the traps). Re-tested
-properly as batch 4 (`animal_visit` + `geese_day 2` on top of champ-h10's
-rules); until that lands, geese are UNRESOLVED, not refuted.
+wheat shape; MILK linear/1.6 and WOOL sq/3.2 are the traps). **Re-tested properly and REFUTED, 26 September 17:49**
+(`docs/results/draw995_batch4.log`, 995 paired games against champ-h10's
+0.354). This time the mechanism fired in full: the arm built 5 coops,
+placed 5 geese, and harvested eggs 89-91 times a game for 188-191 units,
+against the leaders' 5.0-6.2 coops, 5.0-6.4 geese and 60-77 harvests for
+179-216 units. We out-collected them, on a herd that still carried 15-16
+cows and sheep at day 20, exactly as theirs does.
+
+| arm | wins / 995 | vs champ-h10 | z | our bank | opponent's bank |
+|---|---|---|---|---|---|
+| harvest an animal on every visit | 349 | −0.3 pt | −0.5 | −$247 | +$62 |
+| 5 geese from day 2 | 188 | **−16.5** | −12.8 | −$6,182 | **+$7,046** |
+| both together | 187 | −16.6 | −12.7 | −$6,549 | +$7,008 |
+
+13 games won that champ-h10 lost, against 177 the other way, worse in all
+six bands. The collection rule is neutral on its own (we have no
+fast-cycling animals without geese) and adds nothing to the herd: the two
+arms are within 0.1 point of each other. And the opponent's bank rises
+$7.0k, more than our own falls: the coop's labour comes out of the crops
+whose markets the recorded opponent also sells into. Geese are refuted on
+the mechanism, not on the plumbing. What the leaders get from an egg line
+we cannot get, because their chores cost half of ours.
 **Culls on the dev tree (26 September, `docs/results/rules_cull_eval.log`,
 same 785 games, paired against the dev tree with h8's rules):** stop
 feeding cows when milk falls under 0.35 of base (from day 12) +1.0 pt (z
