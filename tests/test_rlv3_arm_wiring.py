@@ -83,3 +83,37 @@ def test_an_unknown_kind_still_raises():
 
     with pytest.raises(Exception):
         rollout._make_dev_policy_agent({"kind": "not_a_real_kind"})
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "OPEN DEFECT, finding 17 in docs/results/rlv3_build_review.md. "
+    "dev:rlv3:base is documented as the zero-dose identity control but matches "
+    "neither dev:champion (3 of 12 paired games differ, once by $32,952) nor "
+    "dev:knobs:rules_h8_ship2_hv (-1 win, -$4,549). The fix belongs in rlv3/ "
+    "and is held while the ground-truth loop is editing that tree; remove this "
+    "marker when arm.parse surfaces the flags."))
+def test_a_preset_spec_carries_the_executor_flags_its_rules_assume():
+    """The root cause of finding 17, at millisecond cost.
+
+    `rl/rollout.py` applies executor flags from `spec["exec"]` or
+    `spec["rules"]["exec"]`. `rlv3.arm.parse("base")` returns neither, so
+    champ-h10's lastwater/h23/harvest_visit never apply -- while
+    `Rlv3Config.load()` hands the KNOB half of those same rules to the
+    allocator. The arm is then champ-h10's day plan under the SHIPPED
+    executor: a third agent, and a control that controls for nothing.
+
+    Why rlv3/tests missed it: they compare plan objects at dawn, and the plans
+    are byte-identical on 48 mid-season boards across every attribute. The
+    divergence is entirely in the executor, which no plan-level test can see.
+    """
+    from rlv3.agent import config_from_spec
+    from rlv3.arm import parse
+
+    spec = parse("base")
+    rules = config_from_spec(spec).load() or {}
+    wanted = list(rules.get("exec") or [])
+    assert wanted, "the base preset's rules carry no exec flags; fixture is stale"
+
+    applied = list(spec.get("exec") or (spec.get("rules") or {}).get("exec") or [])
+    assert applied == wanted, (
+        f"rl/rollout would apply {applied!r} but the rules assume {wanted!r}")
