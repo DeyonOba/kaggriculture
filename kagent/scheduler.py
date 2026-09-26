@@ -54,7 +54,18 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              sell 33-42% of their strawberries in the evening to our
 #              14-19% and realise 0.85-1.03 of the mean price to our
 #              0.68-0.89 in the same markets)
-EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell")
+#   harvest_visit  harvest an ongoing crop whenever it holds a unit, at tend
+#              priority, so the unit already there for the water takes the
+#              produce (the top agent: 470 harvests a game to our 290)
+#   spent      DIG an ongoing crop that has made its last production and is
+#              harvested clean, at planting priority, before it decays into
+#              a weed and idles the tile (strawberries from day ~23)
+#   layout     put the wheat quota on bare tiles ADJACENT to pastures and
+#              coops, other crops elsewhere, so the unit that harvests the
+#              wheat feeds the animals from hand without a shed trip (26% of
+#              the top agent's feeds, 0% of ours)
+EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell",
+              "harvest_visit", "spent", "layout")
 EXEC = {k: False for k in EXEC_FLAGS}
 LASTWATER_HARVEST_HOUR = 20  # from here harvest the crop even if unwatered
 EVESELL_MIN_CARRY = 3        # sellable units in the pocket that justify the run
@@ -216,8 +227,20 @@ def build_tasks(view, plan):
 
         decaying = 0 <= t.get("max_lifespan_step", -1) <= view.step + 24
         if crop["ongoing"]:
-            if yields >= crop["max_yield"] - 1 or (yields > 0 and (decaying or plan.liquidation)):
+            # The engine sets max_lifespan_step on the night of the LAST
+            # production; at that step the plant loses a unit every two
+            # steps and becomes a WEED the moment it hits zero, so a plant
+            # harvested clean turns into a weed at exactly that step. Under
+            # `spent`, a finished plant is harvested at once and dug before.
+            finished = EXEC["spent"] and t.get("max_lifespan_step", -1) >= 0
+            if (yields >= crop["max_yield"] - 1
+                    or (yields > 0 and (decaying or finished or plan.liquidation))):
                 tasks.append(Task(P_HARVEST, x, y, ["HARVEST"]))
+            elif EXEC["harvest_visit"] and yields >= 1:
+                tasks.append(Task(P_TEND, x, y, ["HARVEST"]))
+            if finished and yields == 0 and not plan.liquidation:
+                tasks.append(Task(P_GROW, x, y, ["DIG"]))
+                continue
         else:
             if (
                 EXEC["lastwater"]
@@ -242,15 +265,19 @@ def build_tasks(view, plan):
         # Fertilizer is cash (~$100/unit at base): only spend it on a crop
         # when the market has glutted it below what the extra yield returns.
         fert_price = view.market_prices.get("FERTILIZER", 100)
+        # plan.fert_gate (knob, default 1.0) scales the price gates: the top
+        # agent fertilises 220 times a game to our 112, mostly wheat, whose
+        # fertilised window waters add 2 units instead of 1 (6 vs 4 a plant)
+        gate = getattr(plan, "fert_gate", 1.0)
         if t.get("fertilized_until_day", -1) < day and not plan.liquidation:
             # Strawberries: a fertilized production yields 2 instead of 1
             # (~$165 each) for 3 days of cover — champions run ~270 units off
             # 33 tiles this way versus ~130 unfertilized.
             want_fert = (
-                (t["crop"] == "STRAWBERRY" and 9 <= age <= 15 and fert_price < 150)
-                or (t["crop"] == "TOMATO" and age in (8, 11) and fert_price < 80)
-                or (t["crop"] == "WHEAT" and age == 2 and fert_price < 40)
-                or (t["crop"] == "CARROT" and age == 2 and fert_price < 50)
+                (t["crop"] == "STRAWBERRY" and 9 <= age <= 15 and fert_price < 150 * gate)
+                or (t["crop"] == "TOMATO" and age in (8, 11) and fert_price < 80 * gate)
+                or (t["crop"] == "WHEAT" and age == 2 and fert_price < 40 * gate)
+                or (t["crop"] == "CARROT" and age == 2 and fert_price < 50 * gate)
             )
             if want_fert:
                 tasks.append(Task(P_TEND, x, y, ["FERTILIZE"], need="FERTILIZER"))
@@ -345,7 +372,27 @@ def build_tasks(view, plan):
         # on the few center-most empties. The daily quota is enforced at
         # execution time (assign.try_execute).
         wanted = [crop for crop, n in plan.plant_quota.items() for _ in range(n)]
-        if wanted:
+        if wanted and EXEC["layout"] and plan.plant_quota.get("WHEAT", 0) > 0:
+            # Wheat rows beside the animals: bare tiles orthogonally adjacent
+            # to a pasture or coop take the wheat quota first, the rest of
+            # the quota goes to the other bare tiles in the usual rotation.
+            near = set()
+            for sx, sy, st_ in me.iter_tiles():
+                if isinstance(st_, dict) and st_.get("kind") in ("COOP", "PASTURE"):
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        near.add((sx + dx, sy + dy))
+            rest = empties[cursor:]
+            adj = [e for e in rest if e in near]
+            far = [e for e in rest if e not in near]
+            n_wheat = plan.plant_quota["WHEAT"]
+            wheat_tiles = adj[:n_wheat]
+            others = [c for c in wanted if c != "WHEAT"] or ["WHEAT"]
+            for x, y in wheat_tiles:
+                tasks.append(Task(P_GROW, x, y, ["PLANT", "WHEAT"]))
+            remaining = far + adj[len(wheat_tiles):]
+            for i, (x, y) in enumerate(remaining):
+                tasks.append(Task(P_GROW, x, y, ["PLANT", others[i % len(others)]]))
+        elif wanted:
             for i, (x, y) in enumerate(empties[cursor:]):
                 tasks.append(Task(P_GROW, x, y, ["PLANT", wanted[i % len(wanted)]]))
 

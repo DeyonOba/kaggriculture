@@ -121,13 +121,25 @@ def analyse(steps, final):
     moves = 0
     productive = 0
 
+    hand_wheat = {}                       # unit index -> wheat in hand came from a harvest
+    feeds_from_hand = 0
     for k, s in enumerate(steps):
         tiles = s["tiles"]
-        for (x, y), op in zip(s["units"], s["acts"]):
+        if s["hour"] == 0:
+            hand_wheat = {}
+        for ui, ((x, y), op) in enumerate(zip(s["units"], s["acts"])):
             if not op:
                 continue
             o = op[0]
             ops[o] += 1
+            if o == "PICKUP" and len(op) > 1 and op[1] == "WHEAT":
+                hand_wheat[ui] = False
+            elif o == "HARVEST" and 0 <= x < 10 and 0 <= y < 10:
+                tt = tiles[y][x]
+                if isinstance(tt, list) and tt[0] == 4 and tt[1] == 0:
+                    hand_wheat[ui] = True
+            elif o == "FEED" and hand_wheat.get(ui):
+                feeds_from_hand += 1
             if o in MOVES:
                 moves += 1
                 if s["hour"] == 23:
@@ -247,7 +259,9 @@ def analyse(steps, final):
         "water_no_effect_share": r(water_bad, n_water), "water_ops": n_water,
         "h23_moves": h23_moves, "h23_move_share": r(h23_moves, moves),
         "pickups_per_feed": r(ops["PICKUP"], ops["FEED"]),
+        "feeds_from_hand_share": r(feeds_from_hand, ops["FEED"]),
         "harvest_ops": ops["HARVEST"], "plant_ops": ops["PLANT"],
+        "fertilize_ops": ops["FERTILIZE"], "feed_ops": ops["FEED"], "dig_ops": ops["DIG"],
         "layout_day15": layout,
     }
 
@@ -277,6 +291,8 @@ ROWS = [
     ("water ops with no effect", "water_no_effect_share", "{:.2f}"),
     ("hour-23 move share", "h23_move_share", "{:.3f}"),
     ("pickups per feed", "pickups_per_feed", "{:.2f}"),
+    ("feeds from wheat in hand", "feeds_from_hand_share", "{:.2f}"),
+    ("fertilize ops", "fertilize_ops", "{}"), ("feed ops", "feed_ops", "{}"), ("dig ops", "dig_ops", "{}"),
     ("animal shed distance (day 15)", ("layout_day15", "animal_shed_dist"), "{:.2f}"),
     ("plant shed distance (day 15)", ("layout_day15", "plant_shed_dist"), "{:.2f}"),
     ("animals per quadrant (day 15)", ("layout_day15", "animals_per_quadrant"), "{}"),

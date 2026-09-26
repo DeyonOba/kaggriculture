@@ -189,6 +189,7 @@ class DayPlan:
         "hires_target", "land_buys", "plant_quota", "animal_buys",
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
         "fert_reserve", "land_margin", "feed_days", "cull_kinds", "sell_pace",
+        "fert_gate",
     )
 
     def __init__(self):
@@ -202,6 +203,8 @@ class DayPlan:
         # -1 = off (shipped sizing); >= 0 = the largest within-order price
         # drop allowed, in percent, while the shops drain the market.
         self.sell_pace = -1
+        # Scale on the scheduler's fertiliser price gates (1.0 = shipped).
+        self.fert_gate = 1.0
         self.liquidation = False
         # Animal kinds the scheduler must stop feeding today (they escape
         # after two unfed days). Empty unless a cull knob is on.
@@ -434,6 +437,10 @@ KNOB_DEFAULTS = {
     # within-order price drop under sell_pace percent; the rest waits for
     # the drain. -1 = off.
     "sell_pace": -1,
+    # Fertiliser: scale on the scheduler's price gates (wheat < $40 x gate,
+    # carrot < $50, tomato < $80, strawberry < $150). The top agent applies
+    # 220 a game to our 112; a fertilised wheat yields 6 instead of 4.
+    "fert_gate": 1.0,
 }
 
 
@@ -626,6 +633,7 @@ def make_champion_plan(view, memory):
     )
     plan.sell_floors = _sell_floors(view)
     plan.sell_pace = knobs.get("sell_pace", -1)
+    plan.fert_gate = knobs.get("fert_gate", 1.0)
     if knobs["premium_scale"] != 1.0 and 6 <= day and view.step < 714:
         for item in ("STRAWBERRY", "MILK", "WOOL"):
             plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * knobs["premium_scale"]))
