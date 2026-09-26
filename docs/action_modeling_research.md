@@ -476,3 +476,25 @@ headline statistics (moves per productive op 1.38 → 0.86, chores per visit
 1.43 → 1.73, harvests +26%). It still loses 10 to 14 points of win rate.
 Per-op imitation of the executor is closed; see
 `kaggriculture-learned-executor-refuted-again` in memory.
+
+
+## Paired verdict, v2 destination model (26 September 16:44)
+
+`docs/results/draw995_execnet2.log`, 995 games, vs the dev tree (0.313).
+
+| arm | wins / 995 | delta | z |
+|---|---|---|---|
+| curated, conf 0.4 | 116 | −19.6 pts | −14.3 |
+| conditioned, conf 0.4 | 175 | −13.7 | −9.9 |
+| conditioned, conf 0.6 | 231 | −8.0 | −6.5 |
+
+Two things are settled. The conditioned design beats the curated one by 6
+to 12 points at matched confidence, which is the band-agreement diagnostic
+paying off: training on every band and clamping the executor profile at
+play time is right, and filtering the corpus by profile is wrong. And the
+result is monotone in the confidence gate — the more of the executor the
+model owns, the worse the agent gets, with the best arm the one that defers
+most. Changing the action space from per-op to per-destination did not
+rescue it, so the failure is not the vocabulary. The learned executor is
+closed at both levels; the executor gains that survive are the two rules
+that add production without moving labour at all.
