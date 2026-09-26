@@ -42,7 +42,14 @@ ABS_HEADS = [
     ("carrot_tiles", [0, 6, 12, 18, 26]),
     ("tomato_tiles", [0, 4, 8, 12]),
     ("straw_tiles", [-16, -8, 0, 8, 16]),       # offset around strawberry anchor
-    ("goose_target", [0, 8, 16, 24, 32]),
+    # Granularity fixed 2026-09-26. This head used to be [0, 8, 16, 24, 32]:
+    # the three leaders run 4.6-5.9 geese, so the smallest thing the planner
+    # could ask for was a 33-60% overshoot -- and 8 is the herd size that
+    # lost 8-12 points in the (mis-specified) geese test. A head whose only
+    # options are "none" or "more than anyone runs" learns "none", and the
+    # kernel-trained net duly chose 0 on all 30 days of all 3 traced games.
+    # Index 0 is still 0, so a net that always chose "none" is unchanged.
+    ("goose_target", [0, 4, 6, 10, 16]),
     ("cow_target", [-8, -4, 0, 4, 8]),          # offset around cow anchor
     ("sheep_target", [-6, -3, 0, 3, 6]),        # offset around sheep anchor
     ("hires", [4, 8, 12, 14, 16]),
