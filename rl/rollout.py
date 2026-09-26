@@ -355,6 +355,7 @@ def _make_dev_policy_agent(spec):
 
     kind = spec.get("kind", "champion")
     switched = False
+    needs_board = False
     if kind == "champion":
         pol = HeuristicPolicy(ChampionPlanProvider())
     elif kind in ("knobs", "bandit"):
@@ -365,24 +366,42 @@ def _make_dev_policy_agent(spec):
         cls = KnobBanditPolicy if rules.get("kind") == "knobs" else BanditPolicy
         pol = HeuristicPolicy(cls(rules))
     elif kind == "execnet":
-        # The learned executor (rl/execnet): the planner as above (the knob
-        # bandit with a rules dict, or the plain champion plan), the model
-        # replacing scheduler.assign's action per unit.
-        from rl.execnet.policy import load_policy
+        # The learned executor (rl/execnet) over an injectable DAY PLAN: the
+        # champion plan (default), the knob bandit with a rules dict, or a
+        # neural planner ("planner": "weights"). The hybrid arm is the
+        # kernel-trained board net planning and the destination model doing
+        # the chores and the walking.
+        from rl.execnet.policy import load_policy, make_plan_provider
         rules = spec.get("rules")
-        if rules:
-            if features.MODE != "residual":
-                features.set_mode("residual")
-                switched = True
-            cls = KnobBanditPolicy if rules.get("kind") == "knobs" else BanditPolicy
-            provider = cls(rules)
-        else:
-            provider = ChampionPlanProvider()
+        planner_kind = spec.get("planner") or ("knobs" if rules else "champion")
+        provider, switched, needs_board = make_plan_provider(
+            planner_kind, rules=rules, weights=spec.get("planner_weights"))
         pol = load_policy(spec["weights"], provider, conf=float(spec.get("conf", 0.0)),
                           mode=spec.get("mode", "chores"))
     else:
         raise ValueError(f"unknown learner_policy kind {kind!r}")
     mem = Memory()
+
+    if needs_board:
+        # A trunk-carrying planner must be handed the board tensor BEFORE it
+        # plans, exactly as _make_learner_agent does for a plain weights arm;
+        # without it nnpolicy silently drops the board columns and the arm
+        # plays a truncated policy. Built only on the step a plan is made.
+        dawn_hist, mid_hist = {}, {}
+
+        def agent_fn(obs):
+            view = View(obs)
+            if view.hour == 0:
+                dawn_hist[view.day] = obs
+            elif view.hour == 12:
+                mid_hist[view.day] = obs
+            mem.observe(view)
+            need_plan = mem.day_plan is None or mem.day_plan_day != view.day
+            provider.board = (_board(obs, view.player, dawn_hist, mid_hist, view.day)
+                              if need_plan else None)
+            return pol.act(view, mem)
+
+        return agent_fn, switched
 
     def agent_fn(obs):
         view = View(obs)

@@ -160,20 +160,21 @@ def main() -> None:
                 with open(parts[2]) as fh:
                     spec = {"kind": parts[1], "rules": json.load(fh)}
             elif parts[1] == "execnet" and len(parts) == 3:
-                # dev:execnet:<weights.pt>[:<rules.json>[:<confidence>]] -- the
-                # learned executor (rl/execnet) over the knob-bandit plan
-                fields = parts[2].split(":")
-                spec = {"kind": "execnet", "weights": os.path.abspath(fields[0])}
-                if len(fields) > 1 and fields[1]:
-                    with open(fields[1]) as fh:
-                        spec["rules"] = json.load(fh)
-                if len(fields) > 2 and fields[2]:
-                    spec["conf"] = float(fields[2])
-                if len(fields) > 3 and fields[3]:
-                    spec["mode"] = fields[3]            # chores | all | full
+                # dev:execnet:<weights.pt>[:<planner>[:<conf>[:<mode>]]] -- the
+                # learned executor (rl/execnet). <planner> is a rules JSON (the
+                # knob-bandit plan, as before) or a to_layers weights JSON (a
+                # neural day-planner: the HYBRID arm). Told apart by content.
+                from rl.execnet.policy import parse_arm_fields
+                spec = parse_arm_fields(parts[2].split(":"))
+                if spec.get("planner") == "weights" and not rollout._BOARD:
+                    with open(spec["planner_weights"]) as fh:
+                        if json.load(fh)["policy"].get("board") is not None:
+                            raise SystemExit(
+                                f"{name}: the planner's weights carry a board trunk "
+                                f"but KAGG_BOARD is not set -- export KAGG_BOARD=1")
             else:
                 raise SystemExit(f"{name}: dev arm wants dev:champion, dev:knobs:<rules.json> "
-                                 f"or dev:execnet:<weights.pt>[:<rules.json>[:<conf>[:<mode>]]]")
+                                 f"or dev:execnet:<weights.pt>[:<rules.json|planner-weights.json>[:<conf>[:<mode>]]]")
             arms.append((name, spec, False, "dev"))
             continue
         with open(path) as fh:

@@ -301,6 +301,85 @@ class ExecNetPolicy(HeuristicPolicy):
             actions[idx] = new
 
 
+PLANNERS = ("champion", "knobs", "weights")
+
+
+def make_plan_provider(planner="champion", rules=None, weights=None):
+    """The DAY PLAN half of an execnet agent -> (provider, switched, needs_board).
+
+        "champion"  the dev tree's champion plan (the default, unchanged)
+        "knobs"     the knob bandit over it; `rules` is a BANDIT_RULES dict
+        "weights"   a neural day-planner; `weights` is an rl/common.to_layers
+                    JSON. When those layers carry a board trunk the caller
+                    MUST set `provider.board` before every plan is made -- see
+                    rl/rollout._make_dev_policy_agent, which mirrors what
+                    _make_learner_agent does for a plain weights arm. Without
+                    it nnpolicy silently drops the board columns.
+
+    `switched` is True when features was flipped to residual mode, so the
+    caller can flip it back for the next job in the worker.
+    """
+    from kagent import features
+    from kagent.banditpolicy import BanditPolicy, KnobBanditPolicy
+    from kagent.nnpolicy import NeuralPolicy
+    from kagent.policy import ChampionPlanProvider
+
+    if planner not in PLANNERS:
+        raise ValueError(f"execnet planner {planner!r}; known {PLANNERS}")
+    switched = False
+    if planner == "weights":
+        import json as _json
+        import os as _os
+        with open(weights) as fh:
+            layers = _json.load(fh)
+        residual = _os.environ.get("KAGG_RESIDUAL") == "1"
+        if residual and features.MODE != "residual":
+            features.set_mode("residual")
+            switched = True
+        provider = NeuralPolicy(layers, temperature=0.0, rng=None, residual=residual)
+        return provider, switched, layers["policy"].get("board") is not None
+    if planner == "knobs" and rules:
+        if features.MODE != "residual":
+            features.set_mode("residual")
+            switched = True
+        cls = KnobBanditPolicy if rules.get("kind") == "knobs" else BanditPolicy
+        return cls(rules), switched, False
+    return ChampionPlanProvider(), switched, False
+
+
+def parse_arm_fields(fields):
+    """The `dev:execnet:` arm tail, shared by rl/session_eval.py,
+    tools/game_trace.py and rl/rollout.py so the three cannot drift.
+
+        <execnet.pt>[:<planner>[:<conf>[:<mode>]]]
+
+    <planner> is a path: a rules JSON (the knob bandit, as before) or a
+    to_layers weights JSON (a neural day-planner). They are told apart by
+    content -- weights carry "policy", rules carry "kind"/"conditions" -- so
+    every arm string that worked before parses to exactly what it did.
+    Returns the `learner_policy` spec dict.
+    """
+    import json as _json
+    import os as _os
+
+    fields = list(fields)
+    spec = {"kind": "execnet", "weights": _os.path.abspath(fields[0])}
+    if len(fields) > 1 and fields[1]:
+        with open(fields[1]) as fh:
+            blob = _json.load(fh)
+        if isinstance(blob, dict) and "policy" in blob:
+            spec["planner"] = "weights"
+            spec["planner_weights"] = _os.path.abspath(fields[1])
+        else:
+            spec["planner"] = "knobs"
+            spec["rules"] = blob
+    if len(fields) > 2 and fields[2]:
+        spec["conf"] = float(fields[2])
+    if len(fields) > 3 and fields[3]:
+        spec["mode"] = fields[3]
+    return spec
+
+
 def load_policy(weights, plan_provider=None, conf=0.0, mode="chores"):
     model, cond = load_model(weights)
     return ExecNetPolicy(model, plan_provider, conf=conf, mode=mode, cond=cond)

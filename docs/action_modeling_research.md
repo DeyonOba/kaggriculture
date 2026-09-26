@@ -387,3 +387,74 @@ after the paired result, if it lands positive, is the disagreement gate —
 act on the model only where it disagrees with the scheduler AND is
 confident, which is where all the measured value sits (41,728 of 98,616
 "leader stays, we walk" decisions).
+
+---
+
+## Hybrid: learned planner + learned executor
+
+The two learned halves wired together, with nothing heuristic left but the
+scheduler's logistics passes and the market controller: the **Kaggle-kernel
+board net** (`rl/runs/kaggle_topboard/out/out/top_board_s1234/eval.json`,
+BC on 971k top-player samples then 20 PPO iterations on the full corpus)
+makes the day plan, and the **conditioned destination model**
+(`rl/datasets/execnet2_cond/execnet2_cond.pt`) chooses chores and
+destinations.
+
+**Wiring.** `rl/execnet/policy.make_plan_provider(planner, rules, weights)`
+returns the day-plan half: `"champion"` (the default, unchanged),
+`"knobs"` (the knob bandit) or `"weights"` (a neural planner, temperature
+0). `parse_arm_fields` is now shared by `rl/session_eval.py`,
+`tools/game_trace.py` and `rl/rollout.py` so the three cannot drift, and it
+tells a rules JSON from a planner-weights JSON *by content* (`"policy"` vs
+`"kind"`/`"conditions"`), so every `dev:execnet:` arm string that worked
+before parses to exactly what it parsed to before. A trunk-carrying planner
+gets `provider.board` fed before every plan in
+`rl/rollout._make_dev_policy_agent`, mirroring `_make_learner_agent`;
+without it nnpolicy silently drops the board columns.
+
+**Traces, the three reference games (mean).**
+
+| per game | base (dev tree) | kernel planner + shipped scheduler | hybrid |
+|---|---|---|---|
+| final money | 69,893 | **82,363** | 66,175 |
+| opponent money | 90,997 | 102,547 | 100,170 |
+| moves per productive op | 1.39 | 1.46 | **1.10** |
+| chores per visit | 1.42 | 1.41 | **1.57** |
+| productive ops | 2,841 | 2,840 | **3,372** |
+| harvests | 277 | 278 | **339** |
+| plantings | 153 | 153 | **183** |
+| feeds | 357 | 337 | 415 |
+| fertilize ops | 116 | 92 | 79 |
+| weed tile-days | 36 | 32 | 53 |
+| idle share of tiles | 0.130 | 0.303 | 0.305 |
+| BUILD_COOP / PLACE GOOSE / egg harvests | 0 / 0 / 0 | **0 / 0 / 0** | **0 / 0 / 0** |
+
+Per game: base 62.0k / 71.8k / 75.9k, kernel planner 100.8k / 87.8k /
+58.5k, hybrid 70.0k / 75.3k / 53.3k.
+
+**Viable, but the executor half subtracts.** The hybrid is not
+catastrophic (money 95% of base, feeds 116% of base), so it goes to the
+paired instrument. But the planner alone is +18% on money while the hybrid
+is −5%, and the executor half moves every executor metric the right way
+while costing money — the fourth time in this project that a fitted model
+improved its own mechanism and lost on the outcome. That is exactly why
+the eval is decomposed into `hybrid` and `kernel_planner`.
+
+**The planner will not buy a goose either, and it is not a masking bug.**
+`goose_target` is a real head with values `[0, 8, 16, 24, 32]`, unmasked on
+every day we checked, and the trained planner chose **0 on all 30 days of
+all 3 games** while moving `cow_target` freely. Two things follow. The BC
+labels do carry the leaders' geese (`rl/replay_bc._targets_to_choices`
+reads the recorded seat's own end-of-day herd), so this is not the label
+pipeline. But the head cannot express what the leaders actually run: they
+keep 5–6 geese, and the first non-zero option is 8 — a 33–60% overshoot,
+and 8 geese is the size that lost 8–12 points when it was tested. A head
+whose only choices are "none" and "more than anyone runs" will learn
+"none". Fixing the goose head's granularity is a prerequisite for any
+learned planner to reach the egg line.
+
+**Queued:** `rl/runs/draw995/run_hybrid.sh` — arms `hybrid` and
+`kernel_planner` against `ship2_hv` (champ-h10, 0.354), with
+`dev_knobs_h8` and `champ_h8` reused; out
+`rl/runs/draw995/hybrid_eval.json`. It waits for batch 4 and for the five
+processes to free, so it is last in the chain.
