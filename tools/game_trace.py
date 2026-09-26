@@ -151,6 +151,8 @@ def main() -> None:
                 scheduler.set_exec(spec["rules"]["exec"])
         if len(fields) > 2 and fields[2]:
             spec["conf"] = float(fields[2])
+        if len(fields) > 3 and fields[3]:
+            spec["mode"] = fields[3]
         learner, _ = rollout._make_dev_policy_agent(spec)
     elif args.rules:
         with open(args.rules) as fh:

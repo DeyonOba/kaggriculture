@@ -378,7 +378,8 @@ def _make_dev_policy_agent(spec):
             provider = cls(rules)
         else:
             provider = ChampionPlanProvider()
-        pol = load_policy(spec["weights"], provider, conf=float(spec.get("conf", 0.0)))
+        pol = load_policy(spec["weights"], provider, conf=float(spec.get("conf", 0.0)),
+                          mode=spec.get("mode", "chores"))
     else:
         raise ValueError(f"unknown learner_policy kind {kind!r}")
     mem = Memory()

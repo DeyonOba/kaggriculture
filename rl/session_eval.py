@@ -169,9 +169,11 @@ def main() -> None:
                         spec["rules"] = json.load(fh)
                 if len(fields) > 2 and fields[2]:
                     spec["conf"] = float(fields[2])
+                if len(fields) > 3 and fields[3]:
+                    spec["mode"] = fields[3]            # chores | all | full
             else:
                 raise SystemExit(f"{name}: dev arm wants dev:champion, dev:knobs:<rules.json> "
-                                 f"or dev:execnet:<weights.pt>[:<rules.json>[:<conf>]]")
+                                 f"or dev:execnet:<weights.pt>[:<rules.json>[:<conf>[:<mode>]]]")
             arms.append((name, spec, False, "dev"))
             continue
         with open(path) as fh:

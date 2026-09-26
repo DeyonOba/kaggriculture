@@ -19,9 +19,13 @@ from kagent.policy import HeuristicPolicy
 from rl.execnet import features as F
 from rl.execnet.model import load
 
-OVERRIDE = {"NORTH", "SOUTH", "EAST", "WEST", "PASS", "WATER", "HARVEST", "FEED", "CARE",
-            "FERTILIZE", "DIG", "COLLECT_FERTILIZER", "DROP"}
-OVERRIDE_IDX = {F.OP_INDEX[o] for o in OVERRIDE}
+CHORES = {"PASS", "WATER", "HARVEST", "FEED", "CARE", "FERTILIZE", "DIG", "COLLECT_FERTILIZER", "DROP"}
+MOVE_OPS = {"NORTH", "SOUTH", "EAST", "WEST"}
+OVERRIDE = CHORES | MOVE_OPS
+# take-over modes: "chores" = the model decides what to do on the tile it
+# stands on and never where to walk; "all" = chores and moves; "full" = all
+# plus PLANT / PICKUP resolved with the plan's quota and the farm's needs
+MODES = ("chores", "all", "full")
 _MODEL_CACHE = {}
 
 
@@ -34,11 +38,15 @@ def load_model(path):
 
 
 class ExecNetPolicy(HeuristicPolicy):
-    def __init__(self, model, plan_provider=None, conf=0.0):
+    def __init__(self, model, plan_provider=None, conf=0.0, mode="chores"):
         super().__init__(plan_provider)
+        if mode not in MODES:
+            raise ValueError(f"execnet mode {mode!r}; known {MODES}")
         self.model = model
         self.conf = conf
+        self.mode = mode
         self.stats = collections.Counter()
+        self._reported = False
 
     def act(self, view, memory):
         if memory.day_plan is None or memory.day_plan_day != view.day:
@@ -56,7 +64,11 @@ class ExecNetPolicy(HeuristicPolicy):
         tasks = scheduler.build_tasks(view, plan)
         plan.fert_reserve = sum(1 for t in tasks if t.op[0] == "FERTILIZE")
         actions = scheduler.assign(view, plan, tasks)
-        self._override(view, actions)
+        self._override(view, plan, actions)
+        if view.step >= 717 and not self._reported:
+            self._reported = True
+            import sys
+            print("execnet stats:", dict(self.stats), file=sys.stderr, flush=True)
 
         for op in actions.values():
             if not op:
@@ -83,8 +95,26 @@ class ExecNetPolicy(HeuristicPolicy):
             "market": orders,
         }
 
+    def _resolve_item_op(self, view, plan, idx, op, counts):
+        """'full' mode: the model's PLANT / PICKUP given an item from the plan
+        and the farm's needs; None when nothing sensible is available."""
+        if op == "PLANT":
+            quota = {c: n for c, n in plan.plant_quota.items() if n > 0 and view.seeds.get(c, 0) > 0}
+            if not quota:
+                return None
+            crop = max(quota, key=quota.get)
+            return ["PLANT", crop]
+        if op == "PICKUP":
+            unfed = counts["unfed"] > 0
+            if unfed and view.shed.get("WHEAT", 0) > 0:
+                return ["PICKUP", "WHEAT", min(5, view.shed["WHEAT"])]
+            if view.shed.get("FERTILIZER", 0) > 0 and plan.fert_reserve > 0:
+                return ["PICKUP", "FERTILIZER", min(3, view.shed["FERTILIZER"])]
+            return None
+        return None
+
     @torch.no_grad()
-    def _override(self, view, actions):
+    def _override(self, view, plan, actions):
         units = view.me.units
         if not units:
             return
@@ -100,23 +130,42 @@ class ExecNetPolicy(HeuristicPolicy):
         mask = torch.tensor(np.asarray(masks, dtype=np.bool_))
         probs = torch.softmax(self.model(tiles, scal, mask), dim=-1)
         best = probs.argmax(-1)
+        plants_emitted = collections.Counter(op[1] for op in actions.values() if op and op[0] == "PLANT")
         for ui, (idx, _, _) in enumerate(units):
             k = int(best[ui])
             p = float(probs[ui, k])
+            op = F.OPS[k]
             base = actions.get(idx)
-            if k not in OVERRIDE_IDX:
-                self.stats["deferred_item_op"] += 1
-                continue
             if p < self.conf or not masks[ui][k]:
                 self.stats["kept_low_conf" if p < self.conf else "kept_illegal"] += 1
                 continue
-            op = F.OPS[k]
             if base and base[0] == op:
-                self.stats["agree"] += 1
+                self.stats["agree:" + op] += 1
                 continue
-            actions[idx] = [op]
-            self.stats["override"] += 1
+            if op in MOVE_OPS and self.mode == "chores":
+                self.stats["deferred_move"] += 1
+                continue
+            if op in CHORES or op in MOVE_OPS:
+                actions[idx] = [op]
+                self.stats["override:" + op] += 1
+                continue
+            if self.mode == "full" and op in ("PLANT", "PICKUP"):
+                new = self._resolve_item_op(view, plan, idx, op, counts)
+                if new is None:
+                    self.stats["deferred_item_op"] += 1
+                    continue
+                if new[0] == "PLANT":
+                    crop = new[1]
+                    allowed = min(view.seeds.get(crop, 0), plan.plant_quota.get(crop, 0))
+                    if plants_emitted[crop] + 1 > allowed:
+                        self.stats["deferred_item_op"] += 1
+                        continue
+                    plants_emitted[crop] += 1
+                actions[idx] = new
+                self.stats["override:" + op] += 1
+                continue
+            self.stats["deferred_item_op"] += 1
 
 
-def load_policy(weights, plan_provider=None, conf=0.0):
-    return ExecNetPolicy(load_model(weights), plan_provider, conf=conf)
+def load_policy(weights, plan_provider=None, conf=0.0, mode="chores"):
+    return ExecNetPolicy(load_model(weights), plan_provider, conf=conf, mode=mode)

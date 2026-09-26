@@ -45,8 +45,15 @@ def load_data(data_dir, held_frac=0.1, seed=0):
         parts["held" if i in held else "train"].append(rec)
     out = {}
     for k, recs in parts.items():
-        out[k] = {key: np.concatenate([r[key] for r in recs]) for key in ("tiles", "scal", "mask", "y", "ours", "step", "unit", "game")}
-        out[k]["gids"] = [r["gid"] for r in recs]
+        d = {key: np.concatenate([r[key] for r in recs]) for key in ("tiles", "scal", "mask", "y", "ours", "step", "unit", "game")}
+        # a recorded op the engine would have discarded (illegal under the
+        # mask, e.g. PLANT with no seed) has no legal logit: drop the row
+        legal = d["mask"][np.arange(len(d["y"])), d["y"].astype(int)] > 0
+        d["illegal_share"] = float(1.0 - legal.mean())
+        for key in ("tiles", "scal", "mask", "y", "ours", "step", "unit", "game"):
+            d[key] = d[key][legal]
+        d["gids"] = [r["gid"] for r in recs]
+        out[k] = d
     return out
 
 
@@ -119,7 +126,7 @@ def main():
     d = load_data(args.data, args.held_frac, args.seed)
     tr, he = d["train"], d["held"]
     print(f"train {len(tr['y']):,} samples / {len(tr['gids'])} games; held-out {len(he['y']):,} / {len(he['gids'])} games "
-          f"({time.time() - t0:.0f}s)", flush=True)
+          f"({time.time() - t0:.0f}s); dropped {tr['illegal_share']:.4f} / {he['illegal_share']:.4f} illegal-label rows", flush=True)
     counts = np.bincount(tr["y"], minlength=len(F.OPS))
     print("label share (train):", {op: round(float(c) / len(tr["y"]), 3) for op, c in zip(F.OPS, counts) if c})
     model = ExecNet()
@@ -134,7 +141,7 @@ def main():
             opt.zero_grad()
             loss.backward()
             opt.step()
-            tot += float(loss) * len(y)
+            tot += loss.item() * len(y)
             n += len(y)
         model.eval()
         pred, _ = predict(model, he)
@@ -146,6 +153,8 @@ def main():
     valid = ours >= 0
     report = {
         "n_train": int(len(tr["y"])), "n_held": int(len(y)),
+        "illegal_label_share": {"train": tr["illegal_share"], "held": he["illegal_share"]},
+        "epochs": args.epochs,
         "games_train": len(tr["gids"]), "games_held": len(he["gids"]), "held_games": he["gids"],
         "label_share_train": {op: float(c) / len(tr["y"]) for op, c in zip(F.OPS, counts)},
         "accuracy_model": float((pred == y).mean()),
