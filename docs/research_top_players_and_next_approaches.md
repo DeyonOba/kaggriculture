@@ -598,7 +598,21 @@ it, with three seeds not enough to call that size.
   the same pipeline, seed 1234, on the kernel's corpus with the eleven new
   daily datasets indexed in-kernel; its eval is per-bin 100 against the
   champ-h8 bundle and `dev:champion`. It is the free-compute path the
-  daily-download training will run on.
+  daily-download training will run on. **Ran 26 September, 11.1 h, log in
+  `docs/results/kaggle_topboard_kernel.log`:** indexed 27,378 sessions,
+  16,188 top-band training sessions → 971,280 clone samples (20 GB of
+  boards) in 5.3 h on 4 processes; trunk 5 of 16 chunks inside its 2-hour
+  budget, held-out margin R² +0.25; readouts 73.4 % (board) / 73.5 % (no
+  board) exact-plan accuracy on the top players (80.7 / 79.8 % on the
+  smaller local set — the bigger pool is harder to clone, not easier); the
+  board PPO finished its 20 iterations with clean guards (12 updates an
+  iteration, KL 2e-7), the no-board PPO got 5 iterations before the budget
+  ran out, and the in-kernel paired eval never started. The board arm is
+  queued on the local 995-game instrument (`rl/runs/draw995/kernel_arm.json`)
+  beside the local seed-1234 board arm. For the daily-download design the
+  lesson is the budget split: extraction is 5 minutes per 200 sessions on
+  4 processes, so a kernel should extract one day, train, and hand the
+  checkpoints to the next kernel rather than rebuild the whole corpus.
 - `tools/episodes_pipeline.py run --since 2026-09-14`: the eleven daily
   episode datasets (14–24 September, ~7,000 episodes, top score 3,100–3,240)
   the corpus has never seen, extracted in a Kaggle kernel four days at a

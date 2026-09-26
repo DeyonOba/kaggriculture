@@ -1,0 +1,326 @@
+[{"stream_name":"stdout","time":0.704833978,"data":"job config: {\"engine\": \"1.32.7\", \"procs\": 4, \"budget_s\": 39600, \"steps\": [\"{python} -u tools/opp_coupling.py --n 1\", \"KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=1 {python} -u rl/session_bc.py --min-rating 2500 --n 0 --procs {procs} --out {repo}/rl/datasets/session_bc_top.jsonl\", \"KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=2 {python} -u tools/kaggle_trunk.py --min-rating 2500 --chunk 1000 --passes 2 --procs {procs} --budget-s 7200 --out {out}/trunk_margin_top.pt\", \"KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=3 {python} -u rl/train.py --bc-session {repo}/rl/datasets/session_bc_top.jsonl --bc-session-epochs 40 --bc-games 0 --iters 0 --seed 1234 --board --trunk-init {out}/trunk_margin_top.pt --run {out}/bc_board\", \"KAGG_BOARD=0 KAGG_THREADS=3 {python} -u rl/train.py --bc-session {repo}/rl/datasets/session_bc_top.jsonl --bc-session-epochs 40 --bc-games 0 --iters 0 --seed 1234 --run {out}/bc_control\", \"KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/train.py --resume {out}/bc_board/bc.pt --bc-games 0 --seed 1234 --vary-worlds --iters 20 --episodes 64 --procs {procs} --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8 --board --trunk-init {out}/trunk_margin_top.pt --run {out}/top_board_s1234\", \"KAGG_BOARD=0 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/train.py --resume {out}/bc_control/bc.pt --bc-games 0 --seed 1234 --vary-worlds --iters 20 --episodes 64 --procs {procs} --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8 --run {out}/top_control_s1234\", \"KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 {python} -u rl/session_eval.py --arm top_board_s1234={out}/top_board_s1234/eval.json --arm top_control_s1234={out}/top_control_s1234/eval.json --arm champ_h8=bundle:arena/agents/champ-h8/main.py --arm dev_champion=dev:champion --baseline champ_h8 --per-bin 100 --procs {procs} --out {out}/session_eval.json\"], \"collect\": []}\n"}
+,{"stream_name":"stdout","time":0.706633517,"data":"inputs: ['datasets']\n"}
+,{"stream_name":"stdout","time":1.332598259,"data":"code mount:\n"}
+,{"stream_name":"stdout","time":1.332634052,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code: ['.claude', 'arena', 'docs', 'kagent', 'kaggriculture-data', 'rl', 'tests', 'tools'] ['.gitignore', '.python-version', 'AGENTS.md', 'CHANGELOG.md', 'README.md', 'main.py', 'pyproject.toml', 'pytest.ini']\n"}
+,{"stream_name":"stdout","time":1.332640926,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/tests: [] ['test_animal_chain.py', 'test_bundle.py', 'test_econ_parity.py', 'test_land_gate.py', 'test_locked_ground.py', 'test_nnpolicy.py', 'test_phase_potential.py', 'test_rl_bundle.py']\n"}
+,{"stream_name":"stdout","time":1.33264695,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/kagent: [] ['__init__.py', 'banditpolicy.py', 'constants.py', 'econ.py', 'features.py', 'gamestate.py', 'market.py', 'mpcpolicy.py']\n"}
+,{"stream_name":"stdout","time":1.332652362,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/.claude: ['skills'] []\n"}
+,{"stream_name":"stdout","time":1.332685212,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/.claude/skills: [] []\n"}
+,{"stream_name":"stdout","time":1.332689804,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/rl: ['bakeoff_runs', 'datasets'] ['RESEARCH.md', '__init__.py', 'bakeoff.json', 'bandit.py', 'common.py', 'dataset_stats.py', 'exec_command_results.json', 'exec_command_results_a-commit.json']\n"}
+,{"stream_name":"stdout","time":1.332693509,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/rl/datasets: [] ['MANIFEST.json', 'README.md', 'episodes_ledger.json']\n"}
+,{"stream_name":"stdout","time":1.332696809,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/rl/bakeoff_runs: [] ['base_held_25_11.json', 'base_held_3_0.json', 'base_search_2_0.json', 'hill.json', 'ladder_a-commit_30_0.json', 'ladder_bc-h11_60_0.json', 'ladder_bc-h11_60_1.json', 'ladder_bc-h8_60_0.json']\n"}
+,{"stream_name":"stdout","time":1.332712119,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/tools: ['kaggle_job'] ['action_audit.py', 'action_space.py', 'action_value.py', 'adapt_dataset.py', 'assign_audit.py', 'attach_outcome.py', 'backfill_ratings.py', 'balance_sheet.py']\n"}
+,{"stream_name":"stdout","time":1.332716028,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/tools/kaggle_job: [] ['job.py', 'job_bakeoff.json', 'job_bakeoff2.json', 'job_cond2.json', 'job_config.json', 'job_harvest.json', 'job_metrics.json', 'job_metrics0.json']\n"}
+,{"stream_name":"stdout","time":1.33272087,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/arena: ['agents'] ['__init__.py', 'registry.py', 'run_games.py', 'stats.py', 'tournament.py']\n"}
+,{"stream_name":"stdout","time":1.3327241939999999,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/arena/agents: [] []\n"}
+,{"stream_name":"stdout","time":1.332727297,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/docs: ['results'] ['ARCHITECTURE.md', 'VERSIONS.md', 'adaptive_plan.md', 'animal_chain_audit.md', 'architecture_board_state.md', 'architecture_v2.md', 'architecture_v3.md', 'board_state_plan.md']\n"}
+,{"stream_name":"stdout","time":1.332730987,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/docs/results: [] ['deploy_check_session_eval.log', 'stage_b2_session_eval.log', 'stage_b3_session_eval.log', 'stage_b4_session_eval.log', 'stage_b5_partial_cap_session_eval.log', 'stage_b5b_inference_cap_eval.log', 'stage_b5b_retrained_cap_session_eval.log', 'stage_b5c_replication_session_eval.log']\n"}
+,{"stream_name":"stdout","time":1.332734824,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/kaggriculture-data: ['kaggriculture'] []\n"}
+,{"stream_name":"stdout","time":1.3327379750000001,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-code/kaggriculture-data/kaggriculture: [] ['AGENTS.md', 'README.md']\n"}
+,{"stream_name":"stdout","time":1.333315289,"data":"data mount:\n"}
+,{"stream_name":"stdout","time":1.333341886,"data":"/kaggle/input/datasets/gideonoba/kaggriculture-datasets: [] ['MANIFEST.json', 'champions.jsonl', 'decode-profiles.jsonl', 'field-samples.jsonl', 'field-seen.txt', 'field-stats.jsonl', 'ratings-agents.csv', 'ratings-leaderboard.csv']\n"}
+,{"stream_name":"stdout","time":4.612539464,"data":"code restored: ['.claude', '.gitignore', '.python-version', 'AGENTS.md', 'CHANGELOG.md', 'README.md', 'arena', 'docs', 'kagent', 'kaggriculture-data', 'main.py', 'pyproject.toml']\n"}
+,{"stream_name":"stdout","time":4.612571424,"data":"$ /usr/bin/python3 -m pip install -q 'kaggle-environments==1.32.7'\n"}
+,{"stream_name":"stdout","time":9.246726171,"data":"     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 40.9/40.9 kB 1.0 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":13.22792735,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 60.7/60.7 MB 25.7 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":13.604802959,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.0/16.0 MB 36.9 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":13.964607402,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 20.2/20.2 MB 47.5 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":14.050775607,"data":"   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 48.3 MB/s eta 0:00:00\n"}
+,{"stream_name":"stdout","time":326.877192701,"data":"restored datasets: 27844 sessions\n"}
+,{"stream_name":"stdout","time":326.877813508,"data":"== step (11.0h left): /usr/bin/python3 -u tools/opp_coupling.py --n 1\n"}
+,{"stream_name":"stdout","time":330.058925122,"data":"indexed 27378 sessions (466 unparsed) -\u003e /tmp/kaggriculture/rl/datasets/session_index.json\n"}
+,{"stream_name":"stdout","time":330.081487523,"data":"6771 episodes with both seats \u003e= 2800; 1 sampled\n"}
+,{"stream_name":"stdout","time":330.081531574,"data":"\n"}
+,{"stream_name":"stdout","time":346.322795424,"data":"1 sessions (0 unreplayable), 2 seat-observations\n"}
+,{"stream_name":"stdout","time":346.322847259,"data":"\n"}
+,{"stream_name":"stdout","time":346.322852412,"data":"  baseline final bank            $      75,418\n"}
+,{"stream_name":"stdout","time":346.322856424,"data":"  with opponent supply MUTED     $     143,059\n"}
+,{"stream_name":"stdout","time":346.322860222,"data":"  gain                           $      67,641  +/- 554   z = 122.10\n"}
+,{"stream_name":"stdout","time":346.322864049,"data":"  as a share of the bank                 89.7%\n"}
+,{"stream_name":"stdout","time":346.322867987,"data":"\n"}
+,{"stream_name":"stdout","time":346.322871464,"data":"  distribution of the per-seat gain:\n"}
+,{"stream_name":"stdout","time":346.322875137,"data":"       min  $      67,087\n"}
+,{"stream_name":"stdout","time":346.322878757,"data":"       p25  $      67,087\n"}
+,{"stream_name":"stdout","time":346.322882372,"data":"    median  $      68,195\n"}
+,{"stream_name":"stdout","time":346.322885915,"data":"       p75  $      68,195\n"}
+,{"stream_name":"stdout","time":346.322889503,"data":"       max  $      68,195\n"}
+,{"stream_name":"stdout","time":348.945718973,"data":"\n"}
+,{"stream_name":"stdout","time":348.945783645,"data":"  end-of-season market inventory vs I0 (mean over sessions), and\n"}
+,{"stream_name":"stdout","time":348.945791863,"data":"  the price that deviation implies:\n"}
+,{"stream_name":"stdout","time":348.945797579,"data":"    product        inv-I0   price   base    mine  theirs\n"}
+,{"stream_name":"stdout","time":348.945808225,"data":"    WHEAT            -449      46     25      67     216\n"}
+,{"stream_name":"stdout","time":348.945813948,"data":"    CARROT           -291      58     35     180       9\n"}
+,{"stream_name":"stdout","time":348.945817946,"data":"    TOMATO           -300     144     60       0       0\n"}
+,{"stream_name":"stdout","time":348.945821776,"data":"    STRAWBERRY         45      34    120     252     255\n"}
+,{"stream_name":"stdout","time":348.945825862,"data":"    MELON             114     120    250      72      72\n"}
+,{"stream_name":"stdout","time":348.945829534,"data":"    EGG              -300      68     50       0       0\n"}
+,{"stream_name":"stdout","time":348.945836366,"data":"    MILK               76       1    160     145     123\n"}
+,{"stream_name":"stdout","time":348.945840166,"data":"    WOOL               59       1    200      48      41\n"}
+,{"stream_name":"stdout","time":348.945843891,"data":"    FERTILIZER        493       1    100     238     255\n"}
+,{"stream_name":"stdout","time":349.207381082,"data":"== step (11.0h left): KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=1 /usr/bin/python3 -u rl/session_bc.py --min-rating 2500 --n 0 --procs 4 --out /tmp/kaggriculture/rl/datasets/session_bc_top.jsonl\n"}
+,{"stream_name":"stdout","time":349.564581968,"data":"  20243 sessions with a seat rated \u003e= 2500\n"}
+,{"stream_name":"stdout","time":349.584655796,"data":"  excluded 4055 PPO held-out sessions (id % 5 == 0); 16188 remain\n"}
+,{"stream_name":"stdout","time":349.584688682,"data":"replaying 16188 sessions on 4 procs, arm T_crop_103 ...\n"}
+,{"stream_name":"stdout","time":581.41246039,"data":"    200/16188 sessions, 12,000 samples, 0.2 GB, 232s\n"}
+,{"stream_name":"stdout","time":808.113700984,"data":"    400/16188 sessions, 24,000 samples, 0.5 GB, 459s\n"}
+,{"stream_name":"stdout","time":1032.259200795,"data":"    600/16188 sessions, 36,000 samples, 0.7 GB, 683s\n"}
+,{"stream_name":"stdout","time":1255.782996481,"data":"    800/16188 sessions, 48,000 samples, 1.0 GB, 906s\n"}
+,{"stream_name":"stdout","time":1494.012232328,"data":"    1000/16188 sessions, 60,000 samples, 1.2 GB, 1144s\n"}
+,{"stream_name":"stdout","time":1721.118715018,"data":"    1200/16188 sessions, 72,000 samples, 1.5 GB, 1372s\n"}
+,{"stream_name":"stdout","time":1946.026763026,"data":"    1400/16188 sessions, 84,000 samples, 1.7 GB, 1596s\n"}
+,{"stream_name":"stdout","time":2173.25350035,"data":"    1600/16188 sessions, 96,000 samples, 2.0 GB, 1824s\n"}
+,{"stream_name":"stdout","time":2396.758535032,"data":"    1800/16188 sessions, 108,000 samples, 2.2 GB, 2047s\n"}
+,{"stream_name":"stdout","time":2622.567692409,"data":"    2000/16188 sessions, 120,000 samples, 2.5 GB, 2273s\n"}
+,{"stream_name":"stdout","time":2845.034847985,"data":"    2200/16188 sessions, 132,000 samples, 2.7 GB, 2495s\n"}
+,{"stream_name":"stdout","time":3070.371655277,"data":"    2400/16188 sessions, 144,000 samples, 3.0 GB, 2721s\n"}
+,{"stream_name":"stdout","time":3293.618969556,"data":"    2600/16188 sessions, 156,000 samples, 3.2 GB, 2944s\n"}
+,{"stream_name":"stdout","time":3522.723043643,"data":"    2800/16188 sessions, 168,000 samples, 3.5 GB, 3173s\n"}
+,{"stream_name":"stdout","time":3748.731208011,"data":"    3000/16188 sessions, 180,000 samples, 3.7 GB, 3399s\n"}
+,{"stream_name":"stdout","time":3975.75420663,"data":"    3200/16188 sessions, 192,000 samples, 4.0 GB, 3626s\n"}
+,{"stream_name":"stdout","time":4201.717215475,"data":"    3400/16188 sessions, 204,000 samples, 4.2 GB, 3852s\n"}
+,{"stream_name":"stdout","time":4428.536286962,"data":"    3600/16188 sessions, 216,000 samples, 4.4 GB, 4079s\n"}
+,{"stream_name":"stdout","time":4669.67737319,"data":"    3800/16188 sessions, 228,000 samples, 4.7 GB, 4320s\n"}
+,{"stream_name":"stdout","time":4895.296519675,"data":"    4000/16188 sessions, 240,000 samples, 4.9 GB, 4546s\n"}
+,{"stream_name":"stdout","time":5123.293227944,"data":"    4200/16188 sessions, 252,000 samples, 5.2 GB, 4774s\n"}
+,{"stream_name":"stdout","time":5356.123737337,"data":"    4400/16188 sessions, 264,000 samples, 5.4 GB, 5007s\n"}
+,{"stream_name":"stdout","time":5582.271970549,"data":"    4600/16188 sessions, 276,000 samples, 5.7 GB, 5233s\n"}
+,{"stream_name":"stdout","time":5809.523252073,"data":"    4800/16188 sessions, 288,000 samples, 5.9 GB, 5460s\n"}
+,{"stream_name":"stdout","time":6035.964003744,"data":"    5000/16188 sessions, 300,000 samples, 6.2 GB, 5686s\n"}
+,{"stream_name":"stdout","time":6263.44888452,"data":"    5200/16188 sessions, 312,000 samples, 6.4 GB, 5914s\n"}
+,{"stream_name":"stdout","time":6489.032746529,"data":"    5400/16188 sessions, 324,000 samples, 6.7 GB, 6139s\n"}
+,{"stream_name":"stdout","time":6717.560283802,"data":"    5600/16188 sessions, 336,000 samples, 6.9 GB, 6368s\n"}
+,{"stream_name":"stdout","time":6943.463799275,"data":"    5800/16188 sessions, 348,000 samples, 7.2 GB, 6594s\n"}
+,{"stream_name":"stdout","time":7169.271625331,"data":"    6000/16188 sessions, 360,000 samples, 7.4 GB, 6820s\n"}
+,{"stream_name":"stdout","time":7396.436050286,"data":"    6200/16188 sessions, 372,000 samples, 7.7 GB, 7047s\n"}
+,{"stream_name":"stdout","time":7622.033393593,"data":"    6400/16188 sessions, 384,000 samples, 7.9 GB, 7272s\n"}
+,{"stream_name":"stdout","time":7848.521521804,"data":"    6600/16188 sessions, 396,000 samples, 8.2 GB, 7499s\n"}
+,{"stream_name":"stdout","time":8079.368996521,"data":"    6800/16188 sessions, 408,000 samples, 8.4 GB, 7730s\n"}
+,{"stream_name":"stdout","time":8303.817346354,"data":"    7000/16188 sessions, 420,000 samples, 8.7 GB, 7954s\n"}
+,{"stream_name":"stdout","time":8530.81918084,"data":"    7200/16188 sessions, 432,000 samples, 8.9 GB, 8181s\n"}
+,{"stream_name":"stdout","time":8757.866032191,"data":"    7400/16188 sessions, 444,000 samples, 9.1 GB, 8408s\n"}
+,{"stream_name":"stdout","time":8990.99752724,"data":"    7600/16188 sessions, 456,000 samples, 9.4 GB, 8641s\n"}
+,{"stream_name":"stdout","time":9216.297741679,"data":"    7800/16188 sessions, 468,000 samples, 9.6 GB, 8867s\n"}
+,{"stream_name":"stdout","time":9443.3282016,"data":"    8000/16188 sessions, 480,000 samples, 9.9 GB, 9094s\n"}
+,{"stream_name":"stdout","time":9670.128982658,"data":"    8200/16188 sessions, 492,000 samples, 10.1 GB, 9321s\n"}
+,{"stream_name":"stdout","time":9896.072353541,"data":"    8400/16188 sessions, 504,000 samples, 10.4 GB, 9546s\n"}
+,{"stream_name":"stdout","time":10122.944465056,"data":"    8600/16188 sessions, 516,000 samples, 10.6 GB, 9773s\n"}
+,{"stream_name":"stdout","time":10355.008208228,"data":"    8800/16188 sessions, 528,000 samples, 10.9 GB, 10005s\n"}
+,{"stream_name":"stdout","time":10581.075249842,"data":"    9000/16188 sessions, 540,000 samples, 11.1 GB, 10231s\n"}
+,{"stream_name":"stdout","time":10806.273220831,"data":"    9200/16188 sessions, 552,000 samples, 11.4 GB, 10457s\n"}
+,{"stream_name":"stdout","time":11032.478397761,"data":"    9400/16188 sessions, 564,000 samples, 11.6 GB, 10683s\n"}
+,{"stream_name":"stdout","time":11265.309459087,"data":"    9600/16188 sessions, 576,000 samples, 11.9 GB, 10916s\n"}
+,{"stream_name":"stdout","time":11489.38112739,"data":"    9800/16188 sessions, 588,000 samples, 12.1 GB, 11140s\n"}
+,{"stream_name":"stdout","time":11715.255975092,"data":"    10000/16188 sessions, 600,000 samples, 12.4 GB, 11366s\n"}
+,{"stream_name":"stdout","time":11942.629213707,"data":"    10200/16188 sessions, 612,000 samples, 12.6 GB, 11593s\n"}
+,{"stream_name":"stdout","time":12167.787695357,"data":"    10400/16188 sessions, 624,000 samples, 12.9 GB, 11818s\n"}
+,{"stream_name":"stdout","time":12395.076214548,"data":"    10600/16188 sessions, 636,000 samples, 13.1 GB, 12045s\n"}
+,{"stream_name":"stdout","time":12630.183745253,"data":"    10800/16188 sessions, 648,000 samples, 13.3 GB, 12281s\n"}
+,{"stream_name":"stdout","time":12856.814873533,"data":"    11000/16188 sessions, 660,000 samples, 13.6 GB, 12507s\n"}
+,{"stream_name":"stdout","time":13088.071458432,"data":"    11200/16188 sessions, 672,000 samples, 13.8 GB, 12738s\n"}
+,{"stream_name":"stdout","time":13315.491414293,"data":"    11400/16188 sessions, 684,000 samples, 14.1 GB, 12966s\n"}
+,{"stream_name":"stdout","time":13549.640977141,"data":"    11600/16188 sessions, 696,000 samples, 14.3 GB, 13200s\n"}
+,{"stream_name":"stdout","time":13775.020965177,"data":"    11800/16188 sessions, 708,000 samples, 14.6 GB, 13425s\n"}
+,{"stream_name":"stdout","time":14003.016297128,"data":"    12000/16188 sessions, 720,000 samples, 14.8 GB, 13653s\n"}
+,{"stream_name":"stdout","time":14230.329206401,"data":"    12200/16188 sessions, 732,000 samples, 15.1 GB, 13881s\n"}
+,{"stream_name":"stdout","time":14455.907485339,"data":"    12400/16188 sessions, 744,000 samples, 15.3 GB, 14106s\n"}
+,{"stream_name":"stdout","time":14684.368675938,"data":"    12600/16188 sessions, 756,000 samples, 15.6 GB, 14335s\n"}
+,{"stream_name":"stdout","time":14915.656499362,"data":"    12800/16188 sessions, 768,000 samples, 15.8 GB, 14566s\n"}
+,{"stream_name":"stdout","time":15142.300272067,"data":"    13000/16188 sessions, 780,000 samples, 16.1 GB, 14793s\n"}
+,{"stream_name":"stdout","time":15367.656139533,"data":"    13200/16188 sessions, 792,000 samples, 16.3 GB, 15018s\n"}
+,{"stream_name":"stdout","time":15595.998865133,"data":"    13400/16188 sessions, 804,000 samples, 16.6 GB, 15246s\n"}
+,{"stream_name":"stdout","time":15830.314129434,"data":"    13600/16188 sessions, 816,000 samples, 16.8 GB, 15481s\n"}
+,{"stream_name":"stdout","time":16055.216052513,"data":"    13800/16188 sessions, 828,000 samples, 17.1 GB, 15706s\n"}
+,{"stream_name":"stdout","time":16282.41826739,"data":"    14000/16188 sessions, 840,000 samples, 17.3 GB, 15933s\n"}
+,{"stream_name":"stdout","time":16510.152237171,"data":"    14200/16188 sessions, 852,000 samples, 17.6 GB, 16161s\n"}
+,{"stream_name":"stdout","time":16738.36217828,"data":"    14400/16188 sessions, 864,000 samples, 17.8 GB, 16389s\n"}
+,{"stream_name":"stdout","time":16965.790342097,"data":"    14600/16188 sessions, 876,000 samples, 18.0 GB, 16616s\n"}
+,{"stream_name":"stdout","time":17195.844171232,"data":"    14800/16188 sessions, 888,000 samples, 18.3 GB, 16846s\n"}
+,{"stream_name":"stdout","time":17420.600959541,"data":"    15000/16188 sessions, 900,000 samples, 18.5 GB, 17071s\n"}
+,{"stream_name":"stdout","time":17649.158626774,"data":"    15200/16188 sessions, 912,000 samples, 18.8 GB, 17300s\n"}
+,{"stream_name":"stdout","time":17876.573872837,"data":"    15400/16188 sessions, 924,000 samples, 19.0 GB, 17527s\n"}
+,{"stream_name":"stdout","time":18102.862437109,"data":"    15600/16188 sessions, 936,000 samples, 19.3 GB, 17753s\n"}
+,{"stream_name":"stdout","time":18336.291515191,"data":"    15800/16188 sessions, 948,000 samples, 19.5 GB, 17987s\n"}
+,{"stream_name":"stdout","time":18563.837924116,"data":"    16000/16188 sessions, 960,000 samples, 19.8 GB, 18214s\n"}
+,{"stream_name":"stdout","time":18955.381471378,"data":"-\u003e /tmp/kaggriculture/rl/datasets/session_bc_top.jsonl  971,280 samples\n"}
+,{"stream_name":"stdout","time":18955.381600509,"data":"-\u003e /tmp/kaggriculture/rl/datasets/session_bc_top_boards.npy  (971280, 103, 10, 10) float16  20.01 GB\n"}
+,{"stream_name":"stdout","time":18962.374830355,"data":"   trunk params 42,192 -\u003e 23.0 samples/param\n"}
+,{"stream_name":"stdout","time":18962.847549809,"data":"== step (5.8h left): KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=2 /usr/bin/python3 -u tools/kaggle_trunk.py --min-rating 2500 --chunk 1000 --passes 2 --procs 4 --budget-s 7200 --out /kaggle/working/out/trunk_margin_top.pt\n"}
+,{"stream_name":"stdout","time":18965.066556566,"data":"27,844 sessions from repo\n"}
+,{"stream_name":"stdout","time":18965.094475117,"data":"  excluded 5,605 PPO held-out sessions (id % 5 == 0)\n"}
+,{"stream_name":"stdout","time":18965.248881819,"data":"  top-player filter: 16,188 of 22,239 sessions have a seat rated \u003e= 2500\n"}
+,{"stream_name":"stdout","time":18965.424773626,"data":"  band sizes [0, 0, 0, 0, 0] + 0 unrated, interleaved\n"}
+,{"stream_name":"stdout","time":18965.55055491,"data":"  outcomes from the index (27,378)\n"}
+,{"stream_name":"stdout","time":18965.680352223,"data":"16,188 with an outcome\n"}
+,{"stream_name":"stdout","time":18965.680549516,"data":"17 chunks of \u003c= 1000; chunk 0 is HELD OUT\n"}
+,{"stream_name":"stdout","time":20201.234269726,"data":"  chunk 0: 60,000 samples HELD OUT, never trained on\n"}
+,{"stream_name":"stdout","time":21429.025734029,"data":"  chunk 1/16: 60,000 samples, loss 0.4232, held-out margin R2 +0.0683, 2458s -\u003e checkpointed\n"}
+,{"stream_name":"stdout","time":22636.787373691,"data":"  chunk 2/16: 60,000 samples, loss 0.5328, held-out margin R2 +0.1734, 3665s -\u003e checkpointed\n"}
+,{"stream_name":"stdout","time":23842.702727868,"data":"  chunk 3/16: 60,000 samples, loss 0.2687, held-out margin R2 +0.1692, 4871s -\u003e checkpointed\n"}
+,{"stream_name":"stdout","time":25045.180822482,"data":"  chunk 4/16: 60,000 samples, loss 0.3241, held-out margin R2 +0.2320, 6074s -\u003e checkpointed\n"}
+,{"stream_name":"stdout","time":26250.042360593,"data":"  chunk 5/16: 60,000 samples, loss 0.6512, held-out margin R2 +0.2517, 7279s -\u003e checkpointed\n"}
+,{"stream_name":"stdout","time":26250.045610615,"data":"  budget reached at chunk 6; stopping\n"}
+,{"stream_name":"stdout","time":26250.108017991,"data":"-\u003e /kaggle/working/out/trunk_margin_top.pt  (7279s total)\n"}
+,{"stream_name":"stdout","time":26251.436432522,"data":"== step (3.8h left): KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_THREADS=3 /usr/bin/python3 -u rl/train.py --bc-session /tmp/kaggriculture/rl/datasets/session_bc_top.jsonl --bc-session-epochs 40 --bc-games 0 --iters 0 --seed 1234 --board --trunk-init /kaggle/working/out/trunk_margin_top.pt --run /kaggle/working/out/bc_board\n"}
+,{"stream_name":"stdout","time":26253.937422838,"data":"seeded torch+python with 1234; torch threads 3\n"}
+,{"stream_name":"stdout","time":26253.937460506,"data":"reward=legacy win_coef=6.0/15.0(session) money_coef=0.001 margin_coef=0.003 potential=pv phi_scale=0.001\n"}
+,{"stream_name":"stdout","time":26253.937467223,"data":"ENT_COEF=0.02 LR=0.00025 prior_kl=0.0\n"}
+,{"stream_name":"stdout","time":26263.448976869,"data":"n_features=168 n_action_logits=57\n"}
+,{"stream_name":"stdout","time":26263.462646835,"data":"trunk loaded from /kaggle/working/out/trunk_margin_top.pt (arm T_crop_103, held-out R2 +0.2517) -\u003e trainable by PPO; distance from file after loading 0.00e+00\n"}
+,{"stream_name":"stdout","time":26263.462700595,"data":"  trainable policy params: 116,553\n"}
+,{"stream_name":"stdout","time":26275.138342631,"data":"== BC from sessions: 971,280 samples in /tmp/kaggriculture/rl/datasets/session_bc_top.jsonl ==\n"}
+,{"stream_name":"stdout","time":26356.238361791,"data":"   16,188 sessions; split by session: 922,740 train / 48,540 val\n"}
+,{"stream_name":"stdout","time":26625.892732069,"data":"   trunk features precomputed for 971,280 boards in 270s\n"}
+,{"stream_name":"stderr","time":26627.666474204,"data":"/tmp/kaggriculture/rl/train.py:374: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.\n"}
+,{"stream_name":"stderr","time":26627.666609827,"data":"Consider using tensor.detach() first. (Triggered internally at /pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:836.)\n"}
+,{"stream_name":"stderr","time":26627.666616472,"data":"  tot += float(loss) * len(idx)\n"}
+,{"stream_name":"stdout","time":26647.881908755,"data":"   epoch   1: train nll 2.751  val nll 1.690  val exact-plan acc 56.30%\n"}
+,{"stream_name":"stdout","time":26666.892958939,"data":"   epoch   2: train nll 1.495  val nll 1.468  val exact-plan acc 59.99%\n"}
+,{"stream_name":"stdout","time":26688.60305578,"data":"   epoch   3: train nll 1.327  val nll 1.277  val exact-plan acc 65.47%\n"}
+,{"stream_name":"stdout","time":26709.023759708,"data":"   epoch   4: train nll 1.236  val nll 1.241  val exact-plan acc 66.06%\n"}
+,{"stream_name":"stdout","time":26728.098946578,"data":"   epoch   5: train nll 1.182  val nll 1.173  val exact-plan acc 66.45%\n"}
+,{"stream_name":"stdout","time":26747.026237644,"data":"   epoch   6: train nll 1.141  val nll 1.272  val exact-plan acc 64.45%\n"}
+,{"stream_name":"stdout","time":26765.832129929,"data":"   epoch   7: train nll 1.107  val nll 1.154  val exact-plan acc 66.87%\n"}
+,{"stream_name":"stdout","time":26785.410808409,"data":"   epoch   8: train nll 1.081  val nll 1.119  val exact-plan acc 66.91%\n"}
+,{"stream_name":"stdout","time":26805.954028033,"data":"   epoch   9: train nll 1.062  val nll 1.191  val exact-plan acc 66.32%\n"}
+,{"stream_name":"stdout","time":26825.08530286,"data":"   epoch  10: train nll 1.039  val nll 1.101  val exact-plan acc 69.57%\n"}
+,{"stream_name":"stdout","time":26844.367337758,"data":"   epoch  11: train nll 1.026  val nll 1.121  val exact-plan acc 68.70%\n"}
+,{"stream_name":"stdout","time":26862.433814886,"data":"   epoch  12: train nll 1.012  val nll 1.049  val exact-plan acc 69.12%\n"}
+,{"stream_name":"stdout","time":26881.689684145,"data":"   epoch  13: train nll 1.009  val nll 1.027  val exact-plan acc 71.09%\n"}
+,{"stream_name":"stdout","time":26902.31779466,"data":"   epoch  14: train nll 0.992  val nll 1.054  val exact-plan acc 70.07%\n"}
+,{"stream_name":"stdout","time":26924.805448291,"data":"   epoch  15: train nll 0.978  val nll 1.036  val exact-plan acc 70.51%\n"}
+,{"stream_name":"stdout","time":26945.43193902,"data":"   epoch  16: train nll 0.977  val nll 1.005  val exact-plan acc 71.52%\n"}
+,{"stream_name":"stdout","time":26966.400652852,"data":"   epoch  17: train nll 0.960  val nll 1.048  val exact-plan acc 70.65%\n"}
+,{"stream_name":"stdout","time":26998.539056471,"data":"   epoch  18: train nll 0.959  val nll 1.002  val exact-plan acc 70.15%\n"}
+,{"stream_name":"stdout","time":27028.726200805,"data":"   epoch  19: train nll 0.948  val nll 0.977  val exact-plan acc 72.65%\n"}
+,{"stream_name":"stdout","time":27051.300282754,"data":"   epoch  20: train nll 0.946  val nll 0.986  val exact-plan acc 71.16%\n"}
+,{"stream_name":"stdout","time":27071.908808358,"data":"   epoch  21: train nll 0.933  val nll 1.007  val exact-plan acc 70.21%\n"}
+,{"stream_name":"stdout","time":27091.510445361,"data":"   epoch  22: train nll 0.928  val nll 0.993  val exact-plan acc 70.48%\n"}
+,{"stream_name":"stdout","time":27112.425673124,"data":"   epoch  23: train nll 0.926  val nll 0.976  val exact-plan acc 70.81%\n"}
+,{"stream_name":"stdout","time":27132.927153585,"data":"   epoch  24: train nll 0.921  val nll 0.964  val exact-plan acc 72.40%\n"}
+,{"stream_name":"stdout","time":27152.634233051,"data":"   epoch  25: train nll 0.914  val nll 0.963  val exact-plan acc 72.63%\n"}
+,{"stream_name":"stdout","time":27172.609899976,"data":"   epoch  26: train nll 0.909  val nll 1.099  val exact-plan acc 68.67%\n"}
+,{"stream_name":"stdout","time":27192.298888307,"data":"   epoch  27: train nll 0.906  val nll 1.005  val exact-plan acc 71.24%\n"}
+,{"stream_name":"stdout","time":27213.407474991,"data":"   epoch  28: train nll 0.905  val nll 0.943  val exact-plan acc 71.49%\n"}
+,{"stream_name":"stdout","time":27233.896806582,"data":"   epoch  29: train nll 0.898  val nll 0.981  val exact-plan acc 72.26%\n"}
+,{"stream_name":"stdout","time":27253.802057869,"data":"   epoch  30: train nll 0.903  val nll 0.994  val exact-plan acc 71.33%\n"}
+,{"stream_name":"stdout","time":27275.077986636,"data":"   epoch  31: train nll 0.888  val nll 0.960  val exact-plan acc 72.47%\n"}
+,{"stream_name":"stdout","time":27296.81586284,"data":"   epoch  32: train nll 0.886  val nll 0.941  val exact-plan acc 73.24%\n"}
+,{"stream_name":"stdout","time":27317.058529542,"data":"   epoch  33: train nll 0.885  val nll 0.961  val exact-plan acc 72.56%\n"}
+,{"stream_name":"stdout","time":27336.415634423,"data":"   epoch  34: train nll 0.882  val nll 0.986  val exact-plan acc 71.56%\n"}
+,{"stream_name":"stdout","time":27357.603182685,"data":"   epoch  35: train nll 0.879  val nll 0.947  val exact-plan acc 72.73%\n"}
+,{"stream_name":"stdout","time":27377.988250462,"data":"   epoch  36: train nll 0.876  val nll 0.935  val exact-plan acc 73.21%\n"}
+,{"stream_name":"stdout","time":27398.583660155,"data":"   epoch  37: train nll 0.879  val nll 0.943  val exact-plan acc 71.63%\n"}
+,{"stream_name":"stdout","time":27421.102694809,"data":"   epoch  38: train nll 0.868  val nll 0.920  val exact-plan acc 72.15%\n"}
+,{"stream_name":"stdout","time":27441.883629471,"data":"   epoch  39: train nll 0.870  val nll 0.927  val exact-plan acc 71.94%\n"}
+,{"stream_name":"stdout","time":27462.740625897,"data":"   epoch  40: train nll 0.864  val nll 0.930  val exact-plan acc 73.40%\n"}
+,{"stream_name":"stdout","time":27724.903102011,"data":"session pool: 22239 train / 5605 held-out; rating-bins=[841, 505, 3201, 4639, 7596, 24189] unrated=135\n"}
+,{"stream_name":"stdout","time":27724.903168727,"data":"opponent mix: sessions 50%, drawn by 'frontier'; remainder bundles/league/heuristic/snapshots 40/16/28/16\n"}
+,{"stream_name":"stdout","time":27726.205371412,"data":"== step (3.4h left): KAGG_BOARD=0 KAGG_THREADS=3 /usr/bin/python3 -u rl/train.py --bc-session /tmp/kaggriculture/rl/datasets/session_bc_top.jsonl --bc-session-epochs 40 --bc-games 0 --iters 0 --seed 1234 --run /kaggle/working/out/bc_control\n"}
+,{"stream_name":"stdout","time":27728.719596582,"data":"seeded torch+python with 1234; torch threads 3\n"}
+,{"stream_name":"stdout","time":27728.719631923,"data":"reward=legacy win_coef=6.0/15.0(session) money_coef=0.001 margin_coef=0.003 potential=pv phi_scale=0.001\n"}
+,{"stream_name":"stdout","time":27728.719639814,"data":"ENT_COEF=0.02 LR=0.00025 prior_kl=0.0\n"}
+,{"stream_name":"stdout","time":27738.702115293,"data":"n_features=168 n_action_logits=57\n"}
+,{"stream_name":"stdout","time":27745.618106571,"data":"== BC from sessions: 971,280 samples in /tmp/kaggriculture/rl/datasets/session_bc_top.jsonl ==\n"}
+,{"stream_name":"stdout","time":27827.894416192,"data":"   16,188 sessions; split by session: 922,740 train / 48,540 val\n"}
+,{"stream_name":"stderr","time":27829.508880319,"data":"/tmp/kaggriculture/rl/train.py:374: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.\n"}
+,{"stream_name":"stderr","time":27829.508926499,"data":"Consider using tensor.detach() first. (Triggered internally at /pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:836.)\n"}
+,{"stream_name":"stderr","time":27829.508932845,"data":"  tot += float(loss) * len(idx)\n"}
+,{"stream_name":"stdout","time":27848.062838741,"data":"   epoch   1: train nll 2.772  val nll 1.732  val exact-plan acc 53.77%\n"}
+,{"stream_name":"stdout","time":27865.685876928,"data":"   epoch   2: train nll 1.506  val nll 1.466  val exact-plan acc 58.80%\n"}
+,{"stream_name":"stdout","time":27884.993977698,"data":"   epoch   3: train nll 1.340  val nll 1.288  val exact-plan acc 65.56%\n"}
+,{"stream_name":"stdout","time":27905.230798078,"data":"   epoch   4: train nll 1.246  val nll 1.267  val exact-plan acc 65.79%\n"}
+,{"stream_name":"stdout","time":27923.428184688,"data":"   epoch   5: train nll 1.191  val nll 1.189  val exact-plan acc 66.01%\n"}
+,{"stream_name":"stdout","time":27941.392027889,"data":"   epoch   6: train nll 1.149  val nll 1.203  val exact-plan acc 66.80%\n"}
+,{"stream_name":"stdout","time":27959.389976923,"data":"   epoch   7: train nll 1.121  val nll 1.147  val exact-plan acc 68.27%\n"}
+,{"stream_name":"stdout","time":27978.901042679,"data":"   epoch   8: train nll 1.089  val nll 1.118  val exact-plan acc 67.38%\n"}
+,{"stream_name":"stdout","time":27997.475836652,"data":"   epoch   9: train nll 1.076  val nll 1.151  val exact-plan acc 66.25%\n"}
+,{"stream_name":"stdout","time":28014.49983367,"data":"   epoch  10: train nll 1.049  val nll 1.098  val exact-plan acc 69.24%\n"}
+,{"stream_name":"stdout","time":28034.073236307,"data":"   epoch  11: train nll 1.035  val nll 1.112  val exact-plan acc 68.99%\n"}
+,{"stream_name":"stdout","time":28052.291801583,"data":"   epoch  12: train nll 1.022  val nll 1.049  val exact-plan acc 69.08%\n"}
+,{"stream_name":"stdout","time":28070.417277272,"data":"   epoch  13: train nll 1.011  val nll 1.040  val exact-plan acc 70.85%\n"}
+,{"stream_name":"stdout","time":28088.275004062,"data":"   epoch  14: train nll 0.999  val nll 1.061  val exact-plan acc 69.75%\n"}
+,{"stream_name":"stdout","time":28106.619508908,"data":"   epoch  15: train nll 0.985  val nll 1.035  val exact-plan acc 70.67%\n"}
+,{"stream_name":"stdout","time":28123.943262062,"data":"   epoch  16: train nll 0.978  val nll 1.000  val exact-plan acc 70.37%\n"}
+,{"stream_name":"stdout","time":28142.839117114,"data":"   epoch  17: train nll 0.970  val nll 1.035  val exact-plan acc 70.81%\n"}
+,{"stream_name":"stdout","time":28161.54317813,"data":"   epoch  18: train nll 0.961  val nll 1.017  val exact-plan acc 70.34%\n"}
+,{"stream_name":"stdout","time":28179.76522246,"data":"   epoch  19: train nll 0.957  val nll 0.988  val exact-plan acc 72.32%\n"}
+,{"stream_name":"stdout","time":28198.98249086,"data":"   epoch  20: train nll 0.955  val nll 0.988  val exact-plan acc 72.17%\n"}
+,{"stream_name":"stdout","time":28217.951486398,"data":"   epoch  21: train nll 0.939  val nll 0.980  val exact-plan acc 71.21%\n"}
+,{"stream_name":"stdout","time":28239.840834395,"data":"   epoch  22: train nll 0.936  val nll 0.988  val exact-plan acc 70.78%\n"}
+,{"stream_name":"stdout","time":28262.706442088,"data":"   epoch  23: train nll 0.930  val nll 0.984  val exact-plan acc 72.15%\n"}
+,{"stream_name":"stdout","time":28283.070905681,"data":"   epoch  24: train nll 0.928  val nll 0.993  val exact-plan acc 71.60%\n"}
+,{"stream_name":"stdout","time":28300.919512864,"data":"   epoch  25: train nll 0.919  val nll 0.953  val exact-plan acc 73.03%\n"}
+,{"stream_name":"stdout","time":28319.091217695,"data":"   epoch  26: train nll 0.918  val nll 0.979  val exact-plan acc 72.23%\n"}
+,{"stream_name":"stdout","time":28337.579881928,"data":"   epoch  27: train nll 0.912  val nll 0.943  val exact-plan acc 73.15%\n"}
+,{"stream_name":"stdout","time":28357.471751867,"data":"   epoch  28: train nll 0.911  val nll 0.937  val exact-plan acc 73.45%\n"}
+,{"stream_name":"stdout","time":28376.181085465,"data":"   epoch  29: train nll 0.903  val nll 0.957  val exact-plan acc 72.83%\n"}
+,{"stream_name":"stdout","time":28395.550315425,"data":"   epoch  30: train nll 0.902  val nll 0.974  val exact-plan acc 71.97%\n"}
+,{"stream_name":"stdout","time":28414.277294526,"data":"   epoch  31: train nll 0.896  val nll 0.949  val exact-plan acc 72.67%\n"}
+,{"stream_name":"stdout","time":28433.019928421,"data":"   epoch  32: train nll 0.896  val nll 0.939  val exact-plan acc 73.16%\n"}
+,{"stream_name":"stdout","time":28451.939872026,"data":"   epoch  33: train nll 0.895  val nll 0.974  val exact-plan acc 70.54%\n"}
+,{"stream_name":"stdout","time":28451.939928689,"data":"   early stop\n"}
+,{"stream_name":"stdout","time":28649.788252524,"data":"session pool: 22239 train / 5605 held-out; rating-bins=[841, 505, 3201, 4639, 7596, 24189] unrated=135\n"}
+,{"stream_name":"stdout","time":28649.788316292,"data":"opponent mix: sessions 50%, drawn by 'frontier'; remainder bundles/league/heuristic/snapshots 40/16/28/16\n"}
+,{"stream_name":"stdout","time":28650.841315413,"data":"== step (3.1h left): KAGG_BOARD=1 KAGG_BOARD_ARM=T_crop_103 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 /usr/bin/python3 -u rl/train.py --resume /kaggle/working/out/bc_board/bc.pt --bc-games 0 --seed 1234 --vary-worlds --iters 20 --episodes 64 --procs 4 --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8 --board --trunk-init /kaggle/working/out/trunk_margin_top.pt --run /kaggle/working/out/top_board_s1234\n"}
+,{"stream_name":"stdout","time":28652.846581949,"data":"seeded torch+python with 1234; torch threads 1\n"}
+,{"stream_name":"stdout","time":28652.846622505,"data":"reward=win win_coef=6.0/15.0(session) margin_tie=+/-2.0 @$20000 money=0 potential=pv phi_scale=0.0001\n"}
+,{"stream_name":"stdout","time":28652.846643069,"data":"ENT_COEF=0.02 LR=0.00025 prior_kl=0.0\n"}
+,{"stream_name":"stdout","time":28662.329011044,"data":"n_features=168 n_action_logits=57\n"}
+,{"stream_name":"stdout","time":28662.349931771,"data":"resumed from /kaggle/working/out/bc_board/bc.pt\n"}
+,{"stream_name":"stdout","time":28662.349969074,"data":"trunk loaded from /kaggle/working/out/trunk_margin_top.pt (arm T_crop_103, held-out R2 +0.2517) -\u003e trainable by PPO; distance from file after loading 0.00e+00; the resume's trunk sat 0.0000 from the file and was OVERRIDDEN\n"}
+,{"stream_name":"stdout","time":28662.349982916,"data":"  trainable policy params: 116,553\n"}
+,{"stream_name":"stdout","time":28860.672270301,"data":"session pool: 22239 train / 5605 held-out; rating-bins=[841, 505, 3201, 4639, 7596, 24189] unrated=135\n"}
+,{"stream_name":"stdout","time":28860.672541807,"data":"opponent mix: sessions 50%, drawn by 'frontier'; remainder bundles/league/heuristic/snapshots 40/16/28/16\n"}
+,{"stream_name":"stdout","time":28860.672623964,"data":"replicate: worlds from 23,710,000, opponent draw seeded by 1234\n"}
+,{"stream_name":"stdout","time":29280.236929437,"data":"iter   0: money mean=  101695 win-vs-gate=0.56 unsold=    499 held=   4212 shaping=1.00 lr=2.5e-04 steps=1920 bad=0 upd=0 kl0=-2.3e-07 ep_dur p50=25.7s max=31.8s (420s)\n"}
+,{"stream_name":"stdout","time":29686.70554487,"data":"iter   1: money mean=  107101 win-vs-gate=0.69 unsold=    517 held=   4375 shaping=0.90 lr=2.4e-04 steps=1920 bad=0 upd=0 kl0=-3.6e-07 ep_dur p50=25.3s max=36.6s (406s)\n"}
+,{"stream_name":"stdout","time":30084.956453075,"data":"iter   2: money mean=  107307 win-vs-gate=0.64 unsold=    448 held=   4438 shaping=0.80 lr=2.3e-04 steps=1920 bad=0 upd=0 kl0=-3.7e-07 ep_dur p50=25.3s max=28.0s (398s)\n"}
+,{"stream_name":"stdout","time":30487.238701544,"data":"iter   3: money mean=  111811 win-vs-gate=0.64 unsold=    546 held=   4457 shaping=0.70 lr=2.1e-04 steps=1920 bad=0 upd=1 kl0=-3.3e-07 ep_dur p50=25.6s max=28.5s (402s)\n"}
+,{"stream_name":"stdout","time":30883.581970363,"data":"iter   4: money mean=  112295 win-vs-gate=0.67 unsold=    410 held=   4384 shaping=0.60 lr=2.0e-04 steps=1920 bad=0 upd=5 kl0=-2.3e-07 ep_dur p50=25.1s max=27.9s (396s)\n"}
+,{"stream_name":"stdout","time":31391.789752941,"data":"   EVAL argmax score=   51365 mean-win=1.00 min-win=1.00 SESSION-WR=0.38+/-0.07 (n=48, $87.6k) train-bins=44%/50%/17%/17%/38%/22%  [heuristic:1.00/$123.6k]\n"}
+,{"stream_name":"stdout","time":31391.795856069,"data":"   (board net: b85 export skipped; best.pt + eval.json hold the weights)\n"}
+,{"stream_name":"stdout","time":31391.795898718,"data":"   new best (score=51365) saved; league size 1\n"}
+,{"stream_name":"stdout","time":31759.169021783,"data":"iter   5: money mean=  118064 win-vs-gate=0.67 unsold=    557 held=   4564 shaping=0.50 lr=1.9e-04 steps=1920 bad=0 upd=3 kl0=-2.8e-07 ep_dur p50=24.6s max=31.1s (367s)\n"}
+,{"stream_name":"stdout","time":32127.573776673,"data":"iter   6: money mean=  117262 win-vs-gate=0.64 unsold=    533 held=   4584 shaping=0.40 lr=1.7e-04 steps=1920 bad=0 upd=13 kl0=-3.5e-07 ep_dur p50=24.7s max=28.3s (368s)\n"}
+,{"stream_name":"stdout","time":32485.879468291,"data":"iter   7: money mean=  116338 win-vs-gate=0.70 unsold=    497 held=   4510 shaping=0.30 lr=1.6e-04 steps=1920 bad=0 upd=11 kl0=-2.6e-07 ep_dur p50=22.4s max=28.7s (358s)\n"}
+,{"stream_name":"stdout","time":32866.362091319,"data":"iter   8: money mean=  110337 win-vs-gate=0.61 unsold=    571 held=   4312 shaping=0.20 lr=1.5e-04 steps=1920 bad=0 upd=10 kl0=-3.2e-07 ep_dur p50=24.8s max=28.3s (380s)\n"}
+,{"stream_name":"stdout","time":33242.936798198,"data":"iter   9: money mean=  108040 win-vs-gate=0.59 unsold=    489 held=   4377 shaping=0.10 lr=1.4e-04 steps=1920 bad=0 upd=11 kl0=-2.7e-07 ep_dur p50=24.6s max=28.5s (377s)\n"}
+,{"stream_name":"stdout","time":33730.745847216,"data":"   EVAL argmax score=   55176 mean-win=1.00 min-win=1.00 SESSION-WR=0.42+/-0.07 (n=48, $86.5k) train-bins=32%/40%/22%/8%/31%/25%  [heuristic:1.00/$120.1k]\n"}
+,{"stream_name":"stdout","time":33730.753161913,"data":"   (board net: b85 export skipped; best.pt + eval.json hold the weights)\n"}
+,{"stream_name":"stdout","time":33730.753206187,"data":"   new best (score=55176) saved; league size 2\n"}
+,{"stream_name":"stdout","time":34097.766016256,"data":"iter  10: money mean=  124432 win-vs-gate=0.70 unsold=    658 held=   4713 shaping=0.00 lr=1.3e-04 steps=1920 bad=0 upd=16 kl0=-2.2e-07 ep_dur p50=23.0s max=29.4s (367s)\n"}
+,{"stream_name":"stdout","time":34464.333278653,"data":"iter  11: money mean=  115252 win-vs-gate=0.58 unsold=    645 held=   4527 shaping=0.00 lr=1.1e-04 steps=1920 bad=0 upd=16 kl0=-2.2e-07 ep_dur p50=21.8s max=29.5s (367s)\n"}
+,{"stream_name":"stdout","time":34832.789672927,"data":"iter  12: money mean=  107993 win-vs-gate=0.60 unsold=    556 held=   4380 shaping=0.00 lr=1.0e-04 steps=1920 bad=0 upd=15 kl0=-2.3e-07 ep_dur p50=24.4s max=29.2s (368s)\n"}
+,{"stream_name":"stdout","time":35200.202365346,"data":"iter  13: money mean=  116367 win-vs-gate=0.73 unsold=    556 held=   4476 shaping=0.00 lr=8.7e-05 steps=1920 bad=0 upd=16 kl0=-1.7e-07 ep_dur p50=21.5s max=30.2s (367s)\n"}
+,{"stream_name":"stdout","time":35571.004781166,"data":"iter  14: money mean=  112267 win-vs-gate=0.69 unsold=    534 held=   4455 shaping=0.00 lr=7.5e-05 steps=1920 bad=0 upd=16 kl0=-3.1e-07 ep_dur p50=24.0s max=28.0s (371s)\n"}
+,{"stream_name":"stdout","time":36056.461795197,"data":"   EVAL argmax score=   58093 mean-win=1.00 min-win=1.00 SESSION-WR=0.44+/-0.07 (n=48, $88.8k) train-bins=40%/40%/21%/6%/35%/29%  [heuristic:1.00/$128.4k]\n"}
+,{"stream_name":"stdout","time":36056.46931452,"data":"   (board net: b85 export skipped; best.pt + eval.json hold the weights)\n"}
+,{"stream_name":"stdout","time":36056.469358457,"data":"   new best (score=58093) saved; league size 3\n"}
+,{"stream_name":"stdout","time":36428.15620858,"data":"iter  15: money mean=  111593 win-vs-gate=0.65 unsold=    542 held=   4473 shaping=0.00 lr=6.3e-05 steps=1920 bad=0 upd=16 kl0=-2.3e-07 ep_dur p50=24.6s max=27.9s (372s)\n"}
+,{"stream_name":"stdout","time":36796.65934891,"data":"iter  16: money mean=  116841 win-vs-gate=0.63 unsold=    576 held=   4505 shaping=0.00 lr=5.0e-05 steps=1920 bad=0 upd=16 kl0=-2.8e-07 ep_dur p50=24.4s max=30.1s (369s)\n"}
+,{"stream_name":"stdout","time":37178.096318915,"data":"iter  17: money mean=  113434 win-vs-gate=0.55 unsold=    581 held=   4519 shaping=0.00 lr=3.8e-05 steps=1920 bad=0 upd=16 kl0=-1.8e-07 ep_dur p50=25.4s max=28.3s (381s)\n"}
+,{"stream_name":"stdout","time":37560.388675884,"data":"iter  18: money mean=  109670 win-vs-gate=0.59 unsold=    553 held=   4445 shaping=0.00 lr=3.7e-05 steps=1920 bad=0 upd=16 kl0=-2.1e-07 ep_dur p50=25.1s max=28.8s (382s)\n"}
+,{"stream_name":"stdout","time":37933.583291748,"data":"iter  19: money mean=  103416 win-vs-gate=0.63 unsold=    585 held=   4175 shaping=0.00 lr=3.7e-05 steps=1920 bad=0 upd=16 kl0=-1.9e-07 ep_dur p50=25.0s max=28.0s (373s)\n"}
+,{"stream_name":"stdout","time":38418.773281481,"data":"   EVAL argmax score=   58043 mean-win=1.00 min-win=1.00 SESSION-WR=0.44+/-0.07 (n=48, $90.4k) train-bins=34%/40%/19%/10%/28%/26%  [heuristic:1.00/$127.9k]\n"}
+,{"stream_name":"stdout","time":38420.406782875,"data":"== step (0.4h left): KAGG_BOARD=0 KAGG_MAX_QUADRANTS=3 KAGG_THREADS=1 /usr/bin/python3 -u rl/train.py --resume /kaggle/working/out/bc_control/bc.pt --bc-games 0 --seed 1234 --vary-worlds --iters 20 --episodes 64 --procs 4 --patience 99 --plateau-cool 1.0 --reward win --eval-per-bin 8 --run /kaggle/working/out/top_control_s1234\n"}
+,{"stream_name":"stdout","time":38428.920399545,"data":"seeded torch+python with 1234; torch threads 1\n"}
+,{"stream_name":"stdout","time":38428.920537267,"data":"reward=win win_coef=6.0/15.0(session) margin_tie=+/-2.0 @$20000 money=0 potential=pv phi_scale=0.0001\n"}
+,{"stream_name":"stdout","time":38428.92054656,"data":"ENT_COEF=0.02 LR=0.00025 prior_kl=0.0\n"}
+,{"stream_name":"stdout","time":38440.295974626,"data":"n_features=168 n_action_logits=57\n"}
+,{"stream_name":"stdout","time":38440.322390254,"data":"resumed from /kaggle/working/out/bc_control/bc.pt\n"}
+,{"stream_name":"stdout","time":38683.833138122,"data":"session pool: 22239 train / 5605 held-out; rating-bins=[841, 505, 3201, 4639, 7596, 24189] unrated=135\n"}
+,{"stream_name":"stdout","time":38683.833194122,"data":"opponent mix: sessions 50%, drawn by 'frontier'; remainder bundles/league/heuristic/snapshots 40/16/28/16\n"}
+,{"stream_name":"stdout","time":38683.833199482,"data":"replicate: worlds from 23,710,000, opponent draw seeded by 1234\n"}
+,{"stream_name":"stdout","time":38974.876667057,"data":"iter   0: money mean=  103172 win-vs-gate=0.55 unsold=    474 held=   4256 shaping=1.00 lr=2.5e-04 steps=1920 bad=0 upd=0 kl0=-2.6e-07 ep_dur p50=18.3s max=20.1s (291s)\n"}
+,{"stream_name":"stdout","time":39273.122284813,"data":"iter   1: money mean=  103690 win-vs-gate=0.64 unsold=    375 held=   4258 shaping=0.90 lr=2.4e-04 steps=1920 bad=0 upd=0 kl0=-2.6e-07 ep_dur p50=18.1s max=32.1s (298s)\n"}
+,{"stream_name":"stdout","time":39561.405756155,"data":"iter   2: money mean=  107093 win-vs-gate=0.59 unsold=    483 held=   4351 shaping=0.80 lr=2.3e-04 steps=1920 bad=0 upd=0 kl0=-2.4e-07 ep_dur p50=18.1s max=19.8s (288s)\n"}
+,{"stream_name":"stdout","time":39846.778420145,"data":"iter   3: money mean=  110784 win-vs-gate=0.68 unsold=    333 held=   4356 shaping=0.70 lr=2.1e-04 steps=1920 bad=0 upd=1 kl0=-2.4e-07 ep_dur p50=17.9s max=19.9s (285s)\n"}
+,{"stream_name":"stdout","time":39926.90825021,"data":"step hit the time budget; partial outputs kept\n"}
+,{"stream_name":"stdout","time":39926.909039591,"data":"done in 660.0 min\n"}
+,{"stream_name":"stderr","time":39933.26279695,"data":"/usr/local/lib/python3.12/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":39933.262861987,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":39933.996709693,"data":"/usr/local/lib/python3.12/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":39933.996796904,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":39936.06913247,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":39940.207292,"data":"[NbConvertApp] Writing 320609 bytes to __results__.html\n"}
+]
