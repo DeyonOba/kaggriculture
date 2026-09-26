@@ -176,14 +176,18 @@ def forecast_drain(unlocked_shops, day, horizon_end=29, quantile=None):
     shrinks the anchor early, when few shops are open and the draw could go
     either way, and converges on the mean late once the unlocks have happened."""
     current = town_drain_per_day(unlocked_shops)
-    days_left = max(0, horizon_end - day)
+    # Days that still drain are `day` through `horizon_end` INCLUSIVE, which is
+    # horizon_end - day + 1, not horizon_end - day. The off-by-one biased every
+    # anchor low and worst at season end, where it is proportionally largest: at
+    # day 29 it forecast zero drain when a full day still remained.
+    days_left = max(0, horizon_end - day + 1)
     total = {item: current.get(item, 0.0) * days_left for item in PRODUCTS}
     budget = remaining_unlocks(day, len(unlocked_shops))
     future_days = [u for u in _UNLOCK_DAYS if u > day][:budget]
     if quantile is None:
         weights = shop_weight_per_day()
         for u in future_days:
-            active = max(0, horizon_end - u)
+            active = max(0, horizon_end - u + 1)
             for item, w in weights.items():
                 total[item] = total.get(item, 0.0) + w * active
         return total
@@ -192,7 +196,7 @@ def forecast_drain(unlocked_shops, day, horizon_end=29, quantile=None):
         outcomes = _unlock_outcomes(item)
         dist = {0.0: 1.0}
         for u in future_days:
-            active = max(0, horizon_end - u)
+            active = max(0, horizon_end - u + 1)
             nxt = {}
             for acc, pa in dist.items():
                 for pb, rate in outcomes:

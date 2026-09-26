@@ -71,11 +71,19 @@ ANCHOR_CAPS = {"wheat_tiles": 44, "straw_tiles": 40, "cow_target": 18, "sheep_ta
 
 # Care-boosted output per animal per day (fed+cared daily): production
 # 1 + banked bonus per cycle => ~interval-independent ~1.4x/interval.
-_OUT_PER_DAY = {"MILK": 1.5, "WOOL": 1.33, "EGG": 1.5}   # fed+cared, per animal per day
-# Units a TILE yields per day of occupancy, from the engine's crop table:
-# a one-shot crop is max_yield / (max_yield_day + 1); an ongoing one is
-# max_yield / (first_yield + interval * (max_yield - 1)).
-_PER_TILE_DAY = {"STRAWBERRY": 0.5, "CARROT": 1.0, "TOMATO": 0.36, "MELON": 0.46}
+# ONE convention, stated: WATERED ONLY, no fertiliser, units per unit-of-capacity
+# per day of occupancy. Derived from the engine's CROPS/ANIMALS tables and equal
+# to README's "Yield / tile / day" column. The previous values mixed three
+# conventions -- carrot and strawberry used FERTILISED rates, melon divided by
+# max_yield_day (12) though it caps at age 10, tomato used the last production
+# age (11) rather than occupancy (12) -- so anchors were 25-53% short on carrot
+# and strawberry and 18% long on melon, in different directions. Our own
+# scorecard says we fertilise 124 times a game to the leaders' 208-223, so the
+# unfertilised rate is the honest default.
+_OUT_PER_DAY = {"EGG": 2.0, "MILK": 1.5, "WOOL": 1.333}   # fed AND cared: 1 + interval
+                                                          # banked, paid per production
+_PER_TILE_DAY = {"WHEAT": 0.800, "CARROT": 0.750, "TOMATO": 0.333,
+                 "STRAWBERRY": 0.235, "MELON": 0.545}
 _STRAW_PER_TILE_DAY = 0.5   # fertilized+watered ongoing strawberry
 
 
@@ -586,6 +594,18 @@ def masks(view):
         if not any(m):
             m[0] = 1
         out.append(m)
+    if HEADS_VERSION >= 3:
+        # A fraction head whose anchor is 0 collapses every factor to the same
+        # plan (round(f * 0) == 0), so reporting all six as valid hands the
+        # policy gradient 48 logits that cannot change anything and teaches it
+        # nothing. anchors() zeroes a head on POLICY grounds (crashed market,
+        # past the last plant day, too few production days left), not capacity
+        # grounds, so the honest mask is a single choice.
+        _a = anchors(view)
+        for _i, (_name, _vals) in enumerate(HEADS):
+            if _name in FRACTION_HEADS and not _a.get(_name, 0):
+                out[_i] = [1 if _j == 0 else 0 for _j in range(len(_vals))]
+
     return out
 
 

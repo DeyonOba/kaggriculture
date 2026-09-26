@@ -134,3 +134,57 @@ def test_the_encoder_width_guard_is_live():
     F.set_heads_version(1)
     assert F.N_FEATURES_BY_VERSION[1] != F.N_FEATURES_BY_VERSION[3], \
         "v1 and v3 observations differ; the guard must be able to tell them apart"
+
+
+# ------------------------------------------------- ground-truth review fixes
+def test_yield_rates_follow_one_stated_convention():
+    """The rates were three conventions at once (carrot/strawberry fertilised,
+    melon divided by max_yield_day though it caps at age 10, tomato by the last
+    production age rather than occupancy). All five are now watered-only units
+    per day of occupancy, derived from the engine's own tables."""
+    from kagent.constants import CROPS
+    for crop, rate in F._PER_TILE_DAY.items():
+        d = CROPS[crop]
+        if not d["ongoing"]:
+            w0 = (d["max_yield_day"] + 1) // 2
+            units = min(d["max_yield"], 1 + d["max_yield_day"] - w0 + 1)
+            age = w0 + units - 2 if units < 1 + d["max_yield_day"] - w0 + 1 else d["max_yield_day"]
+        else:
+            units = d["max_yield"]
+            age = d["first_yield_day"] + d["interval"] * (units - 1)
+        assert abs(rate - units / (age + 1)) < 0.002, crop
+
+
+def test_animal_rates_are_the_cared_regime():
+    """CARE banks one per fed+cared day and the bank is paid on a production
+    day, so a fed+cared animal earns 1 + interval per production. EGG was 1.5
+    where a goose (interval 1) actually yields 2.0 -- straight into the goose
+    anchor."""
+    from kagent.constants import ANIMALS
+    for kind, d in ANIMALS.items():
+        assert abs(F._OUT_PER_DAY[d["product"]] - (1 + d["interval"]) / d["interval"]) < 0.002, kind
+
+
+def test_drain_horizon_is_inclusive():
+    """Days `day`..29 inclusive drain, which is 30 - day days. The old formula
+    counted one fewer, biasing every anchor low and forecasting ZERO on day 29."""
+    from kagent import econ
+    shops = ["SMOOTHIE_SHOP"] * 8            # cap reached: deterministic only
+    per_day = econ.town_drain_per_day(shops)["WHEAT"]
+    for day in (25, 27, 29):
+        got = econ.forecast_drain(shops, day)["WHEAT"]
+        assert abs(got - per_day * (29 - day + 1)) < 1e-6, day
+    assert econ.forecast_drain(shops, 29)["WHEAT"] > 0, "day 29 still drains"
+
+
+def test_a_zero_anchor_head_is_a_single_choice():
+    """round(factor * 0) == 0 for every factor, so presenting six as valid gives
+    the policy gradient logits that cannot change the plan."""
+    F.set_heads_version(3)
+    view = _view(day=28)                     # past most last-plant days
+    a, m = F.anchors(view), F.masks(view)
+    dead = [n for n, _ in F.HEADS if n in F.FRACTION_HEADS and not a.get(n, 0)]
+    assert dead, "expected some heads to be gated off at day 28"
+    for i, (n, vals) in enumerate(F.HEADS):
+        if n in dead:
+            assert sum(m[i]) == 1 and m[i][0] == 1, n
