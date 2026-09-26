@@ -529,10 +529,21 @@ def encode(view, memory):
             # the share of the coming supply that is ours: 1.0 means we are
             # the whole glut, 0.0 means it is entirely theirs
             f.append(mine / (mine + theirs) if (mine + theirs) > 0 else 0.5)
+    global N_FEATURES
+    if N_FEATURES_BY_VERSION.get(HEADS_VERSION) != len(f):
+        N_FEATURES_BY_VERSION[HEADS_VERSION] = len(f)
+    N_FEATURES = N_FEATURES_BY_VERSION[HEADS_VERSION]
     return f
 
 
-N_FEATURES = None  # resolved lazily on first encode (kept in sync by tests)
+# Observation width per head version, filled by encode() the first time each
+# version is used. rl/train.py compares the batch width against this and
+# refuses on a mismatch -- the guard that catches a v1 net (168 features) fed
+# a v3 observation (196). It was DEAD until 2026-09-26: the value was never
+# assigned, so `features.N_FEATURES is not None` was always false and the
+# check could never fire. Found by a ground-truth review.
+N_FEATURES_BY_VERSION = {}
+N_FEATURES = None
 
 # ---- Labour-gated land -----------------------------------------------------
 # Stage B2 traces, ours vs a 1000-1500 opponent, days 10-25: the same eleven

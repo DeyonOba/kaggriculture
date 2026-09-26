@@ -116,3 +116,21 @@ def test_quota_cannot_exceed_the_ground_that_will_exist():
     choices = [vals.index(1.5) if name in F.FRACTION_HEADS else 0 for name, vals in F.HEADS]
     plan = F.apply_to_plan(planner.make_champion_plan(view, Memory()), choices, view)
     assert sum(plan.plant_quota.values()) == 0, "asked for the maximum on a full farm"
+
+
+def test_the_encoder_width_guard_is_live():
+    """Regression: N_FEATURES was declared `None` and never assigned, so
+    rl/train.py's `... and features.N_FEATURES is not None` could never fire.
+    The guard exists to catch a v1 net (168 features) fed a v3 observation
+    (196), which is exactly the mismatch v3 introduced."""
+    view, mem = _view(), Memory()
+    for v, expect in ((1, 168), (3, None)):
+        F.set_heads_version(v)
+        n = len(F.encode(view, mem))
+        assert F.N_FEATURES == n, "encode must publish the width it produced"
+        assert F.N_FEATURES_BY_VERSION[v] == n
+        if expect:
+            assert n == expect
+    F.set_heads_version(1)
+    assert F.N_FEATURES_BY_VERSION[1] != F.N_FEATURES_BY_VERSION[3], \
+        "v1 and v3 observations differ; the guard must be able to tell them apart"
