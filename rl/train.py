@@ -977,6 +977,12 @@ def main():
     ap.add_argument("--procs", type=int, default=max(2, (os.cpu_count() or 8) - 2))
     ap.add_argument("--run", default=None)
     ap.add_argument("--resume", default=None, help="path to a .pt to resume from")
+    ap.add_argument("--heads-version", type=int, default=1,
+                    help="planner action space: 1 = shipped (13 heads, 57 logits); "
+                         "2 adds sell timing; 3 makes every quantity head a fraction of "
+                         "a demand anchor and adds the flow observation. Selected BEFORE "
+                         "the net is built and before any encode(), and recorded in the "
+                         "exported weights so inference restores it.")
     ap.add_argument("--start-iter", type=int, default=0,
                     help="continue an interrupted PPO run: iterations already done (with --resume its last.pt)")
     ap.add_argument(
@@ -1087,6 +1093,13 @@ def main():
         help="stop after this many evals without a profit improvement",
     )
     args = ap.parse_args()
+    if args.heads_version != 1:
+        # MUST happen before PlannerNet is sized (rl/common sizes the logit layer
+        # from features.N_ACTION_LOGITS) and before any encode(), or the net and the
+        # observation disagree and nothing reports it.
+        features.set_heads_version(args.heads_version)
+        print(f"action space: heads v{args.heads_version} -- "
+              f"{len(features.HEADS)} heads, {features.N_ACTION_LOGITS} logits")
     # Pinned threads. torch.manual_seed pins a fit WITHIN a process; thread
     # order broke it ACROSS processes and silently un-paired every ablation
     # (memory: fit determinism). The PPO update is ~2k rows, so one thread

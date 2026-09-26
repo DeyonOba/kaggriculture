@@ -7,6 +7,16 @@ from kagent.constants import (
 from kagent import econ
 from kagent.planner import FINAL_STEP
 
+
+def _SHEDGUARD_ON():
+    from kagent import scheduler as _s
+    return bool(_s.EXEC.get("shedguard"))
+
+
+def _SHEDGUARD_HOUR():
+    from kagent import scheduler as _s
+    return _s.SHEDGUARD_HOUR
+
 # Products whose price falls on a steep curve above I0 (linear / sq above
 # functions): the ones sell pacing applies to.
 PACED = ("STRAWBERRY", "MILK", "WOOL", "MELON")
@@ -108,6 +118,12 @@ def _sell_orders(view, plan, memory):
     # Shed pressure valve: midnight overflow is silently destroyed, so when
     # the shed runs hot, dump the biggest stacks at any price.
     pressure = view.shed_total > 80
+    if _SHEDGUARD_ON() and view.hour >= _SHEDGUARD_HOUR():
+        # what will actually be dropped tonight, not just what is banked now
+        carried = sum(n for i, _, _ in view.me.units
+                      for item, n in view.unit_inv(i).items()
+                      if item not in ANIMALS)
+        pressure = pressure or (view.shed_total + carried) > 100
     final_push = view.step >= FINAL_STEP - 8
     # Sell pacing (plan.sell_pace >= 0; KNOB_DEFAULTS["sell_pace"]): the four
     # steep-curve products are quoted unit by unit down the curve, and our
@@ -131,7 +147,13 @@ def _sell_orders(view, plan, memory):
         # same turn, so size sells on shed + inbound carried stock — anything
         # dropped on the last step otherwise strands (field autopsy: 29-43
         # unsold wool at game end).
-        if final_push:
+        # The end-of-day auto-drop discards anything that does not fit, so what
+        # the crew is CARRYING is at risk every evening, not only on the last
+        # day. Under `shedguard` the evening sizing counts it; without the flag
+        # this is exactly the shipped behaviour.
+        from kagent import scheduler as _sched
+        _evening = _sched.EXEC.get("shedguard") and view.hour >= _sched.SHEDGUARD_HOUR
+        if final_push or _evening:
             stock += sum(view.unit_inv(i).get(item, 0) for i, _, _ in view.me.units)
         if item == "WHEAT":
             stock = max(0, stock - plan.wheat_reserve)

@@ -110,7 +110,19 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              It matters most for GEESE (interval 1, max_held 4: one egg a
 #              day, so half of them always wait) and is why the three
 #              leaders harvest eggs 60-77 times a game where we harvest 0.
-EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit",
+#   shedguard  count CARRIED stock toward the shed-pressure valve from hour
+#              ONESHED-late every day, not only in the final push. README,
+#              Shed: at end of day every unit inventory is added to the shed
+#              "if there is room. Anything that doesn't fit is discarded", and
+#              the engine's _drop_inventories_to_shed runs unconditionally. Our
+#              guards only covered MID-DAY drops, so the crew's pockets were
+#              never counted: a ground-truth review measured 39 units a game
+#              destroyed with no flags and 59 with the three SHIPPED rules
+#              (wheat 38, strawberry 19, melon 2 on one seed) -- roughly $4-5k,
+#              larger than lastwater's measured +$2.1k gain. harvest_visit
+#              alone REDUCES overflow; combined with lastwater the extra wheat
+#              tips it over. Metric: units discarded at end of day.
+EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater")
@@ -123,6 +135,7 @@ ONESHED_EARLY_DROP = 5       # days 0-9 pocket size that triggers a shed trip
 EVESELL_MIN_CARRY = 3        # sellable units in the pocket that justify the run
 EVESELL_MAX_DIST = 5         # farther units keep working; midnight drops them
 EVESELL_ARRIVE_HOUR = 22     # DROP by this hour, sold at 22-23, before hour 0
+SHEDGUARD_HOUR = 20          # from this hour, carried stock counts toward shed pressure
 
 
 def set_exec(flags):
