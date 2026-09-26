@@ -63,11 +63,17 @@ ABS_HEADS = [
 
 ANCHORED = {"wheat_tiles": "WHEAT", "straw_tiles": "STRAWBERRY",
             "cow_target": "MILK", "sheep_target": "WOOL"}
-ANCHOR_CAPS = {"wheat_tiles": 44, "straw_tiles": 40, "cow_target": 18, "sheep_target": 14}
+ANCHOR_CAPS = {"wheat_tiles": 44, "straw_tiles": 40, "cow_target": 18, "sheep_target": 14,
+               "goose_target": 12, "carrot_tiles": 26, "tomato_tiles": 16, "melon_tiles": 24,
+               "hires": 16}
 
 # Care-boosted output per animal per day (fed+cared daily): production
 # 1 + banked bonus per cycle => ~interval-independent ~1.4x/interval.
-_OUT_PER_DAY = {"MILK": 1.5, "WOOL": 1.33}
+_OUT_PER_DAY = {"MILK": 1.5, "WOOL": 1.33, "EGG": 1.5}   # fed+cared, per animal per day
+# Units a TILE yields per day of occupancy, from the engine's crop table:
+# a one-shot crop is max_yield / (max_yield_day + 1); an ongoing one is
+# max_yield / (first_yield + interval * (max_yield - 1)).
+_PER_TILE_DAY = {"STRAWBERRY": 0.5, "CARROT": 1.0, "TOMATO": 0.36, "MELON": 0.46}
 _STRAW_PER_TILE_DAY = 0.5   # fertilized+watered ongoing strawberry
 
 
@@ -105,6 +111,24 @@ def anchors(view):
     out["wheat_tiles"] = 0 if day > 25 else min(
         ANCHOR_CAPS["wheat_tiles"], herd_total + 20
     )
+    # Head set v3 prices the remaining quantity heads the same way: the
+    # season's demand for the product, minus the opponent's projected supply
+    # of it, divided by what one unit of ours produces per day. All engine
+    # arithmetic -- no fitted model -- so it moves with the actual shop draw
+    # and the actual opponent board.
+    prod_days = max(0, 28 - day - 4)
+    out["goose_target"] = 0 if (prod_days < 3 or crashed("EGG")) else min(
+        ANCHOR_CAPS["goose_target"], round(net_per_day("EGG") / _OUT_PER_DAY["EGG"])
+    )
+    for head, crop in (("carrot_tiles", "CARROT"), ("tomato_tiles", "TOMATO"),
+                       ("melon_tiles", "MELON")):
+        out[head] = 0 if (day > LAST_PLANT[crop] or crashed(crop)) else min(
+            ANCHOR_CAPS[head], round(net_per_day(crop) / _PER_TILE_DAY[crop])
+        )
+    # Labour is capped by the work the farm actually has, not by demand: one
+    # hand serves about six standing tiles a day at the leaders' chore rate.
+    standing = sum(1 for _ in view.me.plants()) + herd_total
+    out["hires"] = min(ANCHOR_CAPS["hires"], max(4, round(standing / 6.0) + 2))
     return out
 # RESIDUAL mode (champ-h3 lineage): every head is an OFFSET applied to the
 # champion plan (planner.make_champion_plan); all-zero choices reproduce the
@@ -173,6 +197,29 @@ RESIDUAL_HEADS_V2 = RESIDUAL_HEADS + SELL_TIMING_HEADS
 # before 2026-09-26 has 57 output logits and MUST keep it, so the default
 # never changes implicitly -- a net records its own version at export and
 # restores it at load (rl/common.policy_layers, nnpolicy.decode_weights).
+# --- Head set v3: FRACTION OF A STATE-DEPENDENT CAPACITY ------------------
+# v1 and v2 give every quantity head a fixed grid of absolute counts, so the
+# same five options have to serve day 3 and day 25, and the resolution sits
+# wherever the grid was drawn rather than wherever the farm is. v3 makes each
+# quantity head a FRACTION of that head's anchor -- the season demand for the
+# product minus the opponent's projected supply, divided by what one unit of
+# ours produces per day (`anchors`), which is engine arithmetic over the real
+# shop draw and the opponent's real board, not a fitted model.
+#
+#   target = round(factor * anchor), clamped to ANCHOR_CAPS
+#
+# Resolution then follows the operating point automatically: at an anchor of
+# 4 the factors below give 0, 1, 2, 3, 4, 6 -- every integer up to the anchor
+# -- and at an anchor of 16 they give 0, 4, 8, 12, 16, 24. The heads that are
+# not quantities (land, the sell floors, the v2 sell-timing pair) keep their
+# own values.
+FRACTION_FACTORS = [0.0, 0.25, 0.5, 0.75, 1.0, 1.5]
+FRACTION_HEADS = ("melon_tiles", "wheat_tiles", "carrot_tiles", "tomato_tiles",
+                  "straw_tiles", "goose_target", "cow_target", "sheep_target", "hires")
+ABS_HEADS_V3 = [(n, list(FRACTION_FACTORS) if n in FRACTION_HEADS else list(v))
+                for n, v in ABS_HEADS] + SELL_TIMING_HEADS
+RESIDUAL_HEADS_V3 = ABS_HEADS_V3          # the fraction form needs no separate residual grid
+
 HEADS_VERSION = 1
 
 MODE = "absolute"
@@ -187,7 +234,9 @@ def set_mode(mode):
     a network is built or a bundle's provider is constructed."""
     global MODE, HEADS, HEAD_SIZES, N_ACTION_LOGITS
     MODE = mode
-    if HEADS_VERSION >= 2:
+    if HEADS_VERSION >= 3:
+        HEADS = RESIDUAL_HEADS_V3 if mode == "residual" else ABS_HEADS_V3
+    elif HEADS_VERSION == 2:
         HEADS = RESIDUAL_HEADS_V2 if mode == "residual" else ABS_HEADS_V2
     else:
         HEADS = RESIDUAL_HEADS if mode == "residual" else ABS_HEADS
@@ -464,10 +513,17 @@ def apply_to_plan(plan, choices, view):
     computed downstream exactly as in the heuristic planner."""
     values = {name: vals[choices[i]] for i, (name, vals) in enumerate(HEADS)}
 
-    # Resolve offset heads against the demand anchors.
+    # Resolve the quantity heads against the demand anchors: v3 reads them as
+    # a FRACTION of the anchor, v1/v2 as an offset for the four ANCHORED heads
+    # and as absolute counts for the rest.
     anchor_vals = anchors(view)
-    for head in ANCHORED:
-        values[head] = max(0, min(ANCHOR_CAPS[head], anchor_vals[head] + values[head]))
+    if HEADS_VERSION >= 3:
+        for head in FRACTION_HEADS:
+            a = anchor_vals.get(head, 0)
+            values[head] = max(0, min(ANCHOR_CAPS[head], int(round(values[head] * a))))
+    else:
+        for head in ANCHORED:
+            values[head] = max(0, min(ANCHOR_CAPS[head], anchor_vals[head] + values[head]))
 
     crop_counts = {}
     for _, _, t in view.me.plants():
