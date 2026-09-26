@@ -66,6 +66,24 @@ Sources: `docs/stage_b5_preregistration.md` §6–13, `docs/results/*.log`.
 The eval's own error bar is ±0.008–0.015 on a win rate; between training
 seeds the no-board RL control varies by 0.003 and board nets by 0.023–0.026.
 
+**The same agents on the new 995-game draw (26 September 07:35,
+`docs/results/draw995_baselines.log`; §7 on the index rebuild):**
+
+| agent | wins / 995 | win rate | money | vs champ-h8 (paired) |
+|---|---|---|---|---|
+| dev tree + h8 knob rules (= champ-h9; the frozen bundle matches it game for game, 995/995) | 311 | 0.313 | $86,408 | +8.2 pts, z +5.6, 6/6 bands, bank +$4.1k, opponent −$1.2k |
+| dev tree, plain champion plan | 278 | 0.279 | $85,369 | +4.9, z +3.6, 5/6 |
+| champ-h8 (frozen) | 229 | 0.230 | $82,345 | — |
+
+Win rates are not comparable across the two draws: the new draw fills the
+two low bands (175 and 120 games where the old draw had 64 and 21) and
+draws every band from a pool that now includes the 14–24 September
+episodes, whose rating scale differs (the 2500+ band reads 0.343 here
+against 0.206 on the old draw for the same agent). Within the new draw the
+ordering and the gaps hold: dev tree over h8 by 8 points, the knob layer
+worth 3.3 points (z 3.9) rather than the old draw's 1.0. Every new rule
+pairs against `rl/runs/draw995/baselines.json` from here.
+
 ---
 
 ## 3. How the top players are more effective than our agent
