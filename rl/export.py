@@ -21,10 +21,20 @@ def main():
     ap.add_argument("--mpc", action="store_true", help="enable the MPC day-planner in the bundle")
     ap.add_argument("--champion", action="store_true", help="run the champion playbook plan as the primary policy")
     ap.add_argument("--residual", action="store_true", help="weights are offset heads over the champion plan")
+    ap.add_argument("--exec", dest="exec_rules", default=None,
+                    help="comma-separated kagent/scheduler.EXEC_FLAGS to enable in the bundle")
     ap.add_argument("--bandit-rules", default=None, help="rl/bandit.py rules.json to embed (BanditPolicy over the champion plan)")
     args = ap.parse_args()
     if not args.clear and not args.weights_json:
         ap.error("weights_json required unless --clear")
+    exec_literal = "None"
+    if args.exec_rules:
+        from kagent import scheduler as _sched
+        flags = [f.strip() for f in args.exec_rules.split(",") if f.strip()]
+        bad = [f for f in flags if f not in _sched.EXEC_FLAGS]
+        if bad:
+            ap.error(f"unknown executor flag(s) {bad}; known: {_sched.EXEC_FLAGS}")
+        exec_literal = repr(flags)
     rules_literal = "None"
     if args.bandit_rules:
         with open(args.bandit_rules) as f:
@@ -37,6 +47,7 @@ def main():
             "WEIGHTS_DATA = None\nMPC_ENABLED = False\n"
             f"CHAMPION_PLAN = {bool(args.champion)!r}\n"
             f"BANDIT_RULES = {rules_literal}\n"
+            f"EXEC_RULES = {exec_literal}\n"
         )
     else:
         with open(args.weights_json) as f:
@@ -48,6 +59,7 @@ def main():
             f"CHAMPION_PLAN = {bool(args.champion)!r}\n"
             f"RESIDUAL = {bool(args.residual)!r}\n"
             f"BANDIT_RULES = {rules_literal}\n"
+            f"EXEC_RULES = {exec_literal}\n"
         )
     with open(out, "w") as f:
         f.write(body)

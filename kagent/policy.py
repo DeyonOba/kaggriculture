@@ -28,6 +28,13 @@ CHAMPION_PLAN = globals().get("CHAMPION_PLAN", False)
 RESIDUAL = globals().get("RESIDUAL", False)
 # Bandit bundles: fitted per-(head, offset) gain models over the champion plan.
 BANDIT_RULES = globals().get("BANDIT_RULES", None)
+# Executor rules this bundle ships with (kagent/scheduler.EXEC_FLAGS), written
+# into kagent/weights.py by `rl/export.py --exec`. Absent in dev mode, where
+# the flags stay off and each eval arm sets its own via the rules JSON, so
+# this is inert outside a bundle.
+EXEC_RULES = globals().get("EXEC_RULES", None)
+if EXEC_RULES:
+    (globals().get("set_exec") or scheduler.set_exec)(EXEC_RULES)
 if BANDIT_RULES:
     (globals().get("set_mode") or features.set_mode)("residual")
 if RESIDUAL:
