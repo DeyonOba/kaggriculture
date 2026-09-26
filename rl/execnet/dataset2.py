@@ -118,9 +118,19 @@ class Collector:
             self.sidx.append(k)
             cls = F2.scheduler_destination(view, ui, our_actions.get(idx))
             self.ours.append({"STAY": 0, "SHED": 1, "MOVE": 2}[cls])
-            self.unit_ops.setdefault(ui, []).append(top_ops[ui])
-            self.unit_pos.setdefault(ui, []).append((x, y))
-        # pad units that vanished this step (hands are hired mid-day)
+            # Pad to step k BEFORE recording, so a hand hired mid-game lands
+            # its first op at index k and not at index 0. Padding afterwards
+            # put every new unit's first observation at the head of its own
+            # series and left index k empty, which mislabelled one row per
+            # hire (10-14 a game) and fabricated an op at step 0.
+            ops = self.unit_ops.setdefault(ui, [])
+            pos = self.unit_pos.setdefault(ui, [])
+            while len(ops) < k:
+                ops.append(None)
+                pos.append(pos[-1] if pos else (x, y))
+            ops.append(top_ops[ui])
+            pos.append((x, y))
+        # units that vanished this step (a hand can be lost) keep their length
         for ui in list(self.unit_ops):
             while len(self.unit_ops[ui]) < self.n_steps:
                 self.unit_ops[ui].append(None)
