@@ -81,6 +81,7 @@ def extract(spec):
     from kagent import features
     from kagent.gamestate import Memory, View
     from tools.board_tensor import board_pair_temporal_both, arm_channels
+    from kagent.constants import ANIMALS
     from rl.replay_bc import _counts, _targets_to_choices
 
     try:
@@ -144,7 +145,18 @@ def extract(spec):
                                               hist=past)
             except Exception:
                 continue
+            # `choices` are head INDICES, quantised onto features.HEADS as it
+            # stands today, so a change to a head's value list silently
+            # invalidates them (2026-09-26: the goose head went from
+            # [0,8,16,24,32] to [0,4,6,10,16] and every stored goose index
+            # changed meaning). Keep the RAW standing targets beside them so
+            # the next head change can re-quantise without replaying 16,000
+            # games -- see rl/session_bc.requantise().
             out.append({"x": x, "masks": m, "choices": choices,
+                        "raw": {"crops": crops, "herd": herd,
+                                "shed": {k: v for k, v in shed.items() if k in ANIMALS},
+                                "hires": farm_end.get("hires_today", 0),
+                                "land": bool(bought)},
                         "m": margin[side], "w": win[side], "seat": side,
                         "day": d})
             boards.append(t3[cols].astype("float16"))
