@@ -416,6 +416,37 @@ lifts the opponent's bank, so it needs its own replication; `spent` and the
 fertiliser gate are money-positive and win-flat; the five together are worse
 than `harvest_visit` alone, the same non-additivity seen on the old draw.
 
+**Batch 3 on the 995-game draw (26 September 12:45,
+`docs/results/draw995_batch3.log`), paired against the dev tree (0.313).**
+Every arm carries `lastwater` + `h23`.
+
+| arm | wins / 995 | delta vs dev tree | z / p | bands | our bank | opponent's bank |
+|---|---|---|---|---|---|---|
+| harvest every visit (batch 2, the full rule) | 352 | +4.1 pts | +3.2 / 0.002 | 5/6 | +$1,649 | −$3,105 |
+| harvest underfoot only (`hv_underfoot`) | 339 | +2.8 | +2.2 / 0.036 | 5/6 | +$1,526 | −$2,509 |
+| spent dig at tend priority | 312 | +0.1 | +0.1 / 1.00 | 3/6 | +$2,125 | −$140 |
+| one shed run per unit-day | 222 | **−8.9** | −5.6 / <1e-4 | 0/6 | −$2,136 | +$2,437 |
+| hand-feed + wheat layout | 210 | **−10.2** | −7.2 / <1e-4 | 0/6 | −$2,198 | +$4,296 |
+| all six together | 167 | **−14.5** | −9.8 / <1e-4 | 0/6 | −$4,650 | +$3,935 |
+
+Head to head on the same games, the underfoot restriction **costs** 1.3
+points against the full rule (z −1.86, p 0.085, 0/6 bands): letting a unit
+walk a short distance for a one- or two-unit harvest is worth more than the
+turns it spends, so the full `harvest_visit` is the rule to ship.
+
+**The hauling rules are refuted for the third time, and now with the
+opponent's bank as the tell.** `oneshed` and `handfeed`+`layout` each hit
+their mechanism targets on the traces (pickups per feed 1.1 → 0.4, feeds
+from hand 2% → 24–36%, both at the leaders' values) and each loses 9–10
+points, worse in all six bands, while the recorded opponent gains $2.4–4.3k.
+Consolidating provisioning starves the farm at the moment the crew is
+smallest, and the produce we fail to bring to market is supply the opponent
+sells instead. This is the same shape as the hauling floor (−$12,026) and
+the pooled anchors (−$11,565): every attempt to make our hauling look like
+theirs has now failed, on three different instruments. The leaders' low
+pickup count is a *consequence* of their layout and their chore chains, not
+a lever that can be pulled on our farm.
+
 Expected size: unknown individually; together they account for the
 measured 1,200 extra unit-steps a game and 200 fewer harvests, on the same
 executor the dev tree ships. Test each alone and then the bundle, at
