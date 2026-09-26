@@ -18,6 +18,8 @@ from kagent import market, scheduler
 from kagent.policy import HeuristicPolicy
 from rl.execnet import features as F
 from rl.execnet.model import load
+from rl.execnet import features2 as F2
+from rl.execnet.model2 import is_v2, load as load2
 
 CHORES = {"PASS", "WATER", "HARVEST", "FEED", "CARE", "FERTILIZE", "DIG", "COLLECT_FERTILIZER", "DROP"}
 MOVE_OPS = {"NORTH", "SOUTH", "EAST", "WEST"}
@@ -25,24 +27,38 @@ OVERRIDE = CHORES | MOVE_OPS
 # take-over modes: "chores" = the model decides what to do on the tile it
 # stands on and never where to walk; "all" = chores and moves; "full" = all
 # plus PLANT / PICKUP resolved with the plan's quota and the farm's needs
-MODES = ("chores", "all", "full")
+# "dest" (v2): the model chooses a DESTINATION among the scheduler's pending
+# requests (plus the shed, plus staying put); the scheduler keeps its
+# logistics passes (shuttles, provisioning, survival) and does the walking.
+MODES = ("chores", "all", "full", "dest")
+# scheduler passes whose assignment the dest mode never overrides
+KEEP_PASSES = {"shuttle", "provision", "morning", "survival"}
 _MODEL_CACHE = {}
 
 
 def load_model(path):
+    """-> (model, cond) where cond is the elite conditioning vector of the
+    'conditioned' v2 variant (the leaders' z-scored executor profile, which
+    is what we clamp the model to at play time), or None."""
     if path not in _MODEL_CACHE:
         torch.set_num_threads(1)
-        model, _ = load(path)
-        _MODEL_CACHE[path] = model
+        if is_v2(path):
+            model, extra = load2(path)
+            c = (extra or {}).get("cond")
+            cond = np.asarray(c["elite_z"], dtype=np.float32) if c else None
+        else:
+            model, cond = load(path)[0], None
+        _MODEL_CACHE[path] = (model, cond)
     return _MODEL_CACHE[path]
 
 
 class ExecNetPolicy(HeuristicPolicy):
-    def __init__(self, model, plan_provider=None, conf=0.0, mode="chores"):
+    def __init__(self, model, plan_provider=None, conf=0.0, mode="chores", cond=None):
         super().__init__(plan_provider)
         if mode not in MODES:
             raise ValueError(f"execnet mode {mode!r}; known {MODES}")
         self.model = model
+        self.cond = cond
         self.conf = conf
         self.mode = mode
         self.stats = collections.Counter()
@@ -63,8 +79,17 @@ class ExecNetPolicy(HeuristicPolicy):
 
         tasks = scheduler.build_tasks(view, plan)
         plan.fert_reserve = sum(1 for t in tasks if t.op[0] == "FERTILIZE")
-        actions = scheduler.assign(view, plan, tasks)
-        self._override(view, plan, actions)
+        if self.mode == "dest":
+            prev_enabled = scheduler.MOVE_STATS_ENABLED
+            scheduler.MOVE_STATS_ENABLED = True
+            scheduler.ASSIGN_LABEL.clear()
+            actions = scheduler.assign(view, plan, tasks)
+            labels = dict(scheduler.ASSIGN_LABEL)
+            scheduler.MOVE_STATS_ENABLED = prev_enabled
+            self._override_dest(view, plan, tasks, actions, labels)
+        else:
+            actions = scheduler.assign(view, plan, tasks)
+            self._override(view, plan, actions)
         if view.step >= 717 and not self._reported:
             self._reported = True
             import sys
@@ -167,5 +192,115 @@ class ExecNetPolicy(HeuristicPolicy):
             self.stats["deferred_item_op"] += 1
 
 
+    def _task_op(self, view, plan, idx, task, emitted):
+        """The op of a pending task, if this unit can execute it now."""
+        op = list(task.op)
+        inv = view.unit_inv(idx)
+        if task.need and inv.get(task.need, 0) < 1:
+            return None
+        if op[0] == "PLANT":
+            crop = op[1]
+            allowed = min(view.seeds.get(crop, 0), plan.plant_quota.get(crop, 0))
+            if emitted[crop] + 1 > allowed:
+                return None
+            emitted[crop] += 1
+        return op
+
+    @torch.no_grad()
+    def _override_dest(self, view, plan, tasks, actions, labels):
+        """v2: pick each free unit's DESTINATION among the pending requests."""
+        units = view.me.units
+        if not units:
+            return
+        by_tile = {}
+        for t in tasks:
+            by_tile.setdefault((t.x, t.y), []).append(t)
+        for v in by_tile.values():
+            v.sort(key=lambda t: t.pri)
+        req_tiles = set(by_tile)
+        free = [ui for ui, (idx, _, _) in enumerate(units)
+                if labels.get(idx) not in KEEP_PASSES
+                and not any(view.unit_inv(idx).get(a, 0) for a in ("GOOSE", "COW", "SHEEP"))]
+        if not free:
+            self.stats["dest_no_free_units"] += 1
+            return
+        board = F2.board_planes(view)
+        req, _ = F2.request_planes(tasks)
+        base = np.asarray(board + req, dtype=np.float32)
+        planes, scal, masks = [], [], []
+        counts = F.farm_counts(view)
+        for ui in free:
+            _, x, y = units[ui]
+            up = np.zeros((1, F2.N_TILES), dtype=np.float32)
+            up[0, F2.tile_index(x, y)] = 1.0
+            planes.append(np.concatenate([base, up], axis=0).reshape(F2.N_PLANE, F2.BOARD, F2.BOARD))
+            sv = F.unit_features(view, ui, counts)[1]
+            if self.cond is not None:
+                sv = list(sv) + list(self.cond)
+            scal.append(sv)
+            masks.append(F2.dest_mask(view, ui, req_tiles))
+        mask = np.asarray(masks, dtype=bool)
+        logits, op_logits = self.model(torch.tensor(np.asarray(planes, dtype=np.float32)),
+                                       torch.tensor(np.asarray(scal, dtype=np.float32)),
+                                       torch.tensor(mask))
+        probs = torch.softmax(logits, dim=-1).numpy()
+        emitted = collections.Counter(op[1] for op in actions.values() if op and op[0] == "PLANT")
+        taken = set()
+        order = sorted(range(len(free)), key=lambda i: -probs[i].max())
+        for i in order:
+            ui = free[i]
+            idx, x, y = units[ui]
+            p = probs[i].copy()
+            for t in taken:
+                p[t] = 0.0
+            k = int(p.argmax())
+            if p[k] < self.conf or not mask[i][k]:
+                self.stats["kept_low_conf"] += 1
+                continue
+            if k == F2.DEST_STAY:
+                # A leader's STAY means "you are already where the work is".
+                # Our units are often standing on nothing, and honouring STAY
+                # there just idles them ($5.7k vs $75.9k on a traced game), so
+                # STAY is only obeyed when there IS work underfoot; otherwise
+                # the scheduler's action stands.
+                here = by_tile.get((x, y), [])
+                op = next((o for o in (self._task_op(view, plan, idx, t, emitted) for t in here) if o), None)
+                if op is None:
+                    self.stats["stay_no_work_kept_scheduler"] += 1
+                    continue
+                new = op
+            elif k == F2.DEST_SHED:
+                base_op = actions.get(idx)
+                if base_op and base_op[0] in ("PICKUP", "DROP"):
+                    self.stats["agree:SHED"] += 1
+                    continue
+                if not sum(view.unit_inv(idx).values()) and view.shed_total == 0:
+                    self.stats["shed_pointless_kept_scheduler"] += 1
+                    continue
+                tx, ty = scheduler._nearest_shed_tile(x, y)
+                if (x, y) == (tx, ty):
+                    new = ["DROP"] if sum(view.unit_inv(idx).values()) else ["PASS"]
+                else:
+                    step = scheduler._step_toward(x, y, tx, ty)
+                    new = [step] if step else ["PASS"]
+            else:
+                tx, ty = k % F2.BOARD, k // F2.BOARD
+                taken.add(k)
+                if (x, y) == (tx, ty):
+                    here = by_tile.get((tx, ty), [])
+                    op = next((o for o in (self._task_op(view, plan, idx, t, emitted) for t in here) if o), None)
+                    new = op or ["PASS"]
+                else:
+                    step = scheduler._step_toward(x, y, tx, ty)
+                    new = [step] if step else ["PASS"]
+            old = actions.get(idx)
+            if old and old == new:
+                self.stats["agree:" + new[0]] += 1
+            else:
+                self.stats["override:" + new[0]] += 1
+            actions[idx] = new
+
+
 def load_policy(weights, plan_provider=None, conf=0.0, mode="chores"):
-    return ExecNetPolicy(load_model(weights), plan_provider, conf=conf, mode=mode)
+    model, cond = load_model(weights)
+    return ExecNetPolicy(model, plan_provider, conf=conf, mode=mode, cond=cond)
