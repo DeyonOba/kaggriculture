@@ -274,9 +274,26 @@ feeding and caring for the geese displaced strawberry, milk and carrot
 volume (−66, −51, −57 units on a traced 2000–2500 game, with 3 of 8 sheep
 unfed at noon and two animals escaped by day 29), and the opponent sells
 into those same markets, so the price relief is theirs. Eggs earned $8k on
-that game. Third geese refutation, now with the mechanism; the top players
-carry ~6 geese because their chores cost half of ours (§3.1), not because
-eggs pay for the labour at our rate.
+that game. **RETRACTED 26 September — that test was mis-specified.** The two arms were
+`{"knob": "geese", "value": 4|6}` with **no executor flags**
+(`tools/rules/rules_geese{4,6}.json`), so they bought geese into an
+executor that could not collect their output: the shipped animal rule
+harvests only at `held >= 2`, and a goose produces exactly ONE egg a day
+(interval 1, max_held 4), so half of every goose's production sat waiting
+by construction. They also used the champion plan's hardcoded day-6 window
+while all three leaders place geese from day 2, and they ran before
+`lastwater`/`h23`/`harvest_visit` (+4.1 pts). What was recorded as "geese
+lose 8-12 points" is partly a measurement of our own collection defect.
+
+**What the leaders actually do (measured 26 September on 40 replays):**
+coop builds 5.0-6.2 a game, geese placed 5.0-6.4, **egg harvests 60-77 a
+game for 179-216 units**, ~5-6 geese standing at day 20. We build 0 coops
+and harvest 0 eggs in every game. The goose is the cheapest animal ($300 vs
+$400/$500), first yields on day 4 (vs 8/6), produces every day, and EGG is
+one of only two markets whose price survives volume (above: log/0.20, the
+wheat shape; MILK linear/1.6 and WOOL sq/3.2 are the traps). Re-tested
+properly as batch 4 (`animal_visit` + `geese_day 2` on top of champ-h10's
+rules); until that lands, geese are UNRESOLVED, not refuted.
 **Culls on the dev tree (26 September, `docs/results/rules_cull_eval.log`,
 same 785 games, paired against the dev tree with h8's rules):** stop
 feeding cows when milk falls under 0.35 of base (from day 12) +1.0 pt (z
