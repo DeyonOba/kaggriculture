@@ -201,11 +201,17 @@ def main():
         meta[gid] = {"player": (teams or ["?", "?"])[seat], "rating": rating, "seat": seat, "source": "session"}
         jobs_s.append((p, seat, os.path.join(args.out, gid + ".npz")))
     for d in args.replays:
+        dir_tag = os.path.basename(d.rstrip("/")).lower()
         for f in sorted(glob.glob(os.path.join(d, "*.json"))):
             with open(f) as fh:
                 rep = json.load(fh)
             names = _team_names(rep.get("info", {}))
-            if args.team in names:
+            # the studied seat: the team the directory is named after
+            # (replays/boey -> "Boey"), else --team, else the higher final
+            by_dir = [i for i, nm in enumerate(names) if dir_tag and dir_tag in nm.lower().replace(" ", "").replace("&", "")]
+            if by_dir:
+                seat = by_dir[0]
+            elif args.team in names:
                 seat = names.index(args.team)
             else:
                 rewards = [(rep["steps"][-1][s].get("reward") or 0) for s in range(2)]
