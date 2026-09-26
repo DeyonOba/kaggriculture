@@ -592,8 +592,17 @@ it, with three seeds not enough to call that size.
 
 ## 7. Method notes that now hold for every experiment
 
-- Evaluate per rating band on held-out recorded sessions, paired, ~785
-  games, McNemar; never read the in-training win-vs-gate or an 18-game eval.
+- Evaluate per rating band on held-out recorded sessions, paired, McNemar;
+  never read the in-training win-vs-gate or an 18-game eval. **The draw
+  changed on 26 September 06:04:** the session index was rebuilt over
+  27,378 sessions (21,054 before; the three September extraction runs
+  added 6,300), and the held-out draw is now 995 games — 175 per band,
+  120 in the 600–1000 band — where it was 785 with only 64 and 21 in the
+  two low bands. Every table in this note up to here is on the 785-game
+  draw, kept as `rl/datasets/session_index_2026-09-25.json`; `--reuse`
+  across the two draws refuses by design, so the standing arms (dev tree,
+  champ-h8, capped controls, top-player clones) must be replayed once on
+  the new draw before any new rule is paired against them.
 - Include `dev:champion` and the frozen champion bundle as arms in any eval
   that could lead to a submission.
 - One training seed is not a result for a board net (between-seed sd
