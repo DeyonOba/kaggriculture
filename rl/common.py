@@ -126,7 +126,13 @@ def policy_layers(net):
             [w, b, ln.weight.detach().cpu().numpy().tolist(), ln.bias.detach().cpu().numpy().tolist()]
         )
     w, b = _lin(net.logits)
-    out = {"arch": 2, "blocks": blocks, "out": [w, b]}
+    # The ACTION SPACE must travel with the policy for the same reason the
+    # trunk does: `nnpolicy.choose` walks a cursor through the flat logits
+    # using features.HEADS, so a net trained on a different head set is split
+    # at the wrong offsets and SafeAgent swallows the error into a silent
+    # heuristic fallback. v1 = 13 heads / 57 logits; v2 adds sell timing.
+    out = {"arch": 2, "blocks": blocks, "out": [w, b],
+           "heads_version": features.HEADS_VERSION, "heads_mode": features.MODE}
     # The conv trunk MUST travel with the policy. Without this the weights
     # file carried a 216-input h1 and inference fed it 168 features, and
     # nnpolicy._matvec iterates over the INPUT vector -- so rows 168..215,

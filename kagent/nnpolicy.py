@@ -251,6 +251,14 @@ class NeuralPolicy:
         plan = planner.make_day_plan(view, memory, speculative=self.residual)
         if self.layers is None:
             return plan
+        # Restore THIS net's action space before encoding: a worker process
+        # may serve several arms in turn, and `choose` splits the flat logits
+        # by features.HEADS, so the wrong head set silently misreads every
+        # choice (and a short slice raises into SafeAgent's heuristic
+        # fallback). v1 nets carry no field and default to 1.
+        want = self.layers["policy"].get("heads_version", 1)
+        if want != features.HEADS_VERSION:
+            features.set_heads_version(want)
         x = features.encode(view, memory)
         head_masks = features.masks(view)
         bl = self.layers["policy"].get("board")

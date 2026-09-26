@@ -127,6 +127,33 @@ RESIDUAL_HEADS = [
     ("staple_floor_scale", [0.7, 1.0, 1.3]),
 ]
 
+# --- Head set v2: SELL TIMING -------------------------------------------
+# v1 gives the planner thirteen dials over QUANTITIES and three sell-FLOOR
+# multipliers, and no way to say WHEN to sell. Measured 2026-09-26: the three
+# leaders realise 0.96-1.06 of each product's game-mean price where we get
+# 0.86-0.93, and book 22-31% of revenue in the last three days to our 10-15%.
+# Two heads, appended so every v1 index keeps its meaning:
+#   sell_pace        -1 = the shipped sizing (sell to the floor in one order);
+#                    >= 0 = the largest within-order price drop, in percent,
+#                    allowed for a steep-curve product while shops still drain
+#                    it (kagent/market.PACED). Our orders currently cut the
+#                    price 38-47% in one step; the leaders' lose 6-9%.
+#   liquidation_day  the day the plan flips to liquidation. The heuristic
+#                    constant is 27; the leaders' late-revenue share says the
+#                    right value is a decision, not a constant.
+SELL_TIMING_HEADS = [
+    ("sell_pace", [-1, 5, 10, 20]),
+    ("liquidation_day", [24, 26, 27, 29]),
+]
+ABS_HEADS_V2 = ABS_HEADS + SELL_TIMING_HEADS
+RESIDUAL_HEADS_V2 = RESIDUAL_HEADS + SELL_TIMING_HEADS
+
+# Which head set is live. 1 is the shipped action space; every net trained
+# before 2026-09-26 has 57 output logits and MUST keep it, so the default
+# never changes implicitly -- a net records its own version at export and
+# restores it at load (rl/common.policy_layers, nnpolicy.decode_weights).
+HEADS_VERSION = 1
+
 MODE = "absolute"
 HEADS = ABS_HEADS
 HEAD_SIZES = [len(vals) for _, vals in HEADS]
@@ -139,9 +166,21 @@ def set_mode(mode):
     a network is built or a bundle's provider is constructed."""
     global MODE, HEADS, HEAD_SIZES, N_ACTION_LOGITS
     MODE = mode
-    HEADS = RESIDUAL_HEADS if mode == "residual" else ABS_HEADS
+    if HEADS_VERSION >= 2:
+        HEADS = RESIDUAL_HEADS_V2 if mode == "residual" else ABS_HEADS_V2
+    else:
+        HEADS = RESIDUAL_HEADS if mode == "residual" else ABS_HEADS
     HEAD_SIZES = [len(vals) for _, vals in HEADS]
     N_ACTION_LOGITS = sum(HEAD_SIZES)
+
+
+def set_heads_version(v):
+    """Select the action space. 1 = shipped (13 heads, 57 logits); 2 adds the
+    two sell-timing heads (15 heads, 65 logits). Nets carry their own version,
+    so this is never changed implicitly for an already-trained policy."""
+    global HEADS_VERSION
+    HEADS_VERSION = int(v)
+    set_mode(MODE)
 
 QUOTA_CROP = {
     "melon_tiles": "MELON",
@@ -492,6 +531,17 @@ def apply_to_plan(plan, choices, view):
             plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * values["premium_floor_scale"]))
         for item in ("CARROT", "TOMATO"):
             plan.sell_floors[item] = max(1, int(plan.sell_floors[item] * values["staple_floor_scale"]))
+
+    # --- sell timing (head set v2 only; absent from v1 nets) --------------
+    # WHEN to sell, which v1 could not express at all. Both are read through
+    # `values.get`, so a v1 net leaves the heuristic's own behaviour intact.
+    if "sell_pace" in values:
+        plan.sell_pace = values["sell_pace"]
+    if "liquidation_day" in values:
+        # The heuristic flips at a constant day 27; let the net move it. The
+        # downstream safety clamps (wheat reserve, final-push floors) key off
+        # plan.liquidation, so setting it here is the whole change.
+        plan.liquidation = view.day >= values["liquidation_day"]
 
     # Scripted safety net: expand land when planned work exceeds open tiles.
     # Third purchase path (after the head and the crunch): the demand-driven
