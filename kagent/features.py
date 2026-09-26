@@ -21,6 +21,7 @@ from kagent.constants import (
     MARKET_PARAMS,
     PRODUCTS,
     SHOPS,
+    TURNS_PER_DAY,
 )
 from kagent import econ
 from kagent.planner import apply_land_pressure

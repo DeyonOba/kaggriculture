@@ -84,6 +84,21 @@ def test_tile_flow_counts_ground_that_frees():
     assert fl["pending"].get("WHEAT", 0) > 0, "standing wheat is supply already committed"
 
 
+def test_tile_flow_handles_a_finishing_ongoing_crop():
+    """Regression: this branch reads TURNS_PER_DAY and the constant was not
+    imported, so tile_flow raised NameError on ANY ongoing crop whose last
+    production had been scheduled -- every strawberry from about day 20. The
+    first test only used a one-shot crop, so the branch was never executed;
+    tools/verify_ground_truth.py caught it on a real game."""
+    view = _view(day=24, tiles={(1, 1): _plant("STRAWBERRY", 10, mls=26 * 24, held=1)})
+    fl = F.tile_flow(view, horizon=3)
+    assert fl["freeing"][2] >= 1, "a plant finishing in two days must be counted"
+    assert fl["pending"].get("STRAWBERRY", 0) >= 1
+    # and with no lifespan set it is NOT counted as freeing inside the horizon
+    view = _view(day=12, tiles={(1, 1): _plant("STRAWBERRY", 10)})
+    assert F.tile_flow(view, horizon=3)["freeing"][3] == 0
+
+
 def test_flow_features_exist_only_in_v3():
     view, mem = _view(), Memory()
     F.set_heads_version(1); n1 = len(F.encode(view, mem))
