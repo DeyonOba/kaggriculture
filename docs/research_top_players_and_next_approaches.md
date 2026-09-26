@@ -475,6 +475,22 @@ question here is whether a *conditional* fourth adds to it. Already built
 as `KAGG_MAX_QUADRANTS`; the conditional mode is a small extension. Test:
 inference, three-way (cap 3 / gate / no cap), paired.
 
+**Measured 26 September on the replays** (day of each purchase, idle share
+of the tiles already owned at that moment, hands, cash): all three leaders
+own the third quadrant by day 8–9 with half of it still bare (M & M & P & Q
+day 9, range 9–11; Boey day 8; DSM day 8; we buy it on day 10). Only
+M & M & P & Q buys the fourth, in 8 of 12 games, on days 15–18 with a third
+of its tiles idle, 3 hands at that hour and about $25k in the bank; Boey and
+DSM never do. So the fourth quadrant is a cash-and-day decision for the one
+agent that makes it, not a capacity trigger, and the constant "three
+quadrants" we carry in the champion plan and as the RL land cap is what
+two of the three leaders do as well. Built as the `land4` knob (planner:
+days 14–20, crew at size, at most 12 idle tiles, $15k of working capital
+above the price, and the wheat engine lifted by 25 so the ground is
+planted); the third-quadrant timing (day 8–9 versus our 10) is a separate
+two-day question for the land2 margin knob. Paired arm queued behind the
+kernel arm.
+
 ### F. Harvest collection priority — the single largest volume gap
 489 harvests vs 290, and yield dying on plants. Throughput raisers have all
 failed, so this is not "harvest more often"; it is *collect ripe yield before
@@ -621,6 +637,52 @@ it, with three seeds not enough to call that size.
   eval; the corpus otherwise ends on 13 September.
 
 ---
+
+## 8. Combining a model with the heuristic, or modelling actions outright
+
+What the record supports, by the level at which the model enters:
+
+| level | design | paired record |
+|---|---|---|
+| model as an INPUT to a rule | BoardNet opponent-supply forecast feeding the rent rule | the one learned component to clear the win metric: +$2,731 ± 538, win z 3.44 |
+| model REPLACES the day plan | RL / BC planner (14 generations, then the top-player clone) | best is champ-h8 parity (0.164–0.180 vs 0.183), 6–8 points under the dev tree on the same games |
+| model REPLACES the unit action | execnet (§`docs/action_modeling_research.md`) | moves: catastrophic (feeds 351 → 77, no coordination); chores on the tile underfoot: moves per productive op 1.38 → 0.86, chores per visit 1.43 → 1.73, harvests +26%, fertilise +38%, weeds up — paired verdict pending (`rl/runs/draw995/execnet_eval.json`) |
+
+The agreement question has four workable forms, in the order to test them:
+1. **Confidence gate** — act on the model only above a confidence, else the
+   scheduler (the `execnet_chores_c50` and `_all_c70` arms in the queue). At
+   confidence 0.7 the model covers 68% of decisions at 0.90 accuracy.
+2. **Disagreement gate** — act on the model only where it disagrees with the
+   scheduler AND is confident. The value is concentrated there: the largest
+   disagreement is "water where you stand" against "walk", ~8,000 held-out
+   decisions, which is the chores-per-visit gap one decision at a time.
+   One extra arm, no new model.
+3. **Scheduler proposes, model ranks** — the scheduler's task list is the
+   candidate set, the model orders it. This is the old executor ranker
+   (69.4% accuracy from one 3,093 agent, null on money, +$1.2k z 1.95 on the
+   fixed executor). It failed the interventional test once; the difference
+   now is three top players' data, the win-rate instrument, and the
+   candidates coming from the improved scheduler.
+4. **Model as veto** — the scheduler proposes, the model blocks any action
+   it gives near-zero probability (leaving a tile with chores pending, a
+   move at hour 23). The chain rule and the hour-23 rule are hand-written
+   special cases of this.
+
+Is modelling actions the best route? For: the 0.355 → 0.776 agreement gap
+with the top players is the largest measured gap at any level, and the
+chores-only take-over is the first change to move moves-per-op, which no
+ordering rule did. Against: three earlier action-level models fit held-out
+data and failed the paired gate, movement needs coordination a per-unit
+classifier cannot express (provisioning, deliveries, the shed), and play
+time needs a numpy forward pass. The route that follows from the record is
+the hybrid: keep the scheduler for routing and logistics and the planner
+heuristic with model inputs, let the model choose the chore on the tile
+(pending), then try the disagreement gate and the ranker in that order,
+each paired on the 995 games. On land specifically: the constant three
+quadrants is what Boey and DSM play; the fourth is one agent's
+cash-and-day decision, now a gated knob rather than a cap, and if the RL
+planner is trained again its land head should be masked by that gate, not
+by a constant.
 
 ## 7. Method notes that now hold for every experiment
 

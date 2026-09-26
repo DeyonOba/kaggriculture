@@ -386,6 +386,19 @@ CHAMP_WHEAT_ENGINE = 32
 CHAMP_CARROT_DAY = 22           # from here freed tiles go to 2-day carrots
 CHAMP_LAND_BUYS = 2             # champions never bought the $4000 quadrant
 CHAMP_LAND_DAY = 5
+# Gated fourth quadrant (knob land4). Measured 2026-09-26 on the replays: all
+# three leaders own the third quadrant by day 8-9 (we: day 10) with half of
+# it still bare; only M & M & P & Q buys the fourth, in 8 of 12 games, on
+# days 15-18 with a third of its tiles idle, 3 hands and ~$25k in the bank;
+# Boey and DSM never do. So the gate is cash and the day, not fullness:
+# LAND4_MAX_IDLE keeps it off a farm that cannot plant what it has, the
+# window ends where a wheat cycle stops paying, and the wheat engine is
+# lifted by the new ground so the purchase is planted rather than idle.
+LAND4_DAY_MIN = 14
+LAND4_DAY_MAX = 20
+LAND4_MIN_HIRES = 9
+LAND4_MAX_IDLE = 12
+LAND4_WHEAT_BONUS = 25
 CHAMP_HIRES = [5, 4, 4, 5, 4, 5, 7, 9, 9, 10,
                11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
                11, 11, 11, 11, 11, 11, 10, 10, 10, 8]
@@ -441,6 +454,12 @@ KNOB_DEFAULTS = {
     # carrot < $50, tomato < $80, strawberry < $150). The top agent applies
     # 220 a game to our 112; a fertilised wheat yields 6 instead of 4.
     "fert_gate": 1.0,
+    # Gated fourth quadrant (2026-09-26): 1 = buy the SE quadrant on days
+    # 14-20 when the crew is at size, the owned ground is mostly planted and
+    # land4_margin of working capital sits above the $4,000 price. 0 = the
+    # champion's constant of three quadrants. See planner.LAND4_*.
+    "land4": 0,
+    "land4_margin": 15000,
 }
 
 
@@ -518,6 +537,18 @@ def make_champion_plan(view, memory):
         plan.land_buys.append(LAND_ORDER[next_idx])
         if next_idx == 1:
             plan.land_margin = knobs["land2_margin"]
+    elif (knobs.get("land4", 0) and next_idx == 2 and LAND4_DAY_MIN <= day <= LAND4_DAY_MAX
+          and plan.hires_target >= LAND4_MIN_HIRES
+          and empty_tiles + sum(1 for _ in me.weeds()) <= LAND4_MAX_IDLE):
+        # Gated fourth quadrant (knob land4, off by default): the champion
+        # plan stops at three quadrants as a constant, and the fourth was
+        # −$6k twice as a constant too, bought onto a labour-short farm.
+        # Here it needs the crew at size, the owned ground mostly planted,
+        # a day inside the window where a wheat cycle still pays, and
+        # land4_margin of working capital above the price (M & M & P & Q buys
+        # with ~$25k in the bank). See the LAND4_* constants.
+        plan.land_buys.append(LAND_ORDER[next_idx])
+        plan.land_margin = knobs.get("land4_margin", 15000)
 
     # --- Animals: speculative herd, gated by cash only (feed is bought) --------
     plan.animal_buys = {}
@@ -594,7 +625,8 @@ def make_champion_plan(view, memory):
             if day < 10:
                 wheat_target = 8
             else:
-                wheat_target = min(knobs["wheat_engine"], crops.get("WHEAT", 0) + free)
+                engine = knobs["wheat_engine"] + (LAND4_WHEAT_BONUS if "SE" in owned else 0)
+                wheat_target = min(engine, crops.get("WHEAT", 0) + free)
             _best = _rent_pick(view, day, free)
             if _RENTA > 0 and _best and _best[0] != "WHEAT":
                 _n = int(round(_RENTA * free))
