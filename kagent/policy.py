@@ -28,6 +28,13 @@ CHAMPION_PLAN = globals().get("CHAMPION_PLAN", False)
 RESIDUAL = globals().get("RESIDUAL", False)
 # Bandit bundles: fitted per-(head, offset) gain models over the champion plan.
 BANDIT_RULES = globals().get("BANDIT_RULES", None)
+# Theta bundles: a SEARCHED strategy vector (kagent/theta.py), every knob fixed
+# from day 0. Written by `rl/export.py --theta <best_theta.json>`. It takes
+# precedence over BANDIT_RULES because the two are alternatives, not layers --
+# the bandit decides four knobs conditionally at days 6/9/12/15 and the vector
+# fixes all twenty from the first plan, so running both would mean the gate
+# could not say which chose what.
+THETA_KNOBS = globals().get("THETA_KNOBS", None)
 # Executor rules this bundle ships with (kagent/scheduler.EXEC_FLAGS), written
 # into kagent/weights.py by `rl/export.py --exec`. Absent in dev mode, where
 # the flags stay off and each eval arm sets its own via the rules JSON, so
@@ -48,6 +55,28 @@ if RESIDUAL:
 
 class ChampionPlanProvider:
     def make_plan(self, view, memory):
+        return planner.make_day_plan(view, memory, speculative=True)
+
+
+class ThetaPlanProvider:
+    """The champion plan with a FIXED knob vector, set before the first plan.
+
+    The knob bandit (`KnobBanditPolicy`) decides knobs at days 6/9/12/15 from
+    fitted gain models, so day 0-5 always runs `KNOB_DEFAULTS` and the opening
+    is not reachable through it. This provider sets the whole vector once, on
+    the first plan of the game, which is what a SEARCH over the strategy needs:
+    every coordinate live from the first decision, nothing conditional in the
+    way, so a gate attributes to the vector and not to which rules fired.
+
+    See kagent/theta.py for the vector and what is in it.
+    """
+
+    def __init__(self, knobs):
+        self.knobs = dict(knobs or {})
+
+    def make_plan(self, view, memory):
+        if getattr(memory, "knobs", None) != self.knobs:
+            memory.knobs = dict(self.knobs)
         return planner.make_day_plan(view, memory, speculative=True)
 
 
@@ -172,7 +201,12 @@ class SafeAgent:
 
 
 _LAYERS = decode_weights(WEIGHTS_DATA)
-if BANDIT_RULES:
+if THETA_KNOBS:
+    _AGENT = SafeAgent(
+        HeuristicPolicy(ThetaPlanProvider(THETA_KNOBS)),
+        fallback=HeuristicPolicy(ChampionPlanProvider()),
+    )
+elif BANDIT_RULES:
     _bandit_cls = KnobBanditPolicy if BANDIT_RULES.get("kind") == "knobs" else BanditPolicy
     _AGENT = SafeAgent(
         HeuristicPolicy(_bandit_cls(BANDIT_RULES)), fallback=HeuristicPolicy(ChampionPlanProvider())

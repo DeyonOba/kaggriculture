@@ -361,7 +361,7 @@ def _make_dev_policy_agent(spec):
         from rlv3.agent import make_dev_agent
         return make_dev_agent(spec)
 
-    from kagent.policy import ChampionPlanProvider
+    from kagent.policy import ChampionPlanProvider, ThetaPlanProvider
     from kagent.banditpolicy import BanditPolicy, KnobBanditPolicy
 
     kind = spec.get("kind", "champion")
@@ -369,6 +369,12 @@ def _make_dev_policy_agent(spec):
     needs_board = False
     if kind == "champion":
         pol = HeuristicPolicy(ChampionPlanProvider())
+    elif kind == "theta":
+        # A STRATEGY VECTOR: the champion plan with every knob fixed from day 0
+        # (kagent/theta.py). The executor flags on spec["exec"] are applied by
+        # run_episode, which also restores them, so a worker can play a
+        # different candidate on its next job without leaking this one's rules.
+        pol = HeuristicPolicy(ThetaPlanProvider(spec.get("knobs") or {}))
     elif kind in ("knobs", "bandit"):
         rules = spec["rules"]
         if features.MODE != "residual":

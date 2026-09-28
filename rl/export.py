@@ -24,10 +24,34 @@ def main():
     ap.add_argument("--exec", dest="exec_rules", default=None,
                     help="comma-separated kagent/scheduler.EXEC_FLAGS to enable in the bundle")
     ap.add_argument("--bandit-rules", default=None, help="rl/bandit.py rules.json to embed (BanditPolicy over the champion plan)")
+    ap.add_argument("--theta", default=None,
+                    help="a searched strategy vector (tools/cem_theta.py's "
+                         "best_theta.json) to embed. Its own exec list becomes "
+                         "EXEC_RULES unless --exec overrides it.")
     args = ap.parse_args()
     if not args.clear and not args.weights_json:
         ap.error("weights_json required unless --clear")
+    theta_literal = "None"
+    theta_exec = None
+    if args.theta:
+        with open(args.theta) as f:
+            t = json.load(f)
+        knobs = t.get("knobs", t)
+        from kagent import planner as _pl
+        unknown = [k for k in knobs if k not in _pl.KNOB_DEFAULTS]
+        if unknown:
+            ap.error(f"theta carries knobs the planner does not read: {unknown}")
+        theta_literal = repr(knobs)
+        theta_exec = list(t.get("exec") or [])
+        if args.bandit_rules:
+            ap.error("--theta and --bandit-rules are alternatives, not layers: "
+                     "the vector fixes every knob from day 0 and the bandit "
+                     "decides four of them at day 6+, so a bundle carrying both "
+                     "could not be attributed")
+
     exec_literal = "None"
+    if args.exec_rules is None and theta_exec is not None:
+        exec_literal = repr(theta_exec)
     if args.exec_rules:
         from kagent import scheduler as _sched
         flags = [f.strip() for f in args.exec_rules.split(",") if f.strip()]
@@ -47,6 +71,7 @@ def main():
             "WEIGHTS_DATA = None\nMPC_ENABLED = False\n"
             f"CHAMPION_PLAN = {bool(args.champion)!r}\n"
             f"BANDIT_RULES = {rules_literal}\n"
+            f"THETA_KNOBS = {theta_literal}\n"
             f"EXEC_RULES = {exec_literal}\n"
         )
     else:
@@ -59,6 +84,7 @@ def main():
             f"CHAMPION_PLAN = {bool(args.champion)!r}\n"
             f"RESIDUAL = {bool(args.residual)!r}\n"
             f"BANDIT_RULES = {rules_literal}\n"
+            f"THETA_KNOBS = {theta_literal}\n"
             f"EXEC_RULES = {exec_literal}\n"
         )
     with open(out, "w") as f:
