@@ -179,6 +179,17 @@ def main() -> None:
                     t = json.load(fh)
                 spec = ({"kind": "theta", **t} if "knobs" in t
                         else {"kind": "theta", "knobs": t})
+            elif parts[1] == "reactive" and len(parts) == 3:
+                # dev:reactive:<spec.json> -- {"knobs": {...}, "exec": [...],
+                # "rules": [...]} (kagent/reactive.py).
+                # `kind` goes LAST. A spec written by theta.spec() carries
+                # "kind": "theta", and spreading it over a leading
+                # {"kind": "reactive"} puts theta back -- the arm then
+                # dispatches the theta branch and silently drops every rule.
+                # Three different rule sets scored identically to the dollar
+                # before this was found.
+                with open(parts[2]) as fh:
+                    spec = {**json.load(fh), "kind": "reactive"}
             elif parts[1] == "rlv3":
                 # dev:rlv3:<preset>[,k=v...] -- the adaptive package. Parsed by
                 # rlv3.arm so the preset/dose grammar lives with the package;
@@ -186,7 +197,7 @@ def main() -> None:
                 from rlv3.arm import parse as _rlv3_parse
                 spec = _rlv3_parse(parts[2] if len(parts) > 2 else "")
             else:
-                raise SystemExit(f"{name}: dev arm wants dev:champion, dev:knobs:<rules.json>, dev:theta:<vector.json>, dev:rlv3:<preset> "
+                raise SystemExit(f"{name}: dev arm wants dev:champion, dev:knobs:<rules.json>, dev:theta:<vector.json>, dev:reactive:<spec.json>, dev:rlv3:<preset> "
                                  f"or dev:execnet:<weights.pt>[:<rules.json|planner-weights.json>[:<conf>[:<mode>]]]")
             arms.append((name, spec, False, "dev"))
             continue

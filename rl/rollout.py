@@ -375,6 +375,15 @@ def _make_dev_policy_agent(spec):
         # run_episode, which also restores them, so a worker can play a
         # different candidate on its next job without leaking this one's rules.
         pol = HeuristicPolicy(ThetaPlanProvider(spec.get("knobs") or {}))
+    elif kind == "reactive":
+        # theta as a FUNCTION of the observed state (kagent/reactive.py): a base
+        # vector from day 0 plus rules that fire on features.context at their
+        # own decision day. With no rules this is exactly the theta arm, so a
+        # reactive candidate is a pure addition to it and the gate attributes
+        # to the rules.
+        from kagent.reactive import ReactivePlanProvider
+        pol = HeuristicPolicy(ReactivePlanProvider(spec.get("knobs") or {},
+                                                   spec.get("rules") or []))
     elif kind in ("knobs", "bandit"):
         rules = spec["rules"]
         if features.MODE != "residual":
