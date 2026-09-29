@@ -88,6 +88,16 @@ def _forward_plants(steps, seat, day):
     return dict(c)
 
 
+def _forward_bought(steps, seat, day):
+    """Animals the leader actually BOUGHT on day d (BUY_ANIMAL orders)."""
+    c = collections.Counter()
+    for t in range(day * TURNS, min((day + 1) * TURNS, len(steps))):
+        for o in ((steps[t][seat].get("action") or {}).get("market") or []):
+            if o[0] == "BUY_ANIMAL":
+                c[o[1]] += int(o[2]) if len(o) > 2 else 1
+    return dict(c)
+
+
 def _forward_fert(steps, seat, day):
     """Leader FERTILIZE actions per day, mean over d..d+2."""
     n = 0; days = 0
@@ -201,6 +211,15 @@ def run(out=None, preset="readout"):
                 "consumers": dict(ctx["consumers"]),
                 "our_fert": delta.get("fert"), "lead_fert": _forward_fert(steps, seat, d),
                 "alpha": delta.get("alpha"), "upper": delta.get("upper"),
+                # the readout's PREDICTED stock and the pipeline commit() subtracted,
+                # so an under-ask can be attributed: prediction vs pipeline vs cash
+                "pred_herd": dict((delta.get("pred") or {}).get("herd", {})),
+                "pred_crops": dict((delta.get("pred") or {}).get("crops", {})),
+                "standing_herd": {k: int(v) for k, v in
+                                  __import__("collections").Counter(t["animal"] for _x, _y, t in View(obs).me.animals()).items()},
+                "shed": {k: int(v) for k, v in (View(obs).shed or {}).items() if k in ANIMALS},
+                "money": float(obs["farms"][seat].get("money", 0)),
+                "lead_bought": _forward_bought(steps, seat, d),
                 "tilt": delta.get("tilt") or {},
                 "margin": float(obs["farms"][seat].get("money", 0)) - float(obs["farms"][1 - seat].get("money", 0)),
                 "our_crops": delta["crops"], "our_herd": delta["herd"],
@@ -348,6 +367,21 @@ def run(out=None, preset="readout"):
                     print(f"    {prod+'->'+asset:<14}{lab:<12} n={len(sel):>3}  ours "
                           f"{statistics.mean(r['our_herd'].get(asset, 0) for r in sel):.2f}  "
                           f"leaders {statistics.mean(r['lead_dherd'].get(asset, 0) for r in sel):.2f}")
+
+    # ---------------------------------------------------------------- 7
+    print(f"\n[7] OPENING LIVESTOCK, days 0-4  (mean per dawn over 40 games; pipeline = standing + shed)")
+    print(f"{'day':>4}{'money':>8}   {'readout pred@d+3':^20}   {'pipeline':^16}   {'OUR buys':^16}   {'LEADER bought':^16}")
+    for d in range(0, 5):
+        rs = [r for r in rows if r["day"] == d]
+        if not rs:
+            continue
+        def mean_of(key, k):
+            return statistics.mean(float(r.get(key, {}).get(k, 0)) for r in rs)
+        pipe = {k: mean_of("standing_herd", k) + mean_of("shed", k) for k in ("GOOSE", "COW", "SHEEP")}
+        fmt = lambda f: " ".join(f"{k[0]}{f(k):.1f}" for k in ("GOOSE", "COW", "SHEEP"))
+        print(f"{d:>4}{statistics.mean(r['money'] for r in rs):>8.0f}   "
+              f"{fmt(lambda k: mean_of('pred_herd', k)):^20}   {fmt(lambda k: pipe[k]):^16}   "
+              f"{fmt(lambda k: mean_of('our_herd', k)):^16}   {fmt(lambda k: mean_of('lead_bought', k)):^16}")
 
     print("\nTVD = paired total-variation distance between our shares and that leader's, "
           "same game, same day. floor = how far the leaders sit from EACH OTHER on that "
