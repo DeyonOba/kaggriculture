@@ -42,7 +42,7 @@ def test_every_preset_builds():
         cfg = AGENT.config_from_spec({"kind": "rlv3", "preset": name})
         assert cfg.label == f"rlv3:{name}"
         cfg.sell_cfg()                      # raises on an unknown sell mode
-        assert cfg.all_exec()[:3] == list(AGENT.BASE_EXEC)
+        assert cfg.all_exec()[:len(AGENT.BASE_EXEC)] == list(AGENT.BASE_EXEC)
 
 
 def test_an_unknown_preset_is_refused_at_parse_time():
