@@ -118,6 +118,19 @@ def paired(base, arm):
             "p_mcnemar": binom_two_sided(b, b + c), "n": n}
 
 
+def _job_extra(args):
+    """Keys merged into every weights-arm job from --exec / --decode. The decode
+    switch is an environment variable read by the Pool workers (rl.rollout),
+    so it is set here, before the Pool exists."""
+    extra = {}
+    if getattr(args, "exec", "none") == "shipped":
+        from kagent import weights as _w
+        extra["exec"] = list(_w.EXEC_RULES)
+    if getattr(args, "decode", "plan") == "commit":
+        os.environ["KAGG_DECODE"] = "commit"
+    return extra
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--arm", action="append", required=True,
@@ -126,6 +139,13 @@ def main() -> None:
     ap.add_argument("--procs", type=int, default=5)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default=None, help="JSON of every game, for re-analysis")
+    ap.add_argument("--exec", choices=("none", "shipped"), default="none",
+                    help="executor rule flags on every WEIGHTS-arm job: 'shipped' = "
+                         "kagent.weights.EXEC_RULES, the rules the champion arms carry; "
+                         "'none' = the legacy flagless net (dev arms carry their own)")
+    ap.add_argument("--decode", choices=("plan", "commit"), default="plan",
+                    help="how a v4/v5 net's choices become a DayPlan on weights arms: "
+                         "'commit' = rlv3.readout.commit (the readout arm's path)")
     ap.add_argument("--reuse", action="append", default=[],
                     help="name=prior_eval.json[:arm] -- take that arm's per-game "
                          "results from a previous --out file instead of replaying "
@@ -135,6 +155,7 @@ def main() -> None:
                     help="arm every other arm is paired against (a played or "
                          "reused name); default the first --arm")
     args = ap.parse_args()
+    job_extra = _job_extra(args)
 
     from rl import rollout
 
@@ -242,7 +263,7 @@ def main() -> None:
                      "learner_policy": path if is_bundle == "dev" else None,
                      "temperature": 0.0, "seed": 0,
                      "side": 1 - ss, "opponent": ("session", os.path.join(REPO, p), ss),
-                     "mode": "rl"} for p, ss, b, r in entries]
+                     "mode": "rl", **job_extra} for p, ss, b, r in entries]
             out = list(pool.imap(rollout.run_episode, jobs))          # ordered: paired
             rows = []
             for ep, (p, ss, b, r) in zip(out, entries):

@@ -98,3 +98,15 @@ def test_apply_checkpoints_accepts_a_policy_only_checkpoint(tmp_path):
     torch.save({"policy": net.state_dict()}, p)
     T.apply_checkpoints(net, vnet, resume=str(p))       # must not KeyError on "value"
     assert "exec" not in T.JOB_EXTRA
+
+
+def test_session_eval_can_put_the_shipped_rules_and_commit_decode_on_weights_arms(monkeypatch):
+    import argparse
+    from kagent import weights as W
+    from rl import session_eval as SE
+    monkeypatch.delenv("KAGG_DECODE", raising=False)
+    assert SE._job_extra(argparse.Namespace(exec="none", decode="plan")) == {}
+    assert os.environ.get("KAGG_DECODE") is None
+    extra = SE._job_extra(argparse.Namespace(exec="shipped", decode="commit"))
+    assert extra == {"exec": list(W.EXEC_RULES)}
+    assert os.environ["KAGG_DECODE"] == "commit"
