@@ -200,6 +200,25 @@ def standing(view):
     return crops, herd, pocket, empty
 
 
+def bound_hires(hires, view, crops, herd):
+    """The planner's OWN two bounds on a hand count, verbatim from
+    make_champion_plan: the workload cap (a hand per three units of work,
+    never under 3) and the hiring budget (a quarter of the bank, never under
+    $150). The first commit() copied the budget loop with the WHOLE bank and
+    no workload cap, so on our farm the hires head could spend every dollar
+    on hands the board had no work for -- the per-head gate read that as
+    -15.9 pts (rl/runs/readout_heads.json) while the same head on the
+    leaders' boards matched the champion schedule (contest mean 11.2 vs
+    10.9). The readout sets the target; the planner's gates bound it, as
+    they do for animals (DAILY_ANIMAL_CAP, LAST_BUY_DAY)."""
+    workload = sum(crops.values()) + 2 * sum(herd.values()) + 10
+    hires = min(int(hires), max(3, workload // 3))
+    budget = max(150.0, float(view.me.money) * 0.25)
+    while hires > 2 and econ.hire_total_cost(hires) > budget:
+        hires -= 1
+    return hires
+
+
 def commit(plan, view, pred, order=None, horizon=HORIZON, apply=None):
     """Overwrite the allocation fields with the 3-day commitment. Returns the
     plan, and the delta it asked for, so the S0 read can score it.
@@ -264,9 +283,7 @@ def commit(plan, view, pred, order=None, horizon=HORIZON, apply=None):
             empty[structure] = -need
 
     hires = plan.hires_target if pred["hires"] is None else int(pred["hires"])
-    budget = float(view.me.money)
-    while hires > 2 and econ.hire_total_cost(hires) > budget:
-        hires -= 1
+    hires = bound_hires(hires, view, crops, herd)
 
     # Only the named heads overwrite the plan (default: all four). The delta
     # still reports every head so the S0 read scores the readout, not the arm.

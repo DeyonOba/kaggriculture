@@ -350,3 +350,26 @@ def test_commit_applies_only_the_named_heads(v4):
     assert plan.hires_target == 3 and plan.animal_buys == {}
     with pytest.raises(ValueError):
         RO.parse_apply("herd+land")
+
+
+def test_commit_bounds_hires_with_the_planners_own_rules(v4):
+    """The hires head is a target; the champion planner's workload cap and
+    25%-of-cash budget bound it exactly as they bound the planner's own
+    schedule (kagent/planner.make_champion_plan)."""
+    from kagent import econ
+    from kagent.planner import DayPlan
+    from rlv3 import readout as RO
+    view = _leader_dawn(10)
+    crops, herd, _p, _e = RO.standing(view)
+    workload = sum(crops.values()) + 2 * sum(herd.values()) + 10
+    for ask in (2, 6, 11, 40):
+        want = min(ask, max(3, workload // 3))
+        budget = max(150.0, float(view.me.money) * 0.25)
+        while want > 2 and econ.hire_total_cost(want) > budget:
+            want -= 1
+        plan, d = RO.commit(DayPlan(), view, {"crops": {}, "herd": {}, "hires": ask, "land": 0})
+        assert plan.hires_target == want == d["hires"], (ask, want, plan.hires_target)
+    # a bare farm can never be asked for more than three hands
+    assert RO.bound_hires(40, view, {}, {}) == 3
+    # and the budget never allows a hire bill above a quarter of the bank
+    assert econ.hire_total_cost(RO.bound_hires(40, view, {"WHEAT": 60}, {})) <= max(150.0, view.me.money * 0.25)
