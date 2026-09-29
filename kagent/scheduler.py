@@ -136,12 +136,22 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              priority, ahead of the water and fertiliser the same crew
 #              would do, and our WATER halves the day it starts. Metric:
 #              fertilise and harvest counts on days 27-29.
+#   late_plant seeds already in the bag are planted during liquidation on
+#              any crop whose FIRST yield lands by day 29 (wheat and carrot:
+#              2 days, so day 27), and on the final day a one-time crop
+#              holding units is harvested even below max (the shipped `ripe`
+#              rule waits for max yield, which a day-27 planting never
+#              reaches). Measured: the champion ends with 11.8 unplanted
+#              seeds a game (8.8 carrot, bought on day 26 for a quota the
+#              day-27 planting stop then stranded); the fresh leaders end
+#              with 0.7 and plant 4.6 tiles on day 27. Metric: seeds left at
+#              the end, day-27 plantings, day-29 harvests.
 _TQ_SCHED = None     # KAGG_TQ_SCHEDULE, loaded once per process
 
 EXEC_FLAGS = ("tilequeue", "lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
-              "endwater", "tend_end")
+              "endwater", "tend_end", "late_plant")
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
 LASTWATER_HARVEST_HOUR = 20  # from here harvest the crop even if unwatered
@@ -299,6 +309,21 @@ def build_tasks(view, plan):
     fert_targets = set()
     unit_tiles = {(ux, uy) for _, ux, uy in me.units}
 
+    # late_plant: during liquidation the planner asks for nothing; put the
+    # seeds already paid for into bare ground while their first yield still
+    # lands inside the season.
+    if EXEC["late_plant"] and plan.liquidation and not plan.plant_quota:
+        room = len(list(me.empty_tiles()))
+        late = {}
+        for c in ("WHEAT", "CARROT"):
+            if day + CROPS[c]["first_yield_day"] > 29 or room <= 0:
+                continue
+            n = min(view.seeds.get(c, 0), room)
+            if n > 0:
+                late[c] = n
+                room -= n
+        plan.plant_quota = late
+
     # --- Plants: water / harvest / fertilize ---------------------------------
     for x, y, t in me.plants():
         crop = CROPS.get(t["crop"])
@@ -347,7 +372,11 @@ def build_tasks(view, plan):
             ripe = age >= crop["first_yield_day"] and (
                 yields >= crop["max_yield"] or age >= crop["max_yield_day"]
             )
-            if ripe or (yields > 0 and decaying and age >= crop["first_yield_day"]):
+            # late_plant: on the final day anything a one-time crop holds is
+            # taken; `ripe` waits for max yield, which a late planting never
+            # reaches, and units left on the tile at the end are lost.
+            last_call = EXEC["late_plant"] and day >= 29 and yields > 0
+            if ripe or last_call or (yields > 0 and decaying and age >= crop["first_yield_day"]):
                 tasks.append(Task(P_HARVEST if not decaying else P_SURVIVAL, x, y, ["HARVEST"]))
                 continue
 

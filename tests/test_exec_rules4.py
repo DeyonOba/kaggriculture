@@ -117,3 +117,39 @@ def test_tend_end_is_off_by_default_and_registered():
     from rlv3 import arm as ARM
     spec = ARM.parse('base:exec_flags=["tend_end"]')
     assert spec["exec"][-1] == "tend_end" and "harvest_visit" in spec["exec"]
+
+
+def test_late_plant_puts_bagged_seeds_in_the_ground_on_day_27_only():
+    obs = _obs(day=27, hour=6)
+    obs["private"]["seeds"] = {"CARROT": 8, "WHEAT": 3, "STRAWBERRY": 2}
+    view, plan = _liq_plan(obs)              # liquidation: the planner asks for nothing
+    assert plan.plant_quota == {}
+    plants = lambda v, p: [t for t in scheduler.build_tasks(v, p) if t.op[0] == "PLANT"]
+    assert plants(view, plan) == []
+    scheduler.set_exec("late_plant")
+    view, plan = _liq_plan(obs)
+    on = plants(view, plan)
+    crops = {t.op[1] for t in on}
+    assert crops <= {"WHEAT", "CARROT"} and "CARROT" in crops, crops   # never strawberry (10-day lead)
+    assert plan.plant_quota == {"WHEAT": 3, "CARROT": 8}
+    # day 28: a 2-day crop's first yield lands after the season
+    obs = _obs(day=28, hour=6)
+    obs["private"]["seeds"] = {"CARROT": 8, "WHEAT": 3}
+    view, plan = _liq_plan(obs)
+    assert plants(view, plan) == [] and plan.plant_quota == {}
+
+
+def test_late_plant_harvests_an_unripe_one_time_crop_on_the_final_day():
+    # a carrot planted on day 27 is age 2 on day 29 with 2 of 4 units: the
+    # shipped ripe rule (max yield or max_yield_day) leaves it on the tile
+    obs = _obs(day=29, hour=6)
+    obs["farms"][0]["tiles"][1][1] = _plant("CARROT", planted_day=27, yield_units=2)
+    view, plan = _liq_plan(obs)
+    assert not any(op == "HARVEST" for op, _ in _at(view, plan, 1, 1))
+    scheduler.set_exec("late_plant")
+    assert ("HARVEST", scheduler.P_HARVEST) in _at(view, plan, 1, 1)
+    # not on day 28, and never an empty tile
+    obs = _obs(day=28, hour=6)
+    obs["farms"][0]["tiles"][1][1] = _plant("CARROT", planted_day=26, yield_units=2)
+    view, plan = _liq_plan(obs)
+    assert not any(op == "HARVEST" for op, _ in _at(view, plan, 1, 1))
