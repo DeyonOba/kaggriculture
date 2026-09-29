@@ -161,11 +161,14 @@ def _fields(plan):
                 else getattr(plan, f)) for f in FIELDS}
 
 
-def run(out=None, preset="readout", leaders=None):
+def run(out=None, preset="readout", leaders=None, weights=None):
     if leaders:
         os.environ["KAGG_LEADERS"] = leaders     # leader_paths() reads it
     base_cfg = A.config_from_spec(arm.parse("base"))
-    ro_cfg = A.config_from_spec(arm.parse(preset))
+    spec = arm.parse(preset)
+    if weights:
+        spec = {**spec, "readout": weights}      # score a specific readout file
+    ro_cfg = A.config_from_spec(spec)
     off_cfg = A.config_from_spec({**arm.parse(preset), "readout": None})
     print(f"preset: {preset}  (readout={ro_cfg.readout}, posture={ro_cfg.posture})")
 
@@ -407,5 +410,6 @@ if __name__ == "__main__":
     ap.add_argument("--out", default=None)
     ap.add_argument("--preset", default="readout", help="readout | readout_risk")
     ap.add_argument("--leaders", default=None, help="replay tree root, e.g. replays/now")
+    ap.add_argument("--weights", default=None, help="readout bc.pt to score instead of the preset's")
     a = ap.parse_args()
-    run(a.out, a.preset, a.leaders)
+    run(a.out, a.preset, a.leaders, a.weights)

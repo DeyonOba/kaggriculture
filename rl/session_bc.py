@@ -214,6 +214,11 @@ def main() -> None:
                     help="keep the id %% 5 == 0 sessions train.py holds out. "
                          "Only for a dataset that will never train anything "
                          "PPO is then evaluated on")
+    ap.add_argument("--sessions", default=None,
+                    help="a glob of session files to use INSTEAD of the rating "
+                         "index -- e.g. a fresh harvest converted with "
+                         "tools.extract_episodes.to_session. --n/--min-rating "
+                         "are ignored and the PPO held-out exclusion is skipped.")
     ap.add_argument("--min-rating", type=float, default=None,
                     help="TOP-PLAYER mode: every session with a seat rated at "
                          "least this (max of the two seats), instead of the "
@@ -240,11 +245,18 @@ def main() -> None:
     # Outcomes come from the index, not from a second replay: `finals` is
     # already there, and margin is seat-relative.
     import json as _json
+    if args.sessions:
+        import glob as _glob
+        paths = sorted(os.path.abspath(p) for p in _glob.glob(args.sessions))
+        print(f"  {len(paths)} sessions from --sessions {args.sessions}")
+        args.include_held_out = True
     with open(os.path.join(REPO, "rl", "datasets", "session_index.json")) as fh:
         _idx = _json.load(fh)
     _by = {v["path"]: v for v in _idx.values() if v.get("path")}
 
-    if args.min_rating is not None:
+    if args.sessions:
+        pass                                   # explicit list, already set
+    elif args.min_rating is not None:
         paths = []
         for v in _idx.values():
             sc = [x for x in (v.get("scores") or []) if x is not None]
