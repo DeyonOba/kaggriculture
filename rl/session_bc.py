@@ -43,6 +43,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 TPD = 24
+HORIZON = int(os.environ.get("KAGG_BC_HORIZON", "1"))   # label days ahead; 1 = same day
 
 
 def is_held_out(path):
@@ -132,7 +133,13 @@ def extract(spec):
                 view = View(obs)
                 x = features.encode(view, mem)
                 m = features.masks(view)
-                e_pub, e_own = end[d][0], end[d][side]
+                # LABEL HORIZON. The default labels dawn d with the stock at the
+                # END of day d -- a same-day target. A 3-day planner needs the
+                # stock at the end of day d+2: what the leader had standing
+                # three dawns on, which is what a 3-day commitment must reach.
+                # Clamped to the last recorded day so the endgame still labels.
+                d_lab = min(d + HORIZON - 1, max(end))
+                e_pub, e_own = end[d_lab][0], end[d_lab][side]
                 farm_end = e_pub["farms"][side]
                 crops, herd = _counts(farm_end["tiles"])
                 shed = (e_own.get("private") or {}).get("shed") or {}
@@ -174,6 +181,11 @@ def main() -> None:
     ap.add_argument("--procs", type=int, default=5)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--arm", default=os.environ.get("KAGG_BOARD_ARM", "T_crop_103"))
+    ap.add_argument("--horizon", type=int, default=1,
+                    help="label dawn d with the stock at the end of day "
+                         "d+horizon-1. 1 = same day (the historical corpus); "
+                         "3 = the 3-day planner's own commitment window. "
+                         "Exported to KAGG_BC_HORIZON so spawn workers see it.")
     ap.add_argument("--heads-version", type=int,
                     default=int(os.environ.get("KAGG_HEADS_V", 0)) or None,
                     help="action space to QUANTISE THE LABELS ONTO. Without "
@@ -199,6 +211,11 @@ def main() -> None:
     args = ap.parse_args()
 
     from kagent import features        # module-scope import is worker-local here
+
+    global HORIZON
+    HORIZON = int(args.horizon)
+    os.environ["KAGG_BC_HORIZON"] = str(HORIZON)     # spawn workers re-import
+    print(f"label horizon: {HORIZON} day(s)")
 
     if args.heads_version:
         # BEFORE any worker is spawned and before any label is built.

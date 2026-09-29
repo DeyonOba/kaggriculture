@@ -147,3 +147,29 @@ games at 0.086, so **0.085 IS the target and there is no credit below it.**
 Then apply the risk posture and re-check: when a leader is behind at day 6,
 does their invoice move toward traps and early livestock -- and does ours move
 the same way?
+
+## The stages, measured on the leaders (2026-09-29)
+
+40 leader games, winner seat, from `rlv3/trajectory.py`'s invoice:
+
+```
+opening ends (last land buy)        p25/med/p75 = 8 / 8 / 9     IQR 1 day   range 5-18
+contest ends (last >$150 invest)    p25/med/p75 = 26 / 26 / 29  IQR 3 days  range 23-29
+quadrants bought                    2: 37 games   3: 3 games   4: never
+```
+
+So **OPENING 0-8 · CONTEST 9-26 · CONSOLIDATION 27-29**, and the boundaries
+are tighter than the +/-0-2 days allowed: the opening ends on day 8 in half
+the games and by day 9 in three quarters. Two differences from our champion
+worth stating plainly: the leaders end the opening on **day 8, not 10**, and
+**37 of 40 stop at two quadrants** where the champion buys its third by day
+10. (The record already has the fourth quadrant at -$6,266 replicated; this
+says the THIRD is also not what the leaders do.)
+
+Per-stage metric, as agreed:
+- **Opening** -- capital deployed / capital available, and agreement of the
+  standing stock with the top boards conditioned on the draw.
+- **Contest** -- profit rate and risk-adjusted margin against the opponent;
+  this is where the risk posture does its work.
+- **Consolidation** -- dead capital at the end (unsold, destroyed at midnight)
+  and realised sell price against the max achievable.
