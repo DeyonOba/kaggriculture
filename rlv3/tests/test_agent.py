@@ -91,7 +91,7 @@ def test_the_shipped_exec_rules_are_always_first_and_never_dropped():
     cfg = AGENT.config_from_spec(
         {"kind": "rlv3", "exec_flags": list(AGENT.MAIA2_EXEC)})
     flags = cfg.all_exec()
-    assert flags[:3] == list(AGENT.BASE_EXEC)
+    assert flags[:len(AGENT.BASE_EXEC)] == list(AGENT.BASE_EXEC)
     assert flags.count("pl_wheat_adj") == 1
     assert len(flags) == len(set(flags))
 
@@ -419,3 +419,12 @@ def test_the_agent_exposes_the_handles_a_driver_needs():
         assert switched in (True, False)
     finally:
         fn.restore()
+
+
+def test_arm_parse_carries_the_shipped_executor_rules():
+    """rl/session_eval builds rlv3 specs through arm.parse and rollout applies
+    spec["exec"]; without it the arm plays with no executor rules at all."""
+    from kagent.weights import EXEC_RULES
+    spec = ARM.parse("readout")
+    assert spec.get("exec") == list(EXEC_RULES), spec.get("exec")
+    assert "shedguard" in spec["exec"]

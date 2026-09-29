@@ -88,7 +88,16 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # is a snapshot of an OLDER kagent/ and finishes $11,638 away from today's
 # tree on world 770000 (measured by the allocation component).
 BASE_RULES = os.path.join(REPO, "tools", "rules", "rules_h8_ship2_hv.json")
-BASE_EXEC = ("lastwater", "h23", "harvest_visit")
+# The SHIPPED agent's executor rules, read from kagent/weights.py so the rlv3
+# base tracks whatever is live rather than a copy that goes stale: this was
+# champ-h10's three while champ-h11 (h10 + shedguard, +2.5 pts) was on the
+# ladder, so `rlv3:base` was h10 and every rlv3 arm started 2.5 pts behind
+# the baseline it was paired against.
+try:
+    from kagent.weights import EXEC_RULES as _SHIPPED_EXEC
+except Exception:                     # a bundle namespace, or no weights.py
+    _SHIPPED_EXEC = None
+BASE_EXEC = tuple(_SHIPPED_EXEC or ("lastwater", "h23", "harvest_visit", "shedguard"))
 
 # The rlv3 executor levers this package will actually put on a gate. The
 # other five registered flags ship off on purpose: `mv_dest` is measured

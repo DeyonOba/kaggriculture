@@ -107,7 +107,16 @@ def parse(text=""):
             spec[k] = json.loads(v)
         except ValueError:
             spec[k] = v
-    AGENT.config_from_spec(spec)          # validate now, not inside a worker
+    cfg = AGENT.config_from_spec(spec)
+    # CARRY THE EXECUTOR RULES ON THE SPEC. rl/rollout.run_episode applies
+    # `spec["exec"]` to scheduler.EXEC per episode; make_dev_agent does NOT
+    # call set_exec itself (it relies on make_job having put "exec" on the
+    # job). rl/session_eval builds rlv3 specs through THIS function, and
+    # without this line they carried no "exec" key -- so every rlv3 arm ever
+    # played on the paired instrument ran with ZERO executor rules against a
+    # baseline running three or four. The recorded `select` -12.5 was
+    # measured that way.
+    spec["exec"] = cfg.all_exec()          # validate now, not inside a worker
     return spec
 
 
