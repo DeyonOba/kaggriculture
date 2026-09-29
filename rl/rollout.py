@@ -501,9 +501,17 @@ def _make_opponent(spec):
             _BUNDLE_CACHE.clear() if len(_BUNDLE_CACHE) > 4 else None
             _BUNDLE_CACHE[key] = [v for v in env_dict.values() if callable(v)][-1]
         return _BUNDLE_CACHE[key]
-    if spec == "heuristic":
+    if spec in ("heuristic", "champion"):
+        # "heuristic" is the LEGACY reactive planner (planner.make_day_plan
+        # without speculative) -- the v3 BC teacher, NOT the champion; on a
+        # live seed-7 game it banks $33k against the champion's $77k. Every
+        # in-loop "vs heuristic" number and 28% of the non-session sparring
+        # draws were against it (rl/runs/rlv3_s2b, s2c). "champion" is the
+        # deployed plan (make_champion_plan), which with the shipped rules on
+        # the job is h11 to the dollar.
+        from kagent.policy import ChampionPlanProvider
         mem = Memory()
-        pol = HeuristicPolicy()
+        pol = HeuristicPolicy(ChampionPlanProvider() if spec == "champion" else None)
 
         def opp_fn(obs):
             view = View(obs)

@@ -141,3 +141,34 @@ def test_market_seed_cutoff_honours_the_pipeline_window():
     from kagent import market
     src = inspect.getsource(market.build_orders)
     assert 'getattr(memory, "last_plant", None)' in src
+
+
+def test_the_champion_opponent_is_the_champion_and_heuristic_is_not():
+    """rollout._make_opponent('heuristic') is the legacy reactive planner; the
+    new 'champion' kind is the deployed plan. Checked on one dawn: the two
+    produce different plans, and 'champion' equals ChampionPlanProvider's."""
+    from kagent import planner
+    from kagent.gamestate import Memory
+    from kagent.policy import HeuristicPolicy, ChampionPlanProvider
+    view = _leader_dawn(10)
+    legacy = HeuristicPolicy().make_plan(view, Memory())
+    champ = HeuristicPolicy(ChampionPlanProvider()).make_plan(view, Memory())
+    want = planner.make_champion_plan(view, Memory())
+    assert (champ.plant_quota, champ.hires_target, champ.animal_buys) == (want.plant_quota, want.hires_target, want.animal_buys)
+    assert (legacy.plant_quota, legacy.hires_target) != (want.plant_quota, want.hires_target)
+    from rl import rollout
+    assert callable(rollout._make_opponent("champion")) and callable(rollout._make_opponent("heuristic"))
+
+
+def test_train_sparring_maps_heuristic_draws():
+    from rl import train as T
+    old = T.SPARRING
+    try:
+        T.SPARRING = "champion"
+        assert T._sparring("heuristic") == "champion"
+        assert T._sparring("starter") == "starter"
+        assert T._sparring(("session", "p", 0)) == ("session", "p", 0)
+        T.SPARRING = "heuristic"
+        assert T._sparring("heuristic") == "heuristic"
+    finally:
+        T.SPARRING = old
