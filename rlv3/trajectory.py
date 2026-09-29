@@ -59,6 +59,8 @@ def _cost_of(order, state):
     (LAND_PRICES = 1000, 2000, 4000). Pricing either at a flat rate silently
     flattens exactly the timing this module exists to see.
     """
+    if not order:
+        return None                  # an empty order [] occurs in fresh replays
     op = order[0]
     item = order[1] if len(order) > 1 else None
     qty = int(order[2]) if len(order) > 2 else 1

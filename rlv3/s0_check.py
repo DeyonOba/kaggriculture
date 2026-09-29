@@ -71,6 +71,8 @@ def _day_stats(steps, seat, day):
         passes += sum(1 for u in units if u[0] == "PASS")
         peak = max(peak, len(act.get("hands") or []))
         for o in (act.get("market") or []):
+            if not o:
+                continue
             if o[0] == "SELL" and o[1] == "MELON":
                 melons += int(o[2]) if len(o) > 2 else 1
     return (passes / ops if ops else 0.0), peak, melons
@@ -93,7 +95,7 @@ def _forward_bought(steps, seat, day):
     c = collections.Counter()
     for t in range(day * TURNS, min((day + 1) * TURNS, len(steps))):
         for o in ((steps[t][seat].get("action") or {}).get("market") or []):
-            if o[0] == "BUY_ANIMAL":
+            if o and o[0] == "BUY_ANIMAL":
                 c[o[1]] += int(o[2]) if len(o) > 2 else 1
     return dict(c)
 
@@ -119,6 +121,8 @@ def _forward_spend(steps, seat, day):
         for t in range(d * TURNS, min((d + 1) * TURNS, len(steps))):
             act = steps[t][seat].get("action") or {}
             for o in (act.get("market") or []):
+                if not o:
+                    continue
                 q = int(o[2]) if len(o) > 2 else 1
                 if o[0] == "BUY_SEED":
                     spend["seed"] += CROPS.get(o[1], {}).get("seed", 0) * q
