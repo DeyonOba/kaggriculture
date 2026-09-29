@@ -60,10 +60,11 @@ def _at(view, plan, x, y):
 
 
 def test_tend_end_keeps_the_everyday_harvest_rules_until_the_final_day():
-    # day 27, a strawberry holding 1 unit (max 4), unwatered: the shipped
-    # liquidation strips it at harvest priority, ahead of the water
+    # day 27, a strawberry holding 1 unit (max 4), unwatered, past its
+    # fertiliser window (age 17): the shipped liquidation strips it at
+    # harvest priority, ahead of the water
     obs = _obs(day=27, hour=6)
-    obs["farms"][0]["tiles"][1][1] = _plant("STRAWBERRY", planted_day=15, yield_units=1, watered=False)
+    obs["farms"][0]["tiles"][1][1] = _plant("STRAWBERRY", planted_day=10, yield_units=1, watered=False)
     view, plan = _liq_plan(obs)
     assert ("HARVEST", scheduler.P_HARVEST) in _at(view, plan, 1, 1)
     scheduler.set_exec("tend_end")
@@ -74,12 +75,12 @@ def test_tend_end_keeps_the_everyday_harvest_rules_until_the_final_day():
     assert ("HARVEST", scheduler.P_TEND) in _at(view, plan, 1, 1)   # taken by the unit already there
     # the final day strips it, flag or not
     obs = _obs(day=29, hour=6)
-    obs["farms"][0]["tiles"][1][1] = _plant("STRAWBERRY", planted_day=17, yield_units=1, watered=False)
+    obs["farms"][0]["tiles"][1][1] = _plant("STRAWBERRY", planted_day=12, yield_units=1, watered=False)
     view, plan = _liq_plan(obs)
     assert ("HARVEST", scheduler.P_HARVEST) in _at(view, plan, 1, 1)
     # three units on day 27: harvest priority either way
     obs = _obs(day=27, hour=6)
-    obs["farms"][0]["tiles"][1][1] = _plant("STRAWBERRY", planted_day=15, yield_units=3)
+    obs["farms"][0]["tiles"][1][1] = _plant("STRAWBERRY", planted_day=10, yield_units=3)
     view, plan = _liq_plan(obs)
     scheduler.set_exec("tend_end")
     assert ("HARVEST", scheduler.P_HARVEST) in _at(view, plan, 1, 1)
