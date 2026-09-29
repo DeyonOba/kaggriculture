@@ -1,0 +1,170 @@
+{
+  "name": "rlv3_train",
+  "engine": "1.32.7",
+  "seed": 0,
+  "per_bin": 175,
+  "note": "Each sibling rlv3 component owns its stage COMMAND; this driver owns only the contract. depends groups expand in rlv3/stages.py:GROUPS.",
+  "promote": {
+    "eval_json": "{out}/session_eval.json",
+    "arm": "cand",
+    "baseline_arm": "champ_h10",
+    "ppo_run": "{out}/ppo"
+  },
+  "stages": [
+    {
+      "name": "index",
+      "kind": "shell",
+      "depends": [
+        "corpus"
+      ],
+      "note": "cheap, never skipped: records the draw this slice will be judged on",
+      "cmd": "{python} -u -c 'import json, os, sys; sys.path.insert(0, \"{repo}\"); from rlv3 import fingerprint as F; d = F.corpus_draw(); assert not d.get(\"missing\"), \"rl/datasets/session_index.json is missing\"; open(os.path.join(\"{out}\", \"corpus_draw.json\"), \"w\").write(json.dumps(d, indent=1)); print(\"draw n=%d counts=%s sha=%s\" % (d[\"n\"], d[\"counts\"], d[\"draw_sha\"][:8]))'",
+      "min_left_s": 60
+    },
+    {
+      "name": "clone",
+      "kind": "shell",
+      "depends": [
+        "action",
+        "corpus",
+        "code"
+      ],
+      "note": "top-band BC corpus. kaggriculture-top-player-bc-lifts-rl: cloning the readout from top-band sessions instead of our heuristic took the RL net 0.074-0.080 -> 0.127-0.180, replicated on 3 seeds.",
+      "cmd": "{python} -u rl/session_bc.py --min-rating 2500 --n 5000 --procs {procs} --out {out}/session_bc_top.jsonl",
+      "skip_if": [
+        "{out}/session_bc_top.jsonl"
+      ],
+      "produces": [
+        "{out}/session_bc_top.jsonl"
+      ],
+      "min_left_s": 900
+    },
+    {
+      "name": "maia2",
+      "kind": "shell",
+      "depends": [
+        "code"
+      ],
+      "note": "the Maia-style per-destination executor model (rl/execnet). Built here so the slice graph owns it; whether it is USED is the executor component's call -- learned executors are refuted at -10 to -22 points on their own.",
+      "cmd": "{python} -u rl/execnet/train2.py --data rl/datasets/execnet2 --epochs 8 --threads {procs} --out {out}/execnet2.pt",
+      "skip_if": [
+        "{out}/execnet2.pt"
+      ],
+      "require": [
+        "rl/datasets/execnet2"
+      ],
+      "produces": [
+        "{out}/execnet2.pt"
+      ],
+      "min_left_s": 1800
+    },
+    {
+      "name": "bc",
+      "kind": "shell",
+      "depends": [
+        "action",
+        "code"
+      ],
+      "note": "--iters 0: clone only, no PPO. bc.pt is the PPO stage's --resume seed.",
+      "cmd": "{python} -u rl/train.py --bc-session {out}/session_bc_top.jsonl --bc-session-epochs 40 --iters 0 --procs {procs} --run {out}/bc",
+      "skip_if": [
+        "{out}/bc/bc.pt"
+      ],
+      "require": [
+        "{out}/session_bc_top.jsonl"
+      ],
+      "produces": [
+        "{out}/bc/bc.pt"
+      ],
+      "min_left_s": 1800,
+      "inputs": [
+        "{out}/session_bc_top.jsonl"
+      ]
+    },
+    {
+      "name": "ppo",
+      "kind": "ppo",
+      "depends": [
+        "action",
+        "corpus",
+        "code"
+      ],
+      "resume_run": "{out}/ppo",
+      "iters": 24,
+      "min_iters": 3,
+      "note": "--session-mix eval, --plateau-cool 1.0 and --patience 99 are the three pins that make a slice boundary invisible; --lr/--ent-coef/--start-iter are written by rlv3.stages.ppo_slice.",
+      "cmd": "{python} -u rl/train.py --resume {out}/bc/bc.pt --run {out}/ppo --iters 24 --episodes 64 --procs {procs} --reward win --vary-worlds --session-mix eval --session-frac 0.5 --plateau-cool 1.0 --patience 99 --eval-every 6 --eval-per-bin 8 --seed 1234",
+      "require": [
+        "{out}/bc/bc.pt"
+      ],
+      "produces": [
+        "{out}/ppo/eval.json"
+      ],
+      "min_left_s": 1800,
+      "inputs": [
+        "{out}/bc/bc.pt"
+      ]
+    },
+    {
+      "name": "gate",
+      "kind": "gate",
+      "depends": [
+        "action",
+        "corpus"
+      ],
+      "reserve": true,
+      "note": "the 995-game band-stratified paired instrument. champ_h10 is the baseline every arm is paired against; dev:champion is the dev tree anchor. `inputs` ties this verdict to the candidate's BYTES: without it the gate skips itself after PPO appends more iterations, because its own session_eval.json is still there and the action space has not moved.",
+      "cmd": "{python} -u rl/session_eval.py --arm cand={out}/ppo/eval.json --arm champ_h10=bundle:arena/agents/champ-h10/main.py --arm dev=dev:champion --baseline champ_h10 --per-bin 175 --seed 0 --procs {procs} --out {out}/session_eval.json",
+      "skip_if": [
+        "{out}/session_eval.json"
+      ],
+      "require": [
+        "{out}/ppo/eval.json"
+      ],
+      "produces": [
+        "{out}/session_eval.json"
+      ],
+      "min_left_s": 3600,
+      "inputs": [
+        "{out}/ppo/eval.json"
+      ]
+    },
+    {
+      "name": "card",
+      "kind": "shell",
+      "depends": [
+        "code"
+      ],
+      "reserve": true,
+      "note": "diagnosis attached to every promoted checkpoint, so a win or a loss says WHERE: planner/executor group gap, idle_share, one_time_units, plantings, fertilise, day-20 tile mix.",
+      "cmd": "{python} -u tools/agent_scorecard.py --agent weights:{out}/ppo/eval.json --eval {out}/session_eval.json:cand --games 6 --out {out}/scorecard.json",
+      "skip_if": [
+        "{out}/scorecard.json"
+      ],
+      "require": [
+        "{out}/session_eval.json"
+      ],
+      "produces": [
+        "{out}/scorecard.json"
+      ],
+      "min_left_s": 1200,
+      "inputs": [
+        "{out}/session_eval.json"
+      ]
+    },
+    {
+      "name": "promote",
+      "kind": "promote",
+      "depends": [
+        "action",
+        "corpus"
+      ],
+      "note": "in-process: rlv3.promote.promote under the lexicographic objective. Never the in-training SESSION-WR, never rl/train.py's best.pt argmax.",
+      "cmd": "rlv3.promote.promote(run, {out}/session_eval.json, cand, baseline champ_h10)",
+      "require": [
+        "{out}/session_eval.json"
+      ],
+      "min_left_s": 60
+    }
+  ]
+}

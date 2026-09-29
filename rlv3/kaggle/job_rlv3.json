@@ -1,0 +1,13 @@
+{
+  "engine": "1.32.7",
+  "procs": 2,
+  "budget_s": 39600,
+  "_note": "ONE step. tools/kaggle_job/job.py keeps doing what it already does -- repo restore from the code Dataset, corpus restore, restore_checkpoints() into OUT_DIR, and the outer budget -- and rlv3.train does the stamped, per-stage, per-slice resumption inside that one step. 37800 leaves job.py 30 min of head-room for extraction and collection: the first topboard kernel run spent 5.3h of 11h on extraction and never reached the eval.",
+  "steps": [
+    {
+      "cmd": "{python} -u -m rlv3.train --job rlv3/jobs/rlv3_train.json --run {out}/rlv3 --budget-s 37800 --procs {procs}",
+      "min_left_s": 1800
+    }
+  ],
+  "collect": []
+}

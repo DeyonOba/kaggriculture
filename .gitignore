@@ -60,3 +60,10 @@ replay-*.html
 arena/agents/x-glut*
 arena/agents/x-fut*
 .snapshots/
+
+# rlv3 regenerable artifacts. The scorecard trace cache alone is 47M and is
+# rebuilt on demand (`--fresh`); eval/build/* are bundles the ladder script
+# writes; runs/ is the training driver's own output, like rl/runs/.
+rlv3/eval/scorecard_traces/
+rlv3/eval/build/
+rlv3/runs/

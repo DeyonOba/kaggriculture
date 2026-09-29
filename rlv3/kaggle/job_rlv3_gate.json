@@ -1,0 +1,13 @@
+{
+  "engine": "1.32.7",
+  "procs": 4,
+  "budget_s": 39600,
+  "_note": "The GATE job, not the training one. procs is 4 rather than job_rlv3.json's 2: that job runs PPO, which holds a model and its rollouts per worker, while this one only plays games, so the memory per worker is an env and an agent. Timing, measured on a 6-game local smoke at 3 procs (champ_h10 9s, rlv3_base 24s, rlv3_rec 40s): about 4.5h at 3 procs for four arms over 995 games, so 4 procs is the margin against a Kaggle CPU being slower than the dev box. THE GATE DOES NOT RESUME -- session_eval.json is produced only at the end, so a timeout loses the whole run rather than part of it; that is what the 3600s min_left_s on the stage guards.",
+  "steps": [
+    {
+      "cmd": "{python} -u -m rlv3.train --job rlv3/jobs/rlv3_gate.json --run {out}/rlv3 --budget-s 37800 --procs {procs}",
+      "min_left_s": 1800
+    }
+  ],
+  "collect": []
+}

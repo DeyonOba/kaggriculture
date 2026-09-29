@@ -1,0 +1,15 @@
+{
+  "id": "gideonoba/kaggriculture-rlv3",
+  "title": "kaggriculture-rlv3",
+  "code_file": "job.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": ["gideonoba/kaggriculture-code", "gideonoba/kaggriculture-datasets", "gideonoba/kaggriculture-rlv3-checkpoints"],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

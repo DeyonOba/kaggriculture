@@ -1,0 +1,37 @@
+{
+  "name": "rlv3_gate",
+  "engine": "1.32.7",
+  "seed": 0,
+  "per_bin": 175,
+  "note": "Gate rlv3's PRESETS on the 995-game band-stratified paired instrument. There is no training here and that is the point: rlv3's four components are doses and rules (lam, sell, exec_flags), not learned weights, so PPO over the RL head measures a different agent entirely -- rlv3_train.json trains `cand={out}/ppo/eval.json`, a weights arm, and the repo record puts the best RL net at 0.127-0.180 against champ-h10. The two fitted pieces rlv3 does have (calibration.json's p_win table, params/allocation_v0.json's land theta) are not written by any stage in either job.",
+  "stages": [
+    {
+      "name": "index",
+      "kind": "shell",
+      "depends": [
+        "corpus"
+      ],
+      "note": "cheap, never skipped: records the draw this verdict is judged on",
+      "cmd": "{python} -u -c 'import json, os, sys; sys.path.insert(0, \"{repo}\"); from rlv3 import fingerprint as F; d = F.corpus_draw(); assert not d.get(\"missing\"), \"rl/datasets/session_index.json is missing\"; open(os.path.join(\"{out}\", \"corpus_draw.json\"), \"w\").write(json.dumps(d, indent=1)); print(\"draw n=%d counts=%s sha=%s\" % (d[\"n\"], d[\"counts\"], d[\"draw_sha\"][:8]))'",
+      "min_left_s": 60
+    },
+    {
+      "name": "gate",
+      "kind": "shell",
+      "depends": [
+        "action",
+        "corpus",
+        "code"
+      ],
+      "note": "Four arms, same sessions and seats. champ_h10 is the shipped bundle and the baseline every prior record is quoted against. dev:champion is the DEV TREE, which the record puts well above the shipped agent (0.232-0.242 vs 0.183) -- and it is also the correct identity check for rlv3_base, because `base` is every rlv3 deviation at zero dose running ON the dev tree, so base minus dev should be ~0 and a large gap means a deviation is live that should not be. KAGG_RLV3/PYTHONPATH are set because rlv3/sitecustomize.py registers the EXEC flags; base and recommended declare none, but the prefix costs nothing and an arm that silently falls back to the shipped executor is indistinguishable from a null result.",
+      "cmd": "KAGG_RLV3=1 PYTHONPATH={repo}:{repo}/rlv3 {python} -u rl/session_eval.py --arm champ_h10=bundle:arena/agents/champ-h10/main.py --arm dev=dev:champion --arm rlv3_base=dev:rlv3:base --arm rlv3_rec=dev:rlv3:recommended --baseline champ_h10 --per-bin 175 --seed 0 --procs {procs} --out {out}/session_eval.json",
+      "skip_if": [
+        "{out}/session_eval.json"
+      ],
+      "produces": [
+        "{out}/session_eval.json"
+      ],
+      "min_left_s": 3600
+    }
+  ]
+}

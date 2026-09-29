@@ -1,0 +1,64 @@
+{
+  "version": 0,
+  "lam": 0.0,
+  "first_deviation_day": 2,
+  "_note_lam": "One dose parameter, blended at the TARGET SITE: target = round(base_expr + lam*(share_target - base_expr)). lam=0 is bit-identical to champ-h10 by construction. Copied from tools/make_lpalloc_variant.py, whose refutation was only readable because it verified that identity first.",
+  "_note_first_deviation_day": "Days 0-1 stay exactly the champion opening (MELON 12 + WHEAT 7). The day-0 market order list already sits near MAX_MARKET_ORDERS=10, and extra day-0 orders are recorded as dropping the seed orders; a five-crop split there would be measuring the order cap, not the allocation. Switchable: set to 0 to let the opening deviate too.",
+
+  "rent": {
+    "horizon": 14,
+    "step": 1,
+    "crash_ratio": 0.35,
+    "w_opp": {"AHEAD": 0.25, "LEVEL": 0.5, "BEHIND": 1.0},
+    "turns_per_tile_day": 1.0,
+    "include_feed": true,
+    "include_fertilizer": true,
+    "_note_w_opp": "Dollars of THEIR lost revenue counted per dollar of ours. The score is relative and their supply is worth $52,652 a game to us (z 17.52), so a dollar denied is a dollar earned; AHEAD discounts it because protecting a lead beats crowding, BEHIND pays full because crowding is the only lever left.",
+    "_note_turns_per_tile_day": "Unit-turns one standing tile costs a day (planner's fill_idle note: about one action a day). Divides the water-fill's equal-marginal tile-day price to give the $/unit-turn that animal_rent charges chores at."
+  },
+
+  "crop": {
+    "caps": {"WHEAT": 44, "CARROT": 26, "TOMATO": 16, "STRAWBERRY": 40, "MELON": 24},
+    "_note_caps": "features.ANCHOR_CAPS verbatim. The BINDING cap is the demand anchor recomputed every dawn (season demand at the stance quantile minus the opponent's projected supply, over units per tile-day); these are only the hard ceilings.",
+    "_note_last_plant": "No LAST_PLANT table is needed: rent.crop_block returns None the day a crop's harvest can no longer land by 29, straight off the engine's CROPS table. features.LAST_PLANT is applied as a cross-check only."
+  },
+
+  "herd": {
+    "caps": {"GOOSE": 12, "COW": 18, "SHEEP": 14},
+    "chore_cost": {"GOOSE": 4.0, "COW": 3.0, "SHEEP": 2.7},
+    "chore_scale": 1.0,
+    "chore_share": 0.45,
+    "feed_per_day": 1.0,
+    "fertilizer_per_day": 1.0,
+    "feed_buffer": 20,
+    "_note_chore_cost": "Unit-turns per animal per day at OUR executor's measured rate: FEED + CARE + PICKUP + HARVEST + walking, with pickups per feed 1.08 against the leaders' 0.46-0.55. The goose is highest because it produces every day (interval 1). Nothing about geese, cows or sheep is hardcoded in or out anywhere in rlv3: at this cost the arithmetic should roughly reproduce the champion herd, and geese flip positive only if the Maia2 executor actually lowers chore_scale.",
+    "_note_feed_buffer": "The +20 market top-up in the champion plan's and features.apply_to_plan's feed expression: shed WHEAT + 3 x standing wheat + 20."
+  },
+
+  "stance": {
+    "horizon": 14,
+    "level_band": 6000.0,
+    "conf_scale": 20000.0,
+    "quantile": {"AHEAD": 0.35, "LEVEL": 0.35, "BEHIND": 0.50},
+    "_note_quantile": "The risk term. 0.35 is the v3 ANCHOR_QUANTILE -- plan for demand that probably arrives. BEHIND takes 0.50 because a behind agent needs the upside. econ.forecast_drain computes it as an EXACT convolution over the remaining uniform unlock draws, so it converges on the mean as the unlocks happen and the plan tightens on its own.",
+    "_note_level_band": "champ-h10's eval margin is -$2,350 and the three leaders finish at -2.3k / +1.4k / +4.7k, so a $6k band is about 'too close to call' at this table."
+  },
+
+  "land": {
+    "version": 0,
+    "w": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "b": 1.0,
+    "day_min": 5,
+    "day_max": 22,
+    "max_quadrants": 3,
+    "util_floor": 0.0,
+    "hands_per_work_floor": 0.0,
+    "capital": null,
+    "lam": 0.0,
+    "margin": {"0": 100, "1": 100, "2": 15000},
+    "_note_theta0": "theta_0 reproduces champ-h10 EXACTLY: max_quadrants 3 (NW free + two bought, planner.CHAMP_LAND_BUYS), the day-5..22 window, no capital gate (the champion's land_buys is a standing WISH and the market controller enforces land_margin), floors at 0, w = 0 and b = +1 -- always buy once the gates pass. Verified in rlv3/tests/test_allocation.py::test_theta0_matches_champion.",
+    "_note_one_way": "HARD GATES RUN FIRST, the learned score LAST, so a badly fitted theta can only buy LESS land, never more. Land cannot be sold back, so its failure mode must be one-way too. The util and hands gates are MEASUREMENTS of ground already owned, not projections of ground about to be owned: the fourth quadrant gated -$6,266 and -$6,017 because hands-per-work sat at 0.47-0.58 on days 11-15.",
+    "_note_checkpoint": "This JSON IS the checkpoint. Tomorrow's training loop moves w/b on a PAIRED GATE (never on replay outcomes or held-out accuracy) and writes the file back, so a compute limit costs nothing and the run resumes from the last file.",
+    "_note_margin": "next-quadrant index -> cash above LAND_PRICES the market controller requires. 100 is planner's default and knobs['land2_margin']; 15000 is LAND4's. Used only when the base plan did not already want that quadrant."
+  }
+}
