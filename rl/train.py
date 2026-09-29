@@ -713,7 +713,10 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
         # LR schedule: linear decay across the run, cooled further on each
         # eval without improvement. Constant LR kept overshooting the profit
         # peak (breakout -> collapse the very next eval, every generation).
-        decay = max(LR_FLOOR, 1.0 - it / max(1, iters))
+        # Linear over THIS call's iterations: a continuation (--start-iter k)
+        # starts hot again instead of sitting at LR_FLOOR from its first
+        # step (it >= iters made the old form <= 0 for the whole segment).
+        decay = max(LR_FLOOR, 1.0 - (it - start_iter) / max(1, iters))
         cool = PLATEAU_COOL ** min(evals_since_best, 4)
         lr_now = LR * decay * cool
         ent_now = ENT_COEF * decay
