@@ -155,16 +155,25 @@ the same way?
 ```
 opening ends (last land buy)        p25/med/p75 = 8 / 8 / 9     IQR 1 day   range 5-18
 contest ends (last >$150 invest)    p25/med/p75 = 26 / 26 / 29  IQR 3 days  range 23-29
-quadrants bought                    2: 37 games   3: 3 games   4: never
+quadrants OWNED at the end         3: 37 games   4: 3 games      (2 purchases = 3 owned)
 ```
 
 So **OPENING 0-8 · CONTEST 9-26 · CONSOLIDATION 27-29**, and the boundaries
 are tighter than the +/-0-2 days allowed: the opening ends on day 8 in half
-the games and by day 9 in three quarters. Two differences from our champion
-worth stating plainly: the leaders end the opening on **day 8, not 10**, and
-**37 of 40 stop at two quadrants** where the champion buys its third by day
-10. (The record already has the fourth quadrant at -$6,266 replicated; this
-says the THIRD is also not what the leaders do.)
+the games and by day 9 in three quarters. One difference from our champion
+worth stating plainly: the leaders end the opening on **day 8, not 10**. On
+land they and the champion AGREE -- both own three quadrants -- and an
+earlier draft of this paragraph said "37 of 40 stop at two quadrants", which
+counted PURCHASES (2) as quadrants owned (3). Corrected 2026-09-29.
+
+**AND THE TARGET HAS MOVED.** These 40 replays are episode ids ~109-113M.
+The live leaderboard (checked 2026-09-29) shows the leaders now buying the
+FOURTH quadrant and their first later than day 6. Nothing on disk is newer
+than these replays (`replays/top/` is older, ~99-106M), so the readout and
+every agreement number in this file describe a frontier that has since
+moved. Their agents are evidently learned -- self-play against their own
+strong agents is the likely mechanism -- which means the reference set has to
+be refreshed, not fixed once.
 
 Per-stage metric, as agreed:
 - **Opening** -- capital deployed / capital available, and agreement of the

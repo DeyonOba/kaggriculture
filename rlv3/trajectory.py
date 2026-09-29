@@ -144,8 +144,23 @@ def winner_seat(path):
 
 
 # ------------------------------------------------------------------- corpus
-def leader_paths(names=LEADERS, per=None):
+def leader_paths(names=LEADERS, per=None, root=None):
+    """(tag, path) for every leader replay. `root` overrides the replay tree:
+    the default is the 2026-09-2x set under replays/<name>/; pass
+    "replays/now" for a fresh harvest laid out as replays/now/<team>/*.json,
+    where every subdirectory is a team. The leaders' agents are learned and
+    move (the live board on 2026-09-29 buys the fourth quadrant, which the
+    default set does in 3 of 40 games), so the reference has to be refreshed
+    rather than fixed once -- see rlv3/PHASE1.md."""
+    root = root or os.environ.get("KAGG_LEADERS")
     out = []
+    if root:
+        base = root if os.path.isabs(root) else os.path.join(REPO, root)
+        teams = sorted(d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d)))
+        for n in teams:
+            fs = sorted(glob.glob(os.path.join(base, n, "episode-*.json")))
+            out += [(n, f) for f in (fs[:per] if per else fs)]
+        return out
     for n in names:
         fs = sorted(glob.glob(os.path.join(REPO, "replays", n, "*.json")))
         out += [(n, f) for f in (fs[:per] if per else fs)]
@@ -272,6 +287,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--leaders", action="store_true")
     ap.add_argument("--replays", default=None, help="a glob instead of the leaders")
+    ap.add_argument("--leaders", default=None, help="a replay tree root, e.g. replays/now")
     ap.add_argument("--per", type=int, default=None, help="replays per leader")
     ap.add_argument("--days", default="0-11")
     ap.add_argument("--seat", default="winner")
@@ -284,7 +300,7 @@ def main():
     if args.replays:
         paths = [("x", p) for p in sorted(glob.glob(args.replays))]
     else:
-        paths = leader_paths(per=args.per)
+        paths = leader_paths(per=args.per, root=args.leaders)
     games = collect(paths, seat=args.seat)
     if args.window > 1:
         games = [(t, accumulate(r, args.window)) for t, r in games]

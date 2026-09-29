@@ -157,7 +157,9 @@ def _fields(plan):
                 else getattr(plan, f)) for f in FIELDS}
 
 
-def run(out=None, preset="readout"):
+def run(out=None, preset="readout", leaders=None):
+    if leaders:
+        os.environ["KAGG_LEADERS"] = leaders     # leader_paths() reads it
     base_cfg = A.config_from_spec(arm.parse("base"))
     ro_cfg = A.config_from_spec(arm.parse(preset))
     off_cfg = A.config_from_spec({**arm.parse(preset), "readout": None})
@@ -400,5 +402,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None)
     ap.add_argument("--preset", default="readout", help="readout | readout_risk")
+    ap.add_argument("--leaders", default=None, help="replay tree root, e.g. replays/now")
     a = ap.parse_args()
-    run(a.out, a.preset)
+    run(a.out, a.preset, a.leaders)
