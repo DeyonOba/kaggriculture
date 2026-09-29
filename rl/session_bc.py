@@ -145,8 +145,17 @@ def extract(spec):
                 shed = (e_own.get("private") or {}).get("shed") or {}
                 bought = (len(farm_end.get("unlocked_quadrants", []))
                           > len(pub["farms"][side].get("unlocked_quadrants", [])))
+                # FERTILIZE actions per day over the label window, from this
+                # side's recorded script -- the v5 fert_budget label.
+                n_fert = 0
+                for _t in range(d * TPD, min((d_lab + 1) * TPD, len(scripts[side]))):
+                    _a = at(scripts[side], _t)
+                    n_fert += sum(1 for _u in [_a.get("farmer")] + list(_a.get("hands") or [])
+                                  if _u and _u[0] == "FERTILIZE")
+                fert_per_day = int(round(n_fert / max(1, d_lab - d + 1)))
                 choices = _targets_to_choices(view, m, crops, herd, shed,
-                                              farm_end.get("hires_today", 0), bought)
+                                              farm_end.get("hires_today", 0), bought,
+                                              fert=fert_per_day)
                 past = [hist[k] for k in range(d - 1, -1, -1) if k in hist]
                 t3 = board_pair_temporal_both(pub, side, prev_mid=mids.get(d - 1),
                                               hist=past)
@@ -163,6 +172,7 @@ def extract(spec):
                         "raw": {"crops": crops, "herd": herd,
                                 "shed": {k: v for k, v in shed.items() if k in ANIMALS},
                                 "hires": farm_end.get("hires_today", 0),
+                                "fert": fert_per_day,
                                 "land": bool(bought)},
                         "m": margin[side], "w": win[side], "seat": side,
                         "day": d})

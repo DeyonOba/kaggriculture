@@ -43,29 +43,43 @@ def _counts(farm_tiles):
     return crops, herd
 
 
-def _targets_to_choices(view, masks, crops, herd, shed, hires, bought_land):
+def _targets_to_choices(view, masks, crops, herd, shed, hires, bought_land, fert=0):
     anchor_vals = features.anchors(view)
     choices = []
     for (name, vals), mask in zip(features.HEADS, masks):
+        anchored = False
         if name in features.QUOTA_CROP:
             target = crops.get(features.QUOTA_CROP[name], 0)
-            if name in features.ANCHORED:
-                target -= anchor_vals[name]
+            anchored = name in features.ANCHORED
         elif name in features.BUY_KIND:
             kind = features.BUY_KIND[name]
             target = herd.get(kind, 0) + shed.get(kind, 0)
-            if name in features.ANCHORED:
-                target -= anchor_vals[name]
+            anchored = name in features.ANCHORED
         elif name == "hires":
             target = hires
         elif name == "land":
             target = 1 if bought_land else 0
+        elif name == "fert_budget":
+            target = fert                  # v5: FERTILIZE actions per day, from the replay
         elif name == "melon_floor":
             target = 80  # unobservable; neutral default
         elif name.endswith("_floor_scale"):
             target = 1.0
         else:
             target = vals[0]
+        # PARAMETERISE THE TARGET THE WAY THIS HEAD SET EXPECTS IT. `target` is
+        # an absolute count above; the grid it is quantised onto is not always
+        # in those units, and a mismatch is silent -- at v3 the grid is
+        # [0, .25, .5, .75, 1, 1.5] and an absolute target of 2 or more landed
+        # on 1.5 for every crop and animal, i.e. the corpus taught "always ask
+        # for 1.5x the anchor".
+        if features.HEADS_VERSION >= 4:
+            pass                       # the grid IS the integers: exact label
+        elif features.HEADS_VERSION == 3 and name in features.FRACTION_HEADS:
+            a = anchor_vals.get(name) or 0
+            target = (float(target) / a) if a else 0.0
+        elif anchored:
+            target -= anchor_vals[name]           # v1/v2 residual encoding
         choices.append(_nearest_valid(vals, mask, target))
     return choices
 

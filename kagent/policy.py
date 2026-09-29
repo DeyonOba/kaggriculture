@@ -130,6 +130,8 @@ class HeuristicPolicy:
                 continue
             if op[0] == "PLANT" and plan.plant_quota.get(op[1], 0) > 0:
                 plan.plant_quota[op[1]] -= 1
+            elif op[0] == "FERTILIZE" and getattr(plan, "fert_budget", None) is not None:
+                plan.fert_budget = max(0, plan.fert_budget - 1)
             elif op[0] == "BUILD_COOP":
                 plan.structure_builds["COOP"] = max(0, plan.structure_builds["COOP"] - 1)
             elif op[0] == "BUILD_PASTURE":

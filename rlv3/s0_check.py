@@ -88,6 +88,18 @@ def _forward_plants(steps, seat, day):
     return dict(c)
 
 
+def _forward_fert(steps, seat, day):
+    """Leader FERTILIZE actions per day, mean over d..d+2."""
+    n = 0; days = 0
+    for d in range(day, min(day + H, len(steps) // TURNS)):
+        days += 1
+        for t in range(d * TURNS, min((d + 1) * TURNS, len(steps))):
+            act = steps[t][seat].get("action") or {}
+            n += sum(1 for u in [act.get("farmer")] + list(act.get("hands") or [])
+                     if u and u[0] == "FERTILIZE")
+    return n / max(1, days)
+
+
 def _forward_spend(steps, seat, day):
     """Leader's actual dollars into seed / livestock / hands over days d..d+2.
     BUY_PRODUCT is excluded on purpose: the plan does not emit feed."""
@@ -182,8 +194,11 @@ def run(out=None):
             end = steps[min((d + 1) * TURNS - 1, len(steps) - 1)][seat]["observation"]
             lead_hires = end["farms"][seat].get("hires_today", 0)
             shops = tuple(sorted((obs.get("town") or {}).get("unlocked_shops") or []))
+            ctx = features.context(View(obs))
             rows.append({
                 "game": tag, "day": d, "n_shops": len(shops),
+                "consumers": dict(ctx["consumers"]),
+                "our_fert": delta.get("fert"), "lead_fert": _forward_fert(steps, seat, d),
                 "our_crops": delta["crops"], "our_herd": delta["herd"],
                 "our_hires": plans["ro"].hires_target, "lead_hires": lead_hires,
                 "lead_dcrops": {c: max(0, c3.get(c, 0) - c0.get(c, 0)) for c in CROPS},
@@ -272,6 +287,38 @@ def run(out=None):
         i = statistics.mean(day_in[d] for d in ds)
         verdict = "AT the floor" if t <= f * 1.15 else ("near" if t <= f * 1.5 else "outside")
         print(f"{name:<14}{f'{lo}-{hi}':>7}{t:>15.3f}{f:>14.3f}{i:>8.0%}   {verdict}")
+    # ---------------------------------------------------------------- 4
+    if any(r.get("our_fert") is not None for r in rows):
+        print(f"\n[4] FERTILISER  FERTILIZE actions per day, ours (plan.fert_budget) vs leaders")
+        print(f"{'stage':<14}{'ours':>7}{'leaders':>9}{'mae':>7}")
+        for name, lo, hi in STAGES:
+            rs = [r for r in rows if lo <= r["day"] <= hi and r.get("our_fert") is not None]
+            if not rs:
+                continue
+            o = statistics.mean(r["our_fert"] for r in rs)
+            t = statistics.mean(r["lead_fert"] for r in rs)
+            m = statistics.mean(abs(r["our_fert"] - r["lead_fert"]) for r in rs)
+            print(f"{name:<14}{o:>7.2f}{t:>9.2f}{m:>7.2f}")
+        z = [r for r in rows if r["day"] <= 9 and r.get("our_fert") is not None]
+        print(f"  days 0-9: ours {statistics.mean(r['our_fert'] for r in z):.2f}  "
+              f"leaders {statistics.mean(r['lead_fert'] for r in z):.2f}   <- the phase gate")
+
+    # ---------------------------------------------------------------- 5
+    print(f"\n[5] DEMAND RESPONSE  does the ask RISE with the number of shops that want the product?")
+    print(f"{'product->asset':<18}{'shops':>6}{'n':>6}{'ours':>8}{'leaders':>9}   (mean 3-day ask per dawn)")
+    for prod, asset in (("WOOL", "SHEEP"), ("MILK", "COW"), ("EGG", "GOOSE"), ("WHEAT", "WHEAT")):
+        for lo, hi, lab in ((0, 0, "0"), (1, 1, "1"), (2, 9, "2+")):
+            rs = [r for r in rows if lo <= r["consumers"].get(prod, 0) <= hi]
+            if not rs:
+                continue
+            if asset in CROPS:
+                o = statistics.mean(r["our_crops"].get(asset, 0) for r in rs)
+                t = statistics.mean(r["lead_flow"].get(asset, 0) for r in rs)
+            else:
+                o = statistics.mean(r["our_herd"].get(asset, 0) for r in rs)
+                t = statistics.mean(r["lead_dherd"].get(asset, 0) for r in rs)
+            print(f"{prod+'->'+asset:<18}{lab:>6}{len(rs):>6}{o:>8.2f}{t:>9.2f}")
+
     print("\nTVD = paired total-variation distance between our shares and that leader's, "
           "same game, same day. floor = how far the leaders sit from EACH OTHER on that "
           "day: at or below it is full agreement, there is no credit beneath it.")

@@ -340,15 +340,27 @@ def build_tasks(view, plan):
         # agent fertilises 220 times a game to our 112, mostly wheat, whose
         # fertilised window waters add 2 units instead of 1 (6 vs 4 a plant)
         gate = getattr(plan, "fert_gate", 1.0)
-        if t.get("fertilized_until_day", -1) < day and not plan.liquidation:
+        # plan.fert_budget (rlv3 readout, v5): FERTILIZE actions the plan
+        # wants today. None keeps the shipped price gate exactly. 0 means
+        # none at all -- the leaders' opening. N > 0 means the crop-age
+        # windows below still decide WHICH tile (engine facts about when
+        # fertiliser adds yield) but the PRICE test is waived, because the
+        # leaders fertilise 205 times a season at whatever the price is and
+        # a price gate is how we stop at ~112. policy.act decrements it per
+        # emitted op, so the cap holds across the day's turns.
+        budget = getattr(plan, "fert_budget", None)
+        if budget is not None and budget <= 0:
+            pass                                  # phase says no fertiliser today
+        elif t.get("fertilized_until_day", -1) < day and not plan.liquidation:
+            waive = budget is not None and budget > 0
             # Strawberries: a fertilized production yields 2 instead of 1
             # (~$165 each) for 3 days of cover — champions run ~270 units off
             # 33 tiles this way versus ~130 unfertilized.
             want_fert = (
-                (t["crop"] == "STRAWBERRY" and 9 <= age <= 15 and fert_price < 150 * gate)
-                or (t["crop"] == "TOMATO" and age in (8, 11) and fert_price < 80 * gate)
-                or (t["crop"] == "WHEAT" and age == 2 and fert_price < 40 * gate)
-                or (t["crop"] == "CARROT" and age == 2 and fert_price < 50 * gate)
+                (t["crop"] == "STRAWBERRY" and 9 <= age <= 15 and (waive or fert_price < 150 * gate))
+                or (t["crop"] == "TOMATO" and age in (8, 11) and (waive or fert_price < 80 * gate))
+                or (t["crop"] == "WHEAT" and age == 2 and (waive or fert_price < 40 * gate))
+                or (t["crop"] == "CARROT" and age == 2 and (waive or fert_price < 50 * gate))
             )
             if want_fert:
                 tasks.append(Task(P_TEND, x, y, ["FERTILIZE"], need="FERTILIZER"))

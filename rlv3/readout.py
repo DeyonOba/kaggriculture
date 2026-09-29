@@ -39,8 +39,8 @@ from kagent import econ, features
 from kagent.constants import ANIMALS
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_WEIGHTS = os.path.join(REPO, "rl", "runs", "headfix", "readout_v4_h3m", "bc.pt")
-VERSION = 4
+DEFAULT_WEIGHTS = os.path.join(REPO, "rl", "runs", "headfix", "readout_v5_h3", "bc.pt")
+VERSION = 5
 HORIZON = 3                     # days the prediction is FOR; masks() bounds capacity at it
 DAILY_ANIMAL_CAP = 4            # the champion plan's own per-day cap on a kind
 # The planner's own last purchase day per kind (planner._champ_herd_targets:
@@ -106,7 +106,7 @@ class Readout:
             logits = self.net.forward_z(torch.tensor([x], dtype=torch.float32), None)
             dists = masked_dists(logits, torch.tensor([flat], dtype=torch.float32))
             idx = [int(d.probs.argmax(-1)[0]) for d in dists]
-        out = {"crops": {}, "herd": {}, "hires": None, "land": 0}
+        out = {"crops": {}, "herd": {}, "hires": None, "land": 0, "fert": None}
         for (name, vals), i in zip(self.heads, idx):
             v = vals[i]
             if name in features.QUOTA_CROP:
@@ -117,6 +117,8 @@ class Readout:
                 out["hires"] = int(v)
             elif name == "land":
                 out["land"] = int(v)
+            elif name == "fert_budget":
+                out["fert"] = int(v)
         return out
 
 
@@ -208,7 +210,10 @@ def commit(plan, view, pred, order=None, horizon=HORIZON):
     plan.animal_buys = buys
     plan.structure_builds = builds
     plan.hires_target = hires
+    if pred.get("fert") is not None:
+        plan.fert_budget = int(pred["fert"])      # v5: FERTILIZE actions today
     delta = {"crops": dict(quota), "herd": dict(buys), "hires": hires,
+             "fert": pred.get("fert"),
              "land_signal": pred["land"], "pred": pred,
              "freeing": dict(freeing), "standing": dict(crops)}
     return plan, delta

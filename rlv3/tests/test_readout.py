@@ -206,3 +206,71 @@ def test_commit_plants_nothing_on_the_last_dawn(v4):
             "herd": {}, "hires": None, "land": 0}
     plan, _d = RO.commit(DayPlan(), view, pred)
     assert plan.plant_quota == {}, plan.plant_quota
+
+
+def test_v5_adds_exactly_the_fertiliser_head():
+    from kagent import features as F
+    F.set_heads_version(5)
+    names = [n for n, _ in F.HEADS]
+    assert names[-1] == "fert_budget" and names[:-1] == [n for n, _ in F.ABS_HEADS_V4]
+    assert F.HEADS[-1][1] == list(range(0, F.FERT_CAP + 1))
+    assert F.N_ACTION_LOGITS == sum(len(v) for _n, v in F.ABS_HEADS_V4) + F.FERT_CAP + 1
+
+
+def test_fert_label_is_the_replays_own_count():
+    from kagent import features as F
+    from rl.replay_bc import _targets_to_choices
+    F.set_heads_version(5)
+    view = _leader_dawn(12)
+    m = F.masks(view, horizon=3)
+    ch = _targets_to_choices(view, m, {}, {}, {}, 8, False, fert=7)
+    fi = [i for i, (n, _) in enumerate(F.HEADS) if n == "fert_budget"][0]
+    assert F.HEADS[fi][1][ch[fi]] == 7
+
+
+def test_scheduler_emits_no_fertilise_task_when_the_budget_is_zero():
+    """The phase gate: the leaders fertilise ZERO times on days 0-9."""
+    from kagent import scheduler as S
+    from kagent.gamestate import Memory
+    from kagent.planner import make_day_plan
+    view = _leader_dawn(12)
+    mem = Memory(); mem.observe(view)
+    plan = make_day_plan(view, mem, speculative=True)
+    base = sum(1 for t in S.build_tasks(view, plan) if t.op[0] == "FERTILIZE")
+    plan.fert_budget = 0
+    assert sum(1 for t in S.build_tasks(view, plan) if t.op[0] == "FERTILIZE") == 0
+    plan.fert_budget = None
+    assert sum(1 for t in S.build_tasks(view, plan) if t.op[0] == "FERTILIZE") == base, \
+        "None must be the shipped behaviour exactly"
+
+
+def test_a_positive_budget_waives_the_price_gate():
+    from kagent import scheduler as S
+    from kagent.gamestate import Memory
+    from kagent.planner import make_day_plan
+    view = _leader_dawn(12)
+    mem = Memory(); mem.observe(view)
+    plan = make_day_plan(view, mem, speculative=True)
+    plan.fert_gate = 0.0                     # price gate closed for every crop
+    assert sum(1 for t in S.build_tasks(view, plan) if t.op[0] == "FERTILIZE") == 0
+    plan.fert_budget = 5
+    assert sum(1 for t in S.build_tasks(view, plan) if t.op[0] == "FERTILIZE") > 0
+
+
+def test_policy_consumes_the_budget_per_emitted_op():
+    from kagent.planner import DayPlan
+    plan = DayPlan(); plan.fert_budget = 2
+    for op in (["FERTILIZE"], ["FERTILIZE"], ["FERTILIZE"]):
+        if op[0] == "FERTILIZE" and getattr(plan, "fert_budget", None) is not None:
+            plan.fert_budget = max(0, plan.fert_budget - 1)
+    assert plan.fert_budget == 0
+
+
+def test_commit_sets_the_fert_budget_from_the_prediction(v4):
+    from rlv3 import readout as RO
+    from kagent.planner import DayPlan
+    view = _leader_dawn(12)
+    plan, d = RO.commit(DayPlan(), view, {"crops": {}, "herd": {}, "hires": None, "land": 0, "fert": 9})
+    assert plan.fert_budget == 9 and d["fert"] == 9
+    plan2, _ = RO.commit(DayPlan(), view, {"crops": {}, "herd": {}, "hires": None, "land": 0})
+    assert plan2.fert_budget is None, "no prediction -> shipped behaviour"

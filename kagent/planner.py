@@ -189,7 +189,7 @@ class DayPlan:
         "hires_target", "land_buys", "plant_quota", "animal_buys",
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
         "fert_reserve", "land_margin", "feed_days", "cull_kinds", "sell_pace",
-        "fert_gate",
+        "fert_gate", "fert_budget",
     )
 
     def __init__(self):
@@ -205,6 +205,10 @@ class DayPlan:
         self.sell_pace = -1
         # Scale on the scheduler's fertiliser price gates (1.0 = shipped).
         self.fert_gate = 1.0
+        # FERTILIZE actions the plan wants today; None = no cap, the shipped
+        # price-gated behaviour. Set by the rlv3 readout (v5 fert_budget head)
+        # and consumed by policy.act as ops are emitted, like plant_quota.
+        self.fert_budget = None
         self.liquidation = False
         # Animal kinds the scheduler must stop feeding today (they escape
         # after two unfed days). Empty unless a cull knob is on.

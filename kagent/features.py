@@ -324,6 +324,17 @@ ABS_HEADS_V4 = [(n, list(range(0, ANCHOR_CAPS[n] + 1)) if n in UNIT_HEADS
                  else list(v)) for n, v in ABS_HEADS] + SELL_TIMING_HEADS
 RESIDUAL_HEADS_V4 = ABS_HEADS_V4
 
+# v5 = v4 + a FERTILISER BUDGET: FERTILIZE actions the plan wants per day.
+# The leaders (40 games, winner seat) apply ZERO fertiliser on days 0-9, start
+# on day 10 -- the day the melon money lands -- and ramp to ~13 a day, 205 a
+# season against our ~112-124. That is a PHASE rule; the shipped scheduler's
+# is a PRICE rule (fert_gate). Labelled from the leaders' own FERTILIZE
+# actions, so the phase is learned from the data, not written in. Cap 20 =
+# their per-day p95 (19); the grid is the integers, exact like v4.
+FERT_CAP = 20
+ABS_HEADS_V5 = ABS_HEADS_V4 + [("fert_budget", list(range(0, FERT_CAP + 1)))]
+RESIDUAL_HEADS_V5 = ABS_HEADS_V5
+
 HEADS_VERSION = 1
 
 MODE = "absolute"
@@ -338,7 +349,9 @@ def set_mode(mode):
     a network is built or a bundle's provider is constructed."""
     global MODE, HEADS, HEAD_SIZES, N_ACTION_LOGITS
     MODE = mode
-    if HEADS_VERSION >= 4:
+    if HEADS_VERSION >= 5:
+        HEADS = RESIDUAL_HEADS_V5 if mode == "residual" else ABS_HEADS_V5
+    elif HEADS_VERSION == 4:
         HEADS = RESIDUAL_HEADS_V4 if mode == "residual" else ABS_HEADS_V4
     elif HEADS_VERSION == 3:
         HEADS = RESIDUAL_HEADS_V3 if mode == "residual" else ABS_HEADS_V3
