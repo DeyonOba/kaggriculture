@@ -239,16 +239,27 @@ class NeuralPolicy:
     rl/common.to_layers output). Falls back to the pure heuristic plan when
     no weights are loaded."""
 
-    def __init__(self, layers, temperature=1.0, rng=None, residual=False):
+    def __init__(self, layers, temperature=1.0, rng=None, residual=False,
+                 decode="plan", apply=None):
         self.layers = layers
         self.temperature = temperature
         self.rng = rng
         # residual: champion base plan + offset heads (features.RESIDUAL_HEADS)
         self.residual = residual
+        # decode: how a v4/v5 net's absolute targets become a plan. "plan" is
+        # features.apply_to_plan (horizon-1 masks, deficit vs today's count).
+        # "commit" is rlv3.readout.commit on the champion plan -- masks at the
+        # readout's horizon, the persistence-adjusted ask, the planner's own
+        # cutoffs and bounds -- i.e. EXACTLY the gate's readout arm, so what
+        # PPO improves is what the paired gate measures. `apply` names the
+        # heads commit may overwrite (None = all; see readout.parse_apply).
+        self.decode = decode
+        self.apply = apply
         self.last_decision = None  # (features, masks, choices, logprob, value)
 
     def make_plan(self, view, memory):
-        plan = planner.make_day_plan(view, memory, speculative=self.residual)
+        plan = planner.make_day_plan(view, memory,
+                                     speculative=self.residual or self.decode == "commit")
         if self.layers is None:
             return plan
         # Restore THIS net's action space before encoding: a worker process
@@ -260,7 +271,11 @@ class NeuralPolicy:
         if want != features.HEADS_VERSION:
             features.set_heads_version(want)
         x = features.encode(view, memory)
-        head_masks = features.masks(view)
+        if self.decode == "commit":
+            from rlv3 import readout as _RO
+            head_masks = features.masks(view, horizon=_RO.HORIZON)
+        else:
+            head_masks = features.masks(view)
         bl = self.layers["policy"].get("board")
         board = getattr(self, "board", None)
         xp = x
@@ -281,6 +296,12 @@ class NeuralPolicy:
             logits, head_masks, rng=self.rng, temperature=self.temperature
         )
         self.last_decision = (x, head_masks, choices, logprob, value)
+        if self.decode == "commit":
+            from rlv3 import portfolio as _PF, readout as _RO
+            pred = _RO.choices_to_pred(features.HEADS, choices)
+            order = [r["item"] for r in _PF.rank(view, 1.0, False)["rows"]]
+            plan, _delta = _RO.commit(plan, view, pred, order=order, apply=self.apply)
+            return plan
         if self.residual:
             return features.apply_residual(plan, choices, view)
         return features.apply_to_plan(plan, choices, view)

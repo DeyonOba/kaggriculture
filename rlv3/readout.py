@@ -91,6 +91,27 @@ def last_plant_day(crop):
     return 29 - int(lead or 0)
 
 
+def choices_to_pred(heads, idx):
+    """Per-head choice indices -> the readout's prediction dict. Shared by
+    Readout.predict (argmax) and kagent.nnpolicy.NeuralPolicy(decode="commit")
+    (a sampled or argmax choice from the same net under PPO), so the policy
+    the trainer improves is decoded exactly as the gate's readout arm."""
+    out = {"crops": {}, "herd": {}, "hires": None, "land": 0, "fert": None}
+    for (name, vals), i in zip(heads, idx):
+        v = vals[i]
+        if name in features.QUOTA_CROP:
+            out["crops"][features.QUOTA_CROP[name]] = int(v)
+        elif name in features.BUY_KIND:
+            out["herd"][features.BUY_KIND[name]] = int(v)
+        elif name == "hires":
+            out["hires"] = int(v)
+        elif name == "land":
+            out["land"] = int(v)
+        elif name == "fert_budget":
+            out["fert"] = int(v)
+    return out
+
+
 class Readout:
     def __init__(self, weights=DEFAULT_WEIGHTS, version=VERSION, horizon=HORIZON):
         import torch
@@ -126,20 +147,7 @@ class Readout:
             logits = self.net.forward_z(torch.tensor([x], dtype=torch.float32), None)
             dists = masked_dists(logits, torch.tensor([flat], dtype=torch.float32))
             idx = [int(d.probs.argmax(-1)[0]) for d in dists]
-        out = {"crops": {}, "herd": {}, "hires": None, "land": 0, "fert": None}
-        for (name, vals), i in zip(self.heads, idx):
-            v = vals[i]
-            if name in features.QUOTA_CROP:
-                out["crops"][features.QUOTA_CROP[name]] = int(v)
-            elif name in features.BUY_KIND:
-                out["herd"][features.BUY_KIND[name]] = int(v)
-            elif name == "hires":
-                out["hires"] = int(v)
-            elif name == "land":
-                out["land"] = int(v)
-            elif name == "fert_budget":
-                out["fert"] = int(v)
-        return out
+        return choices_to_pred(self.heads, idx)
 
 
 def tilt(pred, ranked, view, horizon=HORIZON):

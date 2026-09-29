@@ -185,6 +185,25 @@ def _residual():
     return False
 
 
+def _decode():
+    """How a v4/v5 net's choices become a plan, chosen by the parent via
+    KAGG_DECODE=commit (Pool workers inherit the environment): see
+    kagent.nnpolicy.NeuralPolicy. Default "plan" is the legacy path."""
+    return os.environ.get("KAGG_DECODE", "plan")
+
+
+def _set_exec(flags):
+    """Executor rule flags for THIS episode: returns the previous table so
+    run_episode can put the worker back for its next job. scheduler.EXEC is
+    process-global, so the flags reach BOTH seats -- the heuristic opponent
+    in this worker then plays the deployed champion, not the flagless one."""
+    from kagent import scheduler as _sched
+    prev = dict(_sched.EXEC)
+    _sched.reset_exec()
+    _sched.set_exec(flags)
+    return prev
+
+
 def _make_learner_agent(layers, temperature, rng, records, mode, style="react", dev=None, extra=None):
     mem = Memory()
     residual = _residual()
@@ -289,7 +308,8 @@ def _make_learner_agent(layers, temperature, rng, records, mode, style="react", 
 
         return agent_fn
 
-    provider = NeuralPolicy(layers, temperature=temperature, rng=rng, residual=residual)
+    provider = NeuralPolicy(layers, temperature=temperature, rng=rng, residual=residual,
+                            decode=_decode())
     pol = HeuristicPolicy(provider)
 
     last_view = {}
@@ -497,7 +517,8 @@ def _make_opponent(spec):
         # League members (past bests) play sharply; plain snapshots stay
         # noisy for exploration diversity.
         temp = 0.2 if spec[0] == "league" else 0.7
-        provider = NeuralPolicy(layers, temperature=temp, rng=random.Random(0), residual=_residual())
+        provider = NeuralPolicy(layers, temperature=temp, rng=random.Random(0), residual=_residual(),
+                                decode=_decode())
         pol = HeuristicPolicy(provider)
 
         def opp_fn(obs):
@@ -544,10 +565,7 @@ def run_episode(job):
         # the next job in the worker sees the shipped executor.
         flags = spec.get("exec") or (spec.get("rules") or {}).get("exec")
         if flags:
-            from kagent import scheduler as _sched
-            exec_prev = dict(_sched.EXEC)
-            _sched.reset_exec()
-            _sched.set_exec(flags)
+            exec_prev = _set_exec(flags)
     elif job.get("learner_bundle"):
         # OUR side played by a frozen bundle (a shipped main.py), exec'd the way
         # the Kaggle loader does it. No records: nothing to train on, this is
@@ -559,6 +577,11 @@ def run_episode(job):
             layers, temperature, sample_rng, records, mode, style=job.get("style", "react"),
             dev=job.get("dev"), extra=extra,
         )
+    # Flags on the JOB reach every kind of learner, the net included. Without
+    # this a net trained and gated FLAGLESS while the champion it was compared
+    # with carried the shipped four (rl/train.py --exec shipped sets it).
+    if exec_prev is None and job.get("exec"):
+        exec_prev = _set_exec(job["exec"])
     opponent = _make_opponent(job.get("opponent", "heuristic"))
 
     side = job.get("side", 0)

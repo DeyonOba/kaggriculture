@@ -188,7 +188,7 @@ def bc_phase(net, pool, n_games, epochs=40, extra=None, ft_epochs=15):
         jobs.append(
             {"weights_path": None, "seed": 5000 + i, "side": i % 2,
              "opponent": opponent, "mode": "bc",
-             "style": "spec" if (i % 2 == 0 or RESIDUAL) else "react"}
+             "style": "spec" if (i % 2 == 0 or RESIDUAL) else "react", **JOB_EXTRA}
         )
     records = []
     for ep in pool.imap_unordered(rollout.run_episode, jobs):
@@ -490,6 +490,12 @@ def _eval_band_weights(idx_path, edges=None, per_bin=EVAL_PER_BIN):
     return [c / tot for c in counts]
 
 
+# Extra keys merged into EVERY rollout job (training, paired twins, evals):
+# {"exec": [...]} when --exec shipped, so both seats play the deployed
+# executor rules. Set once in main(); Pool workers read it off the job.
+JOB_EXTRA = {}
+
+
 def _draw_opponent(rng, roll, entries, bins, unrated, bin_wins, band_w,
                    session_mix, session_frac, opp_bundles, league, snapshots):
     """One episode's opponent, and the learner's seat when it is a session.
@@ -633,7 +639,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
             jobs.append(
                 {"weights_path": wpath, "temperature": 1.0,
                  "seed": world_base + it * episodes + e, "side": side,
-                 "opponent": opp, "mode": "rl"}
+                 "opponent": opp, "mode": "rl", **JOB_EXTRA}
             )
         if PAIRED:
             # Twin of every episode: the champion plan (zero offsets) on the
@@ -849,7 +855,7 @@ def ppo_phase(net, vnet, pool, run_dir, iters, episodes, procs, eval_every=5, op
                 sess_jobs.append({
                     "weights_path": os.path.join(run_dir, "eval.json"),
                     "temperature": 0.0, "seed": 0, "side": 1 - script_side,
-                    "opponent": ("session", sp, script_side), "mode": "rl"})
+                    "opponent": ("session", sp, script_side), "mode": "rl", **JOB_EXTRA})
             sess_out = list(pool.imap_unordered(rollout.run_episode, sess_jobs))
             session_wr = sum(ep["win"] for ep in sess_out) / max(1, len(sess_out))
             session_money = sum(ep["final_money"] for ep in sess_out) / max(1, len(sess_out))
@@ -907,7 +913,7 @@ def evaluate(net, pool, run_dir, n_seeds=10, opponent="heuristic", seed_base=90_
         for side in (0, 1):
             jobs.append(
                 {"weights_path": wpath, "temperature": 0.0, "seed": seed_base + i,
-                 "side": side, "opponent": opponent, "mode": "rl"}
+                 "side": side, "opponent": opponent, "mode": "rl", **JOB_EXTRA}
             )
     out = list(pool.imap_unordered(rollout.run_episode, jobs))
     wins = sum(ep["win"] for ep in out) / len(out)
@@ -933,7 +939,8 @@ def apply_checkpoints(net, vnet, resume=None, trunk_init=None, freeze_trunk=Fals
         ckpt = torch.load(resume)
         if isinstance(ckpt, dict) and "policy" in ckpt:
             net.load_state_dict(ckpt["policy"])
-            vnet.load_state_dict(ckpt["value"])
+            if ckpt.get("value") is not None:      # a BC readout carries no value net
+                vnet.load_state_dict(ckpt["value"])
         else:
             net.load_state_dict(ckpt)
     info = {"resume_trunk_dist": None, "trunk_dist": None}
@@ -1082,6 +1089,14 @@ def main():
     ap.add_argument("--plateau-cool", type=float, default=None,
                     help="LR multiplier per eval without improvement (1.0 = off; residual argmax evals stay flat by design)")
     ap.add_argument("--prior-pt", default=None, help="checkpoint to use as the frozen prior for --prior-kl (default: the resumed/BC net)")
+    ap.add_argument("--exec", choices=("none", "shipped"), default="none",
+                    help="executor rule flags on every rollout job, BOTH seats: 'shipped' = "
+                         "kagent.weights.EXEC_RULES (the deployed champion as training "
+                         "partner); 'none' = the legacy flagless worker")
+    ap.add_argument("--decode", choices=("plan", "commit"), default="plan",
+                    help="how a v4/v5 net's head choices become a DayPlan: 'commit' = "
+                         "rlv3.readout.commit on the champion plan (the gate's readout arm, "
+                         "masks at its horizon); 'plan' = features.apply_to_plan (legacy)")
     ap.add_argument(
         "--residual", action="store_true",
         help="offset heads over the champion plan (champ-h3 lineage); zero = the shipped heuristic",
@@ -1134,6 +1149,13 @@ def main():
     if args.lr is not None:
         LR = args.lr
     print(f"ENT_COEF={ENT_COEF} LR={LR} prior_kl={args.prior_kl}")
+    if args.exec == "shipped":
+        from kagent import weights as _w
+        JOB_EXTRA["exec"] = list(_w.EXEC_RULES)
+        print(f"executor flags on every job, both seats: {JOB_EXTRA['exec']}")
+    if args.decode == "commit":
+        os.environ["KAGG_DECODE"] = "commit"  # inherited by Pool workers
+        print("decode: COMMIT -- rlv3.readout.commit on the champion plan, masks at its horizon")
     if RESIDUAL:
         os.environ["KAGG_RESIDUAL"] = "1"  # inherited by Pool workers
         features.set_mode("residual")
@@ -1144,7 +1166,7 @@ def main():
 
     # Feature size probe: one tiny BC episode.
     probe = rollout.run_episode(
-        {"weights_path": None, "seed": 1, "side": 0, "opponent": "starter", "mode": "bc"}
+        {"weights_path": None, "seed": 1, "side": 0, "opponent": "starter", "mode": "bc", **JOB_EXTRA}
     )
     n_features = len(probe["records"][0]["x"])
     print(f"n_features={n_features} n_action_logits={features.N_ACTION_LOGITS}")
