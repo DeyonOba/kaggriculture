@@ -88,6 +88,29 @@ _STRAW_PER_TILE_DAY = 0.5   # fertilized+watered ongoing strawberry
 
 
 
+def freeing_by_crop(view, horizon):
+    """{crop: tiles whose crop finishes within `horizon` days}. The same
+    finish-day arithmetic as `tile_flow`, kept per crop, because a capacity
+    bound at a horizon has to know WHOSE tiles come free -- a tile wheat frees
+    on day d+1 is capacity for strawberry at d+2, but not extra capacity for
+    wheat, whose standing count already holds it."""
+    day, step = view.day, view.step
+    out = {}
+    for _, _, t in view.me.plants():
+        crop = CROPS.get(t.get("crop"))
+        if crop is None:
+            continue
+        age = day - t.get("planted_day", day)
+        if not crop["ongoing"]:
+            k = max(0, crop["max_yield_day"] - age)
+        else:
+            mls = t.get("max_lifespan_step", -1)
+            k = max(0, (mls - step) // TURNS_PER_DAY) if mls >= 0 else horizon + 1
+        if k <= horizon:
+            out[t["crop"]] = out.get(t["crop"], 0) + 1
+    return out
+
+
 def tile_flow(view, horizon=3):
     """The board as a FLOW, which is what a day plan actually decides on.
 
@@ -280,6 +303,27 @@ ABS_HEADS_V3 = [(n, list(FRACTION_FACTORS) if n in FRACTION_HEADS else list(v))
                 for n, v in ABS_HEADS] + SELL_TIMING_HEADS
 RESIDUAL_HEADS_V3 = ABS_HEADS_V3          # the fraction form needs no separate residual grid
 
+# --- Head set v4: ABSOLUTE, FULL RESOLUTION 0..cap ------------------------
+# v3 made each quantity a FRACTION of its anchor, which fixes v1's fixed grid
+# but keeps a resolution ceiling wherever the anchor is large: at an anchor of
+# 20 the six factors give 0/5/10/15/20/30 and cannot say 7, 12 or 18. v4 gives
+# every quantity head every integer from 0 to its ANCHOR_CAPS entry, so any
+# count a leader actually plays is expressible for every crop AND every animal.
+#
+# It also makes the BC label EXACT. v1-v3 quantise an absolute target onto a
+# grid with `_nearest_valid`, which is where the project's recurring
+# label-mismatch bugs live -- at v3 an absolute target of 2 or more landed on
+# the 1.5 factor for every crop and animal, teaching "always max". At v4 the
+# grid IS the integers, so the label is an identity and cannot misencode.
+#
+# The trade, stated: the anchor no longer shapes the action space, it is only
+# an input feature and a prior. Resolution stops following the operating point,
+# which is what v3 was for.
+UNIT_HEADS = FRACTION_HEADS
+ABS_HEADS_V4 = [(n, list(range(0, ANCHOR_CAPS[n] + 1)) if n in UNIT_HEADS
+                 else list(v)) for n, v in ABS_HEADS] + SELL_TIMING_HEADS
+RESIDUAL_HEADS_V4 = ABS_HEADS_V4
+
 HEADS_VERSION = 1
 
 MODE = "absolute"
@@ -294,7 +338,9 @@ def set_mode(mode):
     a network is built or a bundle's provider is constructed."""
     global MODE, HEADS, HEAD_SIZES, N_ACTION_LOGITS
     MODE = mode
-    if HEADS_VERSION >= 3:
+    if HEADS_VERSION >= 4:
+        HEADS = RESIDUAL_HEADS_V4 if mode == "residual" else ABS_HEADS_V4
+    elif HEADS_VERSION == 3:
         HEADS = RESIDUAL_HEADS_V3 if mode == "residual" else ABS_HEADS_V3
     elif HEADS_VERSION == 2:
         HEADS = RESIDUAL_HEADS_V2 if mode == "residual" else ABS_HEADS_V2
@@ -306,11 +352,39 @@ def set_mode(mode):
 
 def set_heads_version(v):
     """Select the action space. 1 = shipped (13 heads, 57 logits); 2 adds the
-    two sell-timing heads (15 heads, 65 logits). Nets carry their own version,
-    so this is never changed implicitly for an already-trained policy."""
-    global HEADS_VERSION
+    two sell-timing heads (15 heads, 65 logits); 3 makes every quantity head a
+    FRACTION of its state-dependent anchor. Nets carry their own version, so
+    this is never changed implicitly for an already-trained policy.
+
+    EXPORTS TO THE ENVIRONMENT, and that is load-bearing. `rl/train.py` runs
+    its rollouts in a `multiprocessing.Pool`, and spawn re-imports this module
+    in every worker -- so a version set only in the parent leaves the workers
+    on v1 while the parent sizes the net for v3. Nothing reports it: the
+    OBSERVATION width is unchanged, so the encoder guard cannot fire, and
+    `rl/rollout.py:149` simply splits the net's logits with the wrong HEADS
+    list, misreading every choice. Same trap as `rl/rollout.py:355-359`.
+    """
+    global HEADS_VERSION, N_FEATURES
     HEADS_VERSION = int(v)
+    os.environ["KAGG_HEADS_V"] = str(HEADS_VERSION)
     set_mode(MODE)
+    # N_FEATURES is a cache encode() fills as a side effect of its LAST call,
+    # keyed by version in N_FEATURES_BY_VERSION. Without this line the alias
+    # keeps the previous version's width after a switch -- an encode at v4
+    # (196) followed by set_heads_version(1) left N_FEATURES at 196, and the
+    # rlv3 fingerprint read "v1 / nfeat=196", a state no net was ever trained
+    # in, and marked a valid PPO run stale. Re-point it at THIS version's
+    # width (None until encode has run at it, which is what a fresh process
+    # sees too).
+    # globals().get, not a bare name: this function also runs at IMPORT time
+    # (the KAGG_HEADS_V pickup below, in every spawn worker and in a bundle),
+    # before N_FEATURES_BY_VERSION is defined further down the module.
+    N_FEATURES = globals().get("N_FEATURES_BY_VERSION", {}).get(HEADS_VERSION)
+
+
+# A spawned worker re-imports this module: pick the version back up here.
+if os.environ.get("KAGG_HEADS_V"):
+    set_heads_version(int(os.environ["KAGG_HEADS_V"]))
 
 QUOTA_CROP = {
     "melon_tiles": "MELON",
@@ -572,12 +646,24 @@ def land_allowed(view):
     return MAX_QUADRANTS <= 0 or len(view.me.unlocked_quadrants) < MAX_QUADRANTS
 
 
-def masks(view):
+def masks(view, horizon=1):
     """Per-head validity masks (list of lists of 0/1), same order as HEADS.
 
     Targets are self-clamping in apply_to_plan (a target below the current
     count is simply a no-op), so most heads stay fully valid; only choices
     that are strictly impossible are masked.
+
+    `horizon` is the number of days the head's target is FOR. At 1 (every
+    existing caller) the v4 capacity bound is today's physical ground and the
+    output is bit-identical to before. At 3 -- the 3-day commitment the
+    readout is trained and asked at -- a tile that ANOTHER crop frees inside
+    the window counts as capacity for this one. Measured on the leaders' own
+    dawns (rlv3/s0_check.py, 2026-09-29): they hold zero bare tiles, so at
+    horizon 1 the bound EQUALS the standing count, the readout can never ask
+    for more than is planted, the 3-day crop commitment is empty on days 2-9
+    where the leaders spend 35-40% on seed, and the labels it was trained on
+    were clipped the same way (its 3-day label ceiling was 0.71 tiles against
+    0.23 same-day). A capacity bound at the wrong horizon is a plan bound.
     """
     me = view.me
     money = me.money
@@ -594,7 +680,46 @@ def masks(view):
         if not any(m):
             m[0] = 1
         out.append(m)
-    if HEADS_VERSION >= 3:
+    if HEADS_VERSION >= 4:
+        # CAPACITY LEGALITY. v4's grids run 0..ANCHOR_CAPS, but a crop cannot
+        # stand on more tiles than the farm physically has: with one quadrant
+        # unlocked there are 25 tiles total, so "44 wheat" is not a decision,
+        # it is noise -- and apply_to_plan clips it to the same plan as any
+        # other oversized ask, so the policy gradient cannot tell them apart
+        # ("the model never learns that its ask was impossible", :677-680).
+        # This is the Maia legality filter applied to the planner: remove the
+        # probabilities that cannot exist on this board.
+        #
+        # The bound is PHYSICAL, never tactical: tiles this crop could occupy
+        # at once = unlocked tiles minus what everything else is standing on.
+        # A long-horizon aspiration (plant, harvest, replant) is untouched,
+        # because the bound is on STANDING count, which is what the head means.
+        unlocked = len(me.unlocked_quadrants) * 25
+        occupied = {}
+        for _x, _y, _t in me.plants():
+            occupied[_t["crop"]] = occupied.get(_t["crop"], 0) + 1
+        n_struct = sum(1 for _x, _y, _t in me.animals())
+        used = sum(occupied.values()) + n_struct
+        # Ground that OTHER crops give back inside the horizon is capacity
+        # for this head; this crop's own freeing tiles are already inside its
+        # standing count (replanting keeps the count), so they are not added.
+        freed = freeing_by_crop(view, horizon) if horizon > 1 else {}
+        freed_total = sum(freed.values())
+        for _i, (_name, _vals) in enumerate(HEADS):
+            if _name in QUOTA_CROP:
+                mine = occupied.get(QUOTA_CROP[_name], 0)
+                others = freed_total - freed.get(QUOTA_CROP[_name], 0)
+            elif _name in BUY_KIND:
+                mine = n_struct
+                others = freed_total          # a structure can take any freed tile
+            else:
+                continue
+            ceiling = max(0, unlocked - (used - mine) + others)
+            out[_i] = [1 if v <= ceiling else 0 for v in _vals]
+            if not any(out[_i]):
+                out[_i][0] = 1
+
+    if HEADS_VERSION == 3:
         # A fraction head whose anchor is 0 collapses every factor to the same
         # plan (round(f * 0) == 0), so reporting all six as valid hands the
         # policy gradient 48 logits that cannot change anything and teaches it
@@ -609,6 +734,206 @@ def masks(view):
     return out
 
 
+def share_quota(view, crop_share, stock_share=0.0, horizon=1):
+    """Allocate the ground that EXISTS, proportionally, per quadrant.
+
+    `crop_share` is a mapping crop -> weight (need not sum to 1; it is
+    normalised here). `stock_share` is the fraction of workable ground that
+    goes to structures rather than plants.
+
+    -> (plant_quota, structure_tiles)
+
+    WHY THIS EXISTS. The shipped path emits an ABSOLUTE standing target per
+    crop, converts it to `deficit = target - standing`, then drains one shared
+    budget in QUOTA_CROP dict order. Three consequences, all measured:
+
+      * the ask desynchronises from the ground. Traced over one champion
+        season: carrot was asked for 141 tiles and gained 33, and on the
+        biggest clearance of the game (26 tiles free on day 11) it asked for
+        none at all.
+      * under scarcity the MIX is decided by dict order, not by the caller.
+        Melon is first, so with 10 free tiles melon takes all 10 and the other
+        four crops take nothing whatever they asked for.
+      * the map collapses. ~1e8 legal action combinations produce 3-81
+        distinct plans, so a policy gradient taken through it is mostly
+        gradient with respect to nothing.
+
+    A share has none of those: it allocates exactly the ground available, so
+    it cannot over-ask, there is no shared budget to drain in order, and N
+    distinct shares give N distinct plans. It is also scale-free -- when a
+    quadrant unlocks, the denominator grows and the counts follow with no
+    re-targeting.
+    """
+    tot = sum(max(0.0, w) for w in crop_share.values())
+    if tot <= 0:
+        return {}, 0
+    fl = tile_flow(view, horizon=horizon)
+    workable = int(fl["free_now"] + sum(fl["freeing"][k] for k in range(1, horizon + 1)))
+    workable = max(0, min(workable, PLANTS_PER_DAY_CAP))
+    n_struct = int(round(workable * max(0.0, min(1.0, stock_share))))
+    ground = max(0, workable - n_struct)
+
+    # Largest-remainder, so the parts sum to `ground` exactly and a small share
+    # is not rounded to zero every single day while a large one rounds up.
+    exact = {c: ground * max(0.0, w) / tot for c, w in crop_share.items()}
+    quota = {c: int(v) for c, v in exact.items()}
+    left = ground - sum(quota.values())
+    for c, _r in sorted(exact.items(), key=lambda kv: -(kv[1] - int(kv[1]))):
+        if left <= 0:
+            break
+        quota[c] += 1
+        left -= 1
+    return {c: n for c, n in quota.items() if n > 0}, n_struct
+
+
+QUADRANTS = (("NW", 0, 0), ("NE", 5, 0), ("SW", 0, 5), ("SE", 5, 5))
+
+
+def quadrant_of(x, y):
+    for name, qx, qy in QUADRANTS:
+        if qx <= x < qx + 5 and qy <= y < qy + 5:
+            return name
+    return "NW"
+
+
+def freeing_tiles(view, horizon=1):
+    """[(x, y)] of tiles that are bare NOW or whose crop finishes within
+    `horizon` days -- the same clock `tile_flow` counts with, but keeping the
+    identities it throws away.
+
+    The identities are the point. A COUNT can only be spent at dawn, against
+    ground that is bare at dawn; a tile that frees at hour 14 is then a race
+    the plan already lost. With identities the plan can queue an occupant for
+    every tile that will free, and the tile is planted the moment it frees.
+    """
+    out = []
+    for x, y in view.me.empty_tiles():      # 2-tuple; weeds/plants are 3
+        out.append((x, y))
+    for x, y, _t in view.me.weeds():
+        out.append((x, y))
+    day, step = view.day, view.step
+    for x, y, t in view.me.plants():
+        crop = CROPS.get(t.get("crop"))
+        if crop is None:
+            continue
+        age = day - t.get("planted_day", day)
+        if not crop["ongoing"]:
+            k = max(0, crop["max_yield_day"] - age)
+        else:
+            mls = t.get("max_lifespan_step", -1)
+            k = max(0, (mls - step) // TURNS_PER_DAY) if mls >= 0 else horizon + 1
+        if k <= horizon:
+            out.append((x, y))
+    return out
+
+
+def tile_queue(view, crop_share, stock_share=0.0, horizon=1):
+    """-> {(x, y): "WHEAT" | ... | "PASTURE" | "COOP"}, one entry per tile that
+    is free now or frees within `horizon` days.
+
+    THE FOUR LEVELS, in order, each one fixing something measured:
+
+    1. FIXED LAND. The denominator is the ground that actually exists, per
+       unlocked quadrant. Nothing is predicted about it.
+    2. CROP : LIVESTOCK. One share splits that ground.
+    3. DISTRIBUTION WITHIN EACH. A share across crops, a share across animals.
+       Normalised here, so the caller emits weights and never counts -- which
+       is what makes the whole thing scale-free: unlock a quadrant and the
+       denominator grows, the proportions do not move, the counts follow.
+    4. PER-TILE ASSIGNMENT. Each quadrant takes its share of the global totals
+       in proportion to the ground it holds, so the quadrants COLLECTIVELY
+       realise the global ratio rather than each guessing independently.
+
+    Why per-tile rather than a quota. Traced over one champion season, carrot
+    was asked for 141 tiles and gained 33: the ask is silent on the day 26
+    tiles free and enormous on days with none, because `deficit = target -
+    standing` says how much and never WHEN. A queue cannot desynchronise --
+    the occupant is decided before the tile frees.
+
+    Placement inside a quadrant is deliberate, not nearest-first: structures
+    go down first, then WHEAT takes the tiles orthogonally adjacent to them.
+    The leaders keep wheat beside the animals on 36-56% of animal tiles
+    against our 18%, and that is what lets a hand harvest and feed without a
+    shed trip -- their pickups-per-feed is 0.46-0.55 to our 1.10.
+    """
+    cand = freeing_tiles(view, horizon=horizon)
+    if not cand:
+        return {}
+
+    # RULE 1: never queue a crop that cannot be realised before the season
+    # ends. LAST_PLANT is the engine's own arithmetic -- melon needs 10 days
+    # to its first yield so day 19 is the last that pays, strawberry 13. A
+    # tile planted past it is a tile-day spent on nothing, and the share has
+    # to be renormalised over what remains or the dead crop's weight is simply
+    # lost rather than redistributed.
+    day = view.day
+    crop_share = {c: w for c, w in crop_share.items()
+                  if c not in LAST_PLANT or day <= LAST_PLANT[c]}
+    if not crop_share:
+        return {}
+    by_q = {}
+    for x, y in cand:
+        by_q.setdefault(quadrant_of(x, y), []).append((x, y))
+
+    def _split(weights, n):
+        """Largest remainder, so a small share is not rounded away every day."""
+        tot = sum(max(0.0, w) for w in weights.values())
+        if tot <= 0 or n <= 0:
+            return {}
+        exact = {k: n * max(0.0, w) / tot for k, w in weights.items()}
+        out = {k: int(v) for k, v in exact.items()}
+        left = n - sum(out.values())
+        for k, _v in sorted(exact.items(), key=lambda kv: -(kv[1] - int(kv[1]))):
+            if left <= 0:
+                break
+            out[k] += 1
+            left -= 1
+        return out
+
+    queue = {}
+    for qname, tiles in by_q.items():
+        # Each quadrant translates the GLOBAL ratio against its own ground.
+        # Dealing each item out ACROSS quadrants instead re-created the bug
+        # this function exists to remove: the parts stopped summing to the
+        # budget and the last item in the mapping starved (melon realised
+        # 0.07-0.11 against a 0.15 share). Splitting inside the quadrant sums
+        # exactly by construction and has no order to starve on.
+        free = list(tiles)
+        budget = len(free)
+        n_s = int(round(budget * max(0.0, min(1.0, stock_share))))
+        crops = _split(crop_share, budget - n_s)
+
+        placed_struct = []
+        for _ in range(min(n_s, len(free))):
+            x, y = free.pop(0)
+            queue[(x, y)] = "PASTURE"
+            placed_struct.append((x, y))
+
+        near = set()
+        for sx, sy in placed_struct:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                near.add((sx + dx, sy + dy))
+        for sx, sy, _st in view.me.animals():
+            if quadrant_of(sx, sy) == qname:
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    near.add((sx + dx, sy + dy))
+
+        n_w = crops.pop("WHEAT", 0)
+        for x, y in [t for t in free if t in near][:n_w]:
+            queue[(x, y)] = "WHEAT"
+            free.remove((x, y))
+            n_w -= 1
+        for _ in range(min(n_w, len(free))):
+            x, y = free.pop(0)
+            queue[(x, y)] = "WHEAT"
+
+        for item, n in crops.items():
+            for _ in range(min(n, len(free))):
+                x, y = free.pop(0)
+                queue[(x, y)] = item
+    return queue
+
+
 def apply_to_plan(plan, choices, view):
     """Overwrite the strategic fields of a heuristic DayPlan with the network's
     per-head choices (indices into HEADS values). Safety clamps stay scripted:
@@ -620,7 +945,12 @@ def apply_to_plan(plan, choices, view):
     # a FRACTION of the anchor, v1/v2 as an offset for the four ANCHORED heads
     # and as absolute counts for the rest.
     anchor_vals = anchors(view)
-    if HEADS_VERSION >= 3:
+    if HEADS_VERSION >= 4:
+        # v4 heads ARE the integers: clamp to the cap, never scale. Falling
+        # through to the v3 branch would multiply an absolute 24 by the anchor.
+        for head in UNIT_HEADS:
+            values[head] = max(0, min(ANCHOR_CAPS[head], int(values[head])))
+    elif HEADS_VERSION == 3:
         for head in FRACTION_HEADS:
             a = anchor_vals.get(head, 0)
             values[head] = max(0, min(ANCHOR_CAPS[head], int(round(values[head] * a))))

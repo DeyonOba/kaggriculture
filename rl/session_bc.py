@@ -132,7 +132,7 @@ def extract(spec):
             try:
                 view = View(obs)
                 x = features.encode(view, mem)
-                m = features.masks(view)
+                m = features.masks(view, horizon=HORIZON)   # capacity AT the label horizon
                 # LABEL HORIZON. The default labels dawn d with the stock at the
                 # END of day d -- a same-day target. A 3-day planner needs the
                 # stock at the end of day d+2: what the leader had standing

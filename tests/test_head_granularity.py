@@ -44,3 +44,35 @@ def test_index_zero_is_still_no_geese():
 def test_head_widths_unchanged_so_trained_nets_still_load():
     assert len(_vals("absolute", "goose_target")) == 5
     assert len(_vals("residual", "goose_target")) == 3
+
+
+def test_n_features_follows_the_heads_version_not_the_last_encode():
+    """features.N_FEATURES is a cache encode() fills from its LAST call. It
+    must be re-pointed on every set_heads_version, or a switch back leaves the
+    previous version's width behind: an encode at v4 (196) then
+    set_heads_version(1) left it at 196, and rlv3.fingerprint.probe_n_features
+    -- which reads the alias directly -- stamped "v1 / nfeat=196", a state no
+    net was ever trained in, and marked a valid PPO run stale. Found by an
+    order-dependent test failure; would have hit any process that plays a v4
+    readout arm and then a v1 net."""
+    import json
+    import os
+    from kagent import features as F
+    from kagent.gamestate import Memory, View
+
+    rep = sorted(__import__("glob").glob(os.path.join(REPO, "replays", "mmpq", "*.json")))
+    if not rep:
+        pytest.skip("no leader replay on disk")
+    steps = json.load(open(rep[0]))["steps"]
+    obs = dict(steps[6 * 24][0]["observation"]); obs.setdefault("step", 6 * 24)
+    v = View(obs); m = Memory(); m.observe(v)
+    prev = F.HEADS_VERSION
+    try:
+        F.set_heads_version(1); w1 = len(F.encode(v, m))
+        F.set_heads_version(4); w4 = len(F.encode(v, m))
+        assert w4 != w1, "v4 must widen the encoder or this test proves nothing"
+        assert F.N_FEATURES == w4
+        F.set_heads_version(1)
+        assert F.N_FEATURES == w1, f"N_FEATURES stayed at {F.N_FEATURES} after switching back to v1"
+    finally:
+        F.set_heads_version(prev)

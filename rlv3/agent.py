@@ -126,6 +126,14 @@ PRESETS = {
     "sell": dict(lam=0.0, sell="full", exec_flags=(), select=False),
     "full": dict(lam=1.0, sell="slots", exec_flags=FULL_EXEC, select=False),
     "select": dict(lam=1.0, sell="slots", exec_flags=FULL_EXEC, select=True),
+    # The readout presets. `readout` is the S0 arm: champion base, the learned
+    # 3-day commitment on top, pricing at NEUTRAL risk so agreement with the
+    # top boards is measured before any posture is applied. `readout_risk`
+    # is the same with the posture derived from the margin.
+    "readout": dict(lam=0.0, sell="off", exec_flags=(), select=False,
+                    readout="default", posture="neutral"),
+    "readout_risk": dict(lam=0.0, sell="off", exec_flags=(), select=False,
+                         readout="default", posture="auto"),
 }
 
 # Doses the "select" preset ranks with objective.better(). lam=0 is always in
@@ -166,11 +174,13 @@ class Rlv3Config:
     """One arm, fully described. Everything is a dose; nothing is a code path."""
 
     __slots__ = ("lam", "sell", "exec_flags", "rules_path", "rules", "params",
-                 "band", "select", "lam_grid", "project", "label", "land_theta")
+                 "band", "select", "lam_grid", "project", "label", "land_theta",
+                 "readout", "posture")
 
     def __init__(self, lam=0.0, sell="off", exec_flags=(), rules_path=None,
                  rules=None, params=None, band=None, select=False, lam_grid=None,
-                 project=True, label="", land_theta=None):
+                 project=True, label="", land_theta=None, readout=None,
+                 posture="neutral"):
         self.lam = float(lam)
         self.sell = sell
         self.exec_flags = tuple(exec_flags or ())
@@ -185,6 +195,13 @@ class Rlv3Config:
         self.project = bool(project)
         self.label = label or "rlv3"
         self.land_theta = land_theta
+        # The learned readout as the plan source (rlv3/readout.py): a weights
+        # path, or None for the champion allocation. `posture` is the risk
+        # read the pricing ORDERS the commitment with -- "neutral" (alpha 1,
+        # the S0 agreement setting) or "auto" (risk.alpha_for_lead from the
+        # margin). Both default OFF so every existing preset is unchanged.
+        self.readout = readout
+        self.posture = posture
 
     def load(self):
         """The knob rules: the inline dict, else read off disk once, in the
@@ -267,6 +284,15 @@ class Rlv3PlanProvider:
         self.outlooks = []          # one per dawn, for a post-hoc read
         self.chosen_lam = []        # one per dawn when select is on
         self.board = None           # rollout sets this on board arms; unused
+        # The readout, loaded once. "default" resolves to the current best
+        # weights so a preset does not pin a path that a retrain moves.
+        self.readout = None
+        self.last_delta = None
+        self.deltas = []
+        if self.cfg.readout:
+            from rlv3 import readout as RO
+            w = RO.DEFAULT_WEIGHTS if self.cfg.readout == "default" else self.cfg.readout
+            self.readout = RO.Readout(w)
 
     # -- the projection state ------------------------------------------
     def proj(self, memory):
@@ -296,6 +322,23 @@ class Rlv3PlanProvider:
             plan = self.inner.make_plan(view, memory)
             self.last_alloc = self.inner.last_alloc
             self.chosen_lam.append(self.cfg.lam)
+
+        if self.readout is not None:
+            # The 3-day commitment: readout sets the PACE (what should be
+            # standing three dawns on), the pricing sets the ORDER at the
+            # configured posture. Land stays with the planner's own gate.
+            from rlv3 import portfolio as PF, readout as RO
+            pred = self.readout.predict(view, memory)
+            if self.cfg.posture == "auto":
+                ranked = PF.rank(view)
+            else:
+                ranked = PF.rank(view, 1.0, False)
+            order = [r["item"] for r in ranked["rows"]]
+            plan, delta = RO.commit(plan, view, pred, order=order)
+            delta["alpha"], delta["upper"] = ranked["alpha"], ranked["upper"]
+            self.last_delta = delta
+            self.deltas.append(delta)
+            COUNTERS["readout"] = COUNTERS.get("readout", 0) + 1
 
         if self.cfg.project:
             o = OBJ.project(view, memory, plan=plan, state=st,
