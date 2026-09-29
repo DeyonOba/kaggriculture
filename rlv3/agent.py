@@ -329,13 +329,19 @@ class Rlv3PlanProvider:
             # configured posture. Land stays with the planner's own gate.
             from rlv3 import portfolio as PF, readout as RO
             pred = self.readout.predict(view, memory)
+            factors = {}
             if self.cfg.posture == "auto":
+                # The posture from the position (risk.alpha_for_lead), then
+                # the readout's stock TILTED by the pricing's risk premium at
+                # that posture -- quantities move, not just the order.
                 ranked = PF.rank(view)
+                pred, factors = RO.tilt(pred, ranked, view, horizon=self.readout.horizon)
             else:
                 ranked = PF.rank(view, 1.0, False)
             order = [r["item"] for r in ranked["rows"]]
             plan, delta = RO.commit(plan, view, pred, order=order)
             delta["alpha"], delta["upper"] = ranked["alpha"], ranked["upper"]
+            delta["tilt"] = factors
             self.last_delta = delta
             self.deltas.append(delta)
             COUNTERS["readout"] = COUNTERS.get("readout", 0) + 1

@@ -122,6 +122,48 @@ class Readout:
         return out
 
 
+def tilt(pred, ranked, view, horizon=HORIZON):
+    """Scale the predicted stock by the RISK POSTURE. Returns (pred, factors).
+
+    The magnitude is the pricing's own risk premium, not a constant.
+    `rlv3.portfolio.rank` gives every asset a `spread` = (value at the
+    neutral read - value at the posture) / |neutral value|, over the exact
+    drain lattice. Behind (upper tail) a trap's tail value is ABOVE its mean,
+    spread is negative and 1 - spread > 1: ask for more. Ahead (lower tail)
+    the tail value is below, spread positive, 1 - spread < 1: ask for less.
+    An asset no draw can move (MELON: no shop, fixed demand) has spread 0 and
+    is never tilted, and at alpha = 1 every spread is 0, so the neutral
+    posture is bit-identical to the untilted readout.
+
+    Measured on a real day-6 dawn: COW spread -0.64 behind / +0.69 ahead
+    (MILK is linear/1.6 and no milk shop was open, so a cow is almost
+    entirely a bet on a draw that has not happened); WHEAT +/-0.03; MELON
+    0.00. This is the lead-time option the leaders take in 40/40 games and
+    the neutral readout under-takes -- S0 read half their pre-draw livestock.
+
+    The tilted stock is clamped to the head's legal maximum at the horizon
+    (masks), so a tilt can never ask for ground that does not exist, and to
+    the grid cap. hires and fert are not risk assets and are not tilted.
+    """
+    spread = {r["item"]: float(r.get("spread", 0.0)) for r in ranked.get("rows", [])}
+    m = features.masks(view, horizon=horizon)
+    legal = {}
+    for (name, vals), mk in zip(features.HEADS, m):
+        key = features.QUOTA_CROP.get(name) or features.BUY_KIND.get(name)
+        if key:
+            legal[key] = max([v for v, ok in zip(vals, mk) if ok] or [0])
+    out = {"crops": dict(pred["crops"]), "herd": dict(pred["herd"]),
+           "hires": pred["hires"], "land": pred["land"], "fert": pred.get("fert")}
+    factors = {}
+    for group in ("crops", "herd"):
+        for item, n in list(out[group].items()):
+            f = 1.0 - spread.get(item, 0.0)
+            factors[item] = round(f, 3)
+            if f != 1.0:
+                out[group][item] = int(max(0, min(legal.get(item, n), round(n * f))))
+    return out, factors
+
+
 def standing(view):
     crops, herd = collections.Counter(), collections.Counter()
     for _x, _y, t in view.me.plants():

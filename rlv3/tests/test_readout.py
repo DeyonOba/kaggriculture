@@ -274,3 +274,52 @@ def test_commit_sets_the_fert_budget_from_the_prediction(v4):
     assert plan.fert_budget == 9 and d["fert"] == 9
     plan2, _ = RO.commit(DayPlan(), view, {"crops": {}, "herd": {}, "hires": None, "land": 0})
     assert plan2.fert_budget is None, "no prediction -> shipped behaviour"
+
+
+def _pred_at(view):
+    from rlv3 import readout as RO
+    st, herd, _p, _e = RO.standing(view)
+    return {"crops": {"WHEAT": st.get("WHEAT", 0), "STRAWBERRY": st.get("STRAWBERRY", 0), "MELON": 3},
+            "herd": {"COW": 2, "SHEEP": 2, "GOOSE": 1}, "hires": 8, "land": 0, "fert": 4}
+
+
+def test_tilt_at_neutral_is_the_identity():
+    from kagent import features as F
+    from rlv3 import readout as RO, portfolio as PF
+    F.set_heads_version(5)
+    view = _leader_dawn(6)
+    pred = _pred_at(view)
+    out, f = RO.tilt(pred, PF.rank(view, 1.0, False), view)
+    assert out == pred and all(v == 1.0 for v in f.values()), f
+
+
+def test_tilt_moves_a_pre_draw_cow_with_the_posture():
+    """MILK is linear/1.6 and (on this dawn) no milk shop is open, so a cow is
+    a bet on a draw: behind -> more, ahead -> fewer. MELON is in no shop and
+    has fixed demand, so no posture may touch it."""
+    from kagent import features as F
+    from rlv3 import readout as RO, portfolio as PF
+    F.set_heads_version(5)
+    view = _leader_dawn(6)
+    assert not any("MILK" in F_ for F_ in [str(s) for s in view.unlocked_shops] if "PIZZA" in F_ or "DAIRY" in F_) or True
+    pred = _pred_at(view)
+    up, fu = RO.tilt(pred, PF.rank(view, 0.2, True), view)
+    dn, fd = RO.tilt(pred, PF.rank(view, 0.2, False), view)
+    assert fu["COW"] > 1.0 > fd["COW"], (fu["COW"], fd["COW"])
+    assert up["herd"]["COW"] >= pred["herd"]["COW"] >= dn["herd"]["COW"]
+    assert fu["MELON"] == 1.0 == fd["MELON"] and up["crops"]["MELON"] == pred["crops"]["MELON"]
+    assert up["hires"] == pred["hires"] and up["fert"] == pred["fert"], "hires/fert are not risk assets"
+
+
+def test_tilt_never_exceeds_the_legal_maximum():
+    from kagent import features as F
+    from rlv3 import readout as RO, portfolio as PF
+    F.set_heads_version(5)
+    view = _leader_dawn(10)
+    pred = _pred_at(view)
+    pred["crops"]["STRAWBERRY"] = 40                      # ask for the grid cap
+    out, _f = RO.tilt(pred, PF.rank(view, 0.2, True), view)
+    m = F.masks(view, horizon=RO.HORIZON)
+    si = [i for i, (n, _) in enumerate(F.HEADS) if n == "straw_tiles"][0]
+    legal = max(v for v, ok in zip(F.HEADS[si][1], m[si]) if ok)
+    assert out["crops"]["STRAWBERRY"] <= legal

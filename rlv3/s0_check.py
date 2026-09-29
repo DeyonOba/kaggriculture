@@ -147,10 +147,11 @@ def _fields(plan):
                 else getattr(plan, f)) for f in FIELDS}
 
 
-def run(out=None):
+def run(out=None, preset="readout"):
     base_cfg = A.config_from_spec(arm.parse("base"))
-    ro_cfg = A.config_from_spec(arm.parse("readout"))
-    off_cfg = A.config_from_spec({**arm.parse("readout"), "readout": None})
+    ro_cfg = A.config_from_spec(arm.parse(preset))
+    off_cfg = A.config_from_spec({**arm.parse(preset), "readout": None})
+    print(f"preset: {preset}  (readout={ro_cfg.readout}, posture={ro_cfg.posture})")
 
     # A probe the live arm depends on: rl.rollout switches features to
     # residual MODE for knob arms; the readout was trained under the corpus
@@ -199,6 +200,9 @@ def run(out=None):
                 "game": tag, "day": d, "n_shops": len(shops),
                 "consumers": dict(ctx["consumers"]),
                 "our_fert": delta.get("fert"), "lead_fert": _forward_fert(steps, seat, d),
+                "alpha": delta.get("alpha"), "upper": delta.get("upper"),
+                "tilt": delta.get("tilt") or {},
+                "margin": float(obs["farms"][seat].get("money", 0)) - float(obs["farms"][1 - seat].get("money", 0)),
                 "our_crops": delta["crops"], "our_herd": delta["herd"],
                 "our_hires": plans["ro"].hires_target, "lead_hires": lead_hires,
                 "lead_dcrops": {c: max(0, c3.get(c, 0) - c0.get(c, 0)) for c in CROPS},
@@ -319,6 +323,32 @@ def run(out=None):
                 t = statistics.mean(r["lead_dherd"].get(asset, 0) for r in rs)
             print(f"{prod+'->'+asset:<18}{lab:>6}{len(rs):>6}{o:>8.2f}{t:>9.2f}")
 
+    # ---------------------------------------------------------------- 6
+    tilted = [r for r in rows if r.get("tilt")]
+    if tilted:
+        print(f"\n[6] POSTURE  risk.alpha_for_lead on the leader's own margin, and what the tilt did")
+        behind = [r for r in rows if r.get("upper")]
+        ahead = [r for r in rows if r.get("upper") is False and (r.get("alpha") or 1.0) < 0.999]
+        level = [r for r in rows if (r.get("alpha") or 1.0) >= 0.999]
+        print(f"  dawns: behind {len(behind)}  ahead {len(ahead)}  level {len(level)}   "
+              f"mean alpha behind {statistics.mean(r['alpha'] for r in behind) if behind else float('nan'):.2f}  "
+              f"ahead {statistics.mean(r['alpha'] for r in ahead) if ahead else float('nan'):.2f}")
+        print(f"  mean tilt factor (1 = untouched):")
+        print(f"  {'asset':<12}{'behind':>8}{'ahead':>8}")
+        for a in ("WHEAT", "STRAWBERRY", "MELON", "CARROT", "GOOSE", "COW", "SHEEP"):
+            fb = [r["tilt"][a] for r in behind if a in r["tilt"]]
+            fa = [r["tilt"][a] for r in ahead if a in r["tilt"]]
+            print(f"  {a:<12}{statistics.mean(fb) if fb else 1.0:>8.2f}{statistics.mean(fa) if fa else 1.0:>8.2f}")
+        print(f"  PRE-DRAW LIVESTOCK (0 shops for the product), our ask vs leaders, by posture:")
+        for prod, asset in (("WOOL", "SHEEP"), ("MILK", "COW"), ("EGG", "GOOSE")):
+            rs0 = [r for r in rows if r["consumers"].get(prod, 0) == 0]
+            for lab, sel in (("behind", [r for r in rs0 if r.get("upper")]),
+                             ("ahead/level", [r for r in rs0 if not r.get("upper")])):
+                if sel:
+                    print(f"    {prod+'->'+asset:<14}{lab:<12} n={len(sel):>3}  ours "
+                          f"{statistics.mean(r['our_herd'].get(asset, 0) for r in sel):.2f}  "
+                          f"leaders {statistics.mean(r['lead_dherd'].get(asset, 0) for r in sel):.2f}")
+
     print("\nTVD = paired total-variation distance between our shares and that leader's, "
           "same game, same day. floor = how far the leaders sit from EACH OTHER on that "
           "day: at or below it is full agreement, there is no credit beneath it.")
@@ -335,4 +365,6 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None)
-    run(ap.parse_args().out)
+    ap.add_argument("--preset", default="readout", help="readout | readout_risk")
+    a = ap.parse_args()
+    run(a.out, a.preset)
