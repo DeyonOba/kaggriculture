@@ -975,7 +975,7 @@ def apply_checkpoints(net, vnet, resume=None, trunk_init=None, freeze_trunk=Fals
 
 
 def main():
-    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED, TRUNK_LR_SCALE
+    global RESIDUAL, ENT_COEF, LR, PLATEAU_COOL, PAIRED, TRUNK_LR_SCALE, KL_STOP
     global REWARD, MARGIN_TIE, MARGIN_SCALE, PHI_SCALE, POTENTIAL
     ap = argparse.ArgumentParser()
     ap.add_argument("--bc-games", type=int, default=90)
@@ -1006,6 +1006,11 @@ def main():
     ap.add_argument("--prior-kl", type=float, default=0.0,
                     help="KL penalty toward the frozen BC prior (residual trust region)")
     ap.add_argument("--lr", type=float, default=None, help="policy/value learning rate (default LR)")
+    ap.add_argument("--kl-stop", type=float, default=None,
+                    help="per-iteration early stop on policy drift (default KL_STOP=0.03). The "
+                         "v5 readout has 10 LIVE heads at 0.4-1.7 nats each, so 0.03 joint "
+                         "admits ~3 updates/iter at lr 6e-5 (rl/runs/rlv3_s2b) where v1/v2 "
+                         "runs made 11-16; the six other heads are deterministic and carry 0 KL")
     ap.add_argument("--board", action="store_true",
                     help="give PlannerNet a conv trunk over the board tensor "
                          "(needs KAGG_BOARD=1 so rollout records it)")
@@ -1148,7 +1153,9 @@ def main():
         ENT_COEF = args.ent_coef
     if args.lr is not None:
         LR = args.lr
-    print(f"ENT_COEF={ENT_COEF} LR={LR} prior_kl={args.prior_kl}")
+    if args.kl_stop is not None:
+        KL_STOP = args.kl_stop
+    print(f"ENT_COEF={ENT_COEF} LR={LR} prior_kl={args.prior_kl} kl_stop={KL_STOP}")
     if args.exec == "shipped":
         from kagent import weights as _w
         JOB_EXTRA["exec"] = list(_w.EXEC_RULES)
