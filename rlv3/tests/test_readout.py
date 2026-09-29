@@ -373,3 +373,31 @@ def test_commit_bounds_hires_with_the_planners_own_rules(v4):
     assert RO.bound_hires(40, view, {}, {}) == 3
     # and the budget never allows a hire bill above a quarter of the bank
     assert econ.hire_total_cost(RO.bound_hires(40, view, {"WHEAT": 60}, {})) <= max(150.0, view.me.money * 0.25)
+
+
+def test_commit_buys_and_builds_only_what_the_planner_would_afford(v4):
+    """The herd head is a target; the champion planner's cash reserve, feed
+    pipeline and per-day caps bound it, so no pasture is built for an animal
+    the bank cannot buy (seed-7 replay: 4-5 empty pastures on days 2-6)."""
+    from kagent import planner as P
+    from kagent.constants import ANIMALS
+    from kagent.planner import DayPlan
+    from rlv3 import readout as RO
+    view = _leader_dawn(2)
+    crops, herd, pocket, _e = RO.standing(view)
+    shed = view.shed or {}
+    pred = {"crops": {}, "herd": {"COW": herd.get("COW", 0) + 4, "SHEEP": herd.get("SHEEP", 0) + 4},
+            "hires": None, "land": 0}
+    plan, d = RO.commit(DayPlan(), view, pred)
+    budget = max(0.0, float(view.me.money) - 400)
+    feedable = max(0, shed.get("WHEAT", 0) + 3 * crops.get("WHEAT", 0) + 10 - sum(herd.values()))
+    total_cost = sum(n * ANIMALS[k]["cost"] for k, n in plan.animal_buys.items())
+    assert total_cost <= budget + 1e-9
+    assert sum(plan.animal_buys.values()) <= min(feedable, P.GEESE_PER_DAY)
+    assert all(n <= RO.DAILY_ANIMAL_CAP for n in plan.animal_buys.values())
+    # structures follow the affordable buys, never the raw target
+    assert plan.structure_builds["PASTURE"] <= sum(plan.animal_buys.values())
+    # a broke dawn buys and builds nothing
+    obs = dict(view.obs) if hasattr(view, "obs") else None
+    poor = RO.bound_buys({"COW": 6, "SHEEP": 6}, type("V", (), {"me": type("M", (), {"money": 350})(), "day": 2})(), {}, {}, {}, {})
+    assert poor == {}

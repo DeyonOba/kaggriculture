@@ -227,6 +227,38 @@ def bound_hires(hires, view, crops, herd):
     return hires
 
 
+def bound_buys(targets, view, crops, herd, shed, pocket):
+    """The herd head's targets through the planner's OWN purchase gates,
+    verbatim from make_champion_plan: a $400 cash reserve, the feed pipeline
+    (shed wheat + 3 per wheat tile + 10, minus the animals already eating),
+    GEESE_PER_DAY across kinds, the daily cap per kind, LAST_BUY_DAY. The
+    first commit() asked for min(target - standing, 4) per kind whatever the
+    bank held, and since structures are free to build the scheduler then
+    built pastures for animals that could not be bought: on the seed-7 replay
+    (rlv3 vs h11) the agent held 4-5 EMPTY pastures on days 2-6 with $6-$377
+    in the bank -- opening ground spent on nothing. Structures follow these
+    buys, so with no affordable animal nothing is built."""
+    from kagent import planner as P
+    money = float(view.me.money)
+    budget = max(0.0, money - 400)
+    feed_capacity = shed.get("WHEAT", 0) + 3 * crops.get("WHEAT", 0) + 10
+    feedable = max(0, feed_capacity - sum(herd.values()))
+    per_day_left = P.GEESE_PER_DAY
+    buys = {}
+    for k in ("COW", "SHEEP", "GOOSE"):           # the planner's order: scarce demand first
+        if k not in targets or view.day > LAST_BUY_DAY.get(k, 29):
+            continue                              # past payback; the planner's own rule
+        cost = ANIMALS[k]["cost"]
+        want = int(targets[k]) - herd.get(k, 0) - shed.get(k, 0) - pocket.get(k, 0)
+        n = max(0, min(want, int(budget // cost), feedable, per_day_left, DAILY_ANIMAL_CAP))
+        if n > 0:
+            buys[k] = n
+            budget -= n * cost
+            feedable -= n
+            per_day_left -= n
+    return buys
+
+
 def commit(plan, view, pred, order=None, horizon=HORIZON, apply=None):
     """Overwrite the allocation fields with the 3-day commitment. Returns the
     plan, and the delta it asked for, so the S0 read can score it.
@@ -270,13 +302,7 @@ def commit(plan, view, pred, order=None, horizon=HORIZON, apply=None):
     else:
         quota = {c: n for c, n in quota.items() if n > 0}
 
-    buys = {}
-    for k, n in pred["herd"].items():
-        if view.day > LAST_BUY_DAY.get(k, 29):
-            continue                          # past payback; the planner's own rule
-        want = int(n) - herd.get(k, 0) - shed.get(k, 0) - pocket.get(k, 0)
-        if want > 0:
-            buys[k] = min(want, DAILY_ANIMAL_CAP)
+    buys = bound_buys(pred["herd"], view, crops, herd, shed, pocket)
 
     # The planner's own structure pipeline, verbatim in shape.
     builds = {"COOP": 0, "PASTURE": 0}
