@@ -184,12 +184,12 @@ class Rlv3Config:
 
     __slots__ = ("lam", "sell", "exec_flags", "rules_path", "rules", "params",
                  "band", "select", "lam_grid", "project", "label", "land_theta",
-                 "readout", "posture", "apply")
+                 "readout", "posture", "apply", "late_pipe")
 
     def __init__(self, lam=0.0, sell="off", exec_flags=(), rules_path=None,
                  rules=None, params=None, band=None, select=False, lam_grid=None,
                  project=True, label="", land_theta=None, readout=None,
-                 posture="neutral", apply="all"):
+                 posture="neutral", apply="all", late_pipe=False):
         self.lam = float(lam)
         self.sell = sell
         self.exec_flags = tuple(exec_flags or ())
@@ -216,6 +216,10 @@ class Rlv3Config:
         # of the champion). Validated at parse time.
         from rlv3.readout import parse_apply
         self.apply = parse_apply(apply)
+        # The leaders' late one-time-crop pipeline on top of the plan
+        # (rlv3/pipeline.py): wheat/carrot through day 27, seeds bought to
+        # match, fertiliser windows un-gated on days 23-28. Off by default.
+        self.late_pipe = bool(late_pipe)
 
     def load(self):
         """The knob rules: the inline dict, else read off disk once, in the
@@ -359,6 +363,11 @@ class Rlv3PlanProvider:
             self.last_delta = delta
             self.deltas.append(delta)
             COUNTERS["readout"] = COUNTERS.get("readout", 0) + 1
+
+        if self.cfg.late_pipe:
+            from rlv3 import pipeline as PIPE
+            plan = PIPE.extend(plan, view, memory)
+            COUNTERS["late_pipe"] = COUNTERS.get("late_pipe", 0) + 1
 
         if self.cfg.project:
             o = OBJ.project(view, memory, plan=plan, state=st,

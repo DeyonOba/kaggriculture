@@ -91,6 +91,9 @@ def build_orders(view, plan, memory):
 
     # --- Seeds: cover the remaining quota (bought this turn, plantable next) --
     last_plant_day = {"MELON": 19, "WHEAT": 25, "CARROT": 26, "TOMATO": 18, "STRAWBERRY": 13}
+    # rlv3/pipeline.py extends the wheat/carrot window through day 27;
+    # anything else leaves this table exactly as shipped.
+    last_plant_day.update(getattr(memory, "last_plant", None) or {})
     for crop, remaining in plan.plant_quota.items():
         if view.day > last_plant_day.get(crop, 29) or view.hour > 20:
             continue  # planting window closing; don't strand seeds

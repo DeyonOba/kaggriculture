@@ -153,3 +153,27 @@ def test_late_plant_harvests_an_unripe_one_time_crop_on_the_final_day():
     obs["farms"][0]["tiles"][1][1] = _plant("CARROT", planted_day=26, yield_units=2)
     view, plan = _liq_plan(obs)
     assert not any(op == "HARVEST" for op, _ in _at(view, plan, 1, 1))
+
+
+def test_care_all_emits_care_without_waiting_for_the_feed():
+    obs = _obs(day=20, hour=6)
+    obs["farms"][0]["tiles"][1][1] = {"kind": "PASTURE", "animal": "COW", "fed_today": False, "cared_today": False,
+                                      "fertilizer_available": False, "yield_units": 0, "consecutive_unfed": 0}
+    view = View(obs)
+    plan = planner.make_champion_plan(view, Memory())
+    plan.plant_quota = {}
+    plan.structure_builds = {"COOP": 0, "PASTURE": 0}
+    assert "COW" not in (getattr(plan, "cull_kinds", None) or ())
+    on = _at(view, plan, 1, 1)
+    assert ("FEED", scheduler.P_ANIMAL) in on and not any(op == "CARE" for op, _ in on)   # shipped: care waits
+    scheduler.set_exec("care_all")
+    on = _at(view, plan, 1, 1)
+    assert ("FEED", scheduler.P_ANIMAL) in on and ("CARE", scheduler.P_ANIMAL) in on
+    # already cared: nothing more; day 28: no care either way
+    obs["farms"][0]["tiles"][1][1]["cared_today"] = True
+    assert not any(op == "CARE" for op, _ in _at(View(obs), plan, 1, 1))
+    obs = _obs(day=28, hour=6)
+    obs["farms"][0]["tiles"][1][1] = {"kind": "PASTURE", "animal": "COW", "fed_today": False, "cared_today": False,
+                                      "fertilizer_available": False, "yield_units": 0, "consecutive_unfed": 0}
+    view = View(obs); plan = planner.make_champion_plan(view, Memory()); plan.plant_quota = {}; plan.structure_builds = {"COOP": 0, "PASTURE": 0}
+    assert not any(op == "CARE" for op, _ in _at(view, plan, 1, 1))

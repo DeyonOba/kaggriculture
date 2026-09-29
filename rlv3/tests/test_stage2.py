@@ -110,3 +110,34 @@ def test_session_eval_can_put_the_shipped_rules_and_commit_decode_on_weights_arm
     extra = SE._job_extra(argparse.Namespace(exec="shipped", decode="commit"))
     assert extra == {"exec": list(W.EXEC_RULES)}
     assert os.environ["KAGG_DECODE"] == "commit"
+
+
+def test_late_pipe_adds_the_leaders_late_plantings_and_ungates_fertiliser():
+    from kagent import planner
+    from kagent.gamestate import Memory
+    from rlv3 import agent as AGENT, arm as ARM, pipeline as PIPE
+    assert AGENT.config_from_spec(ARM.parse("base:late_pipe=true")).late_pipe is True
+    assert AGENT.config_from_spec(ARM.parse("base")).late_pipe is False
+    for day, want in ((20, None), (26, PIPE.LEADER_PLANT[26]), (27, PIPE.LEADER_PLANT[27])):
+        view = _leader_dawn(day)
+        mem = Memory(); mem.observe(view)
+        base = planner.make_day_plan(view, mem, speculative=True)
+        before = dict(base.plant_quota or {}); fert_before = base.fert_budget
+        plan = PIPE.extend(base, view, mem)
+        assert mem.last_plant == PIPE.LAST_PLANT
+        if want is None:
+            assert plan.plant_quota == before and plan.fert_budget == fert_before   # identity outside the window
+            continue
+        assert plan.fert_budget == PIPE.FERT_RATE
+        room = len(list(view.me.empty_tiles()))
+        for crop, n in want.items():
+            assert plan.plant_quota.get(crop, 0) >= min(n, before.get(crop, 0) or 0)
+            assert plan.plant_quota.get(crop, 0) >= min(n, room) or room == 0
+        assert sum(plan.plant_quota.values()) <= max(room, sum(before.values()))
+
+
+def test_market_seed_cutoff_honours_the_pipeline_window():
+    import inspect
+    from kagent import market
+    src = inspect.getsource(market.build_orders)
+    assert 'getattr(memory, "last_plant", None)' in src

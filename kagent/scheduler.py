@@ -146,12 +146,21 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              day-27 planting stop then stranded); the fresh leaders end
 #              with 0.7 and plant 4.6 tiles on day 27. Metric: seeds left at
 #              the end, day-27 plantings, day-29 harvests.
+#   care_all   CARE is emitted for every kept animal not yet cared for,
+#              without waiting for its FEED to land first. README, Animal
+#              Care: the bonus is banked at END OF DAY "if the animal was
+#              both fed AND cared for that day" -- order inside the day is
+#              irrelevant -- and the shipped rule only emits CARE once
+#              fed_today is already set, so with a busy crew the care is
+#              deferred and often never happens. Measured (days 23-27): the
+#              champion FEEDs 15-16 animals a day and CAREs 6-10; the fresh
+#              leaders FEED 15-19 and CARE 15-19. Metric: CARE per FEED.
 _TQ_SCHED = None     # KAGG_TQ_SCHEDULE, loaded once per process
 
 EXEC_FLAGS = ("tilequeue", "lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
-              "endwater", "tend_end", "late_plant")
+              "endwater", "tend_end", "late_plant", "care_all")
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
 LASTWATER_HARVEST_HOUR = 20  # from here harvest the crop even if unwatered
@@ -461,7 +470,8 @@ def build_tasks(view, plan):
             # 0.5 milk/cow/day into ~1.5. Survival cases stay hard-urgent.
             pri = P_SURVIVAL if t.get("consecutive_unfed", 0) >= 1 else P_ANIMAL
             tasks.append(Task(pri, x, y, ["FEED"], need="WHEAT"))
-        if feeding_day and keep and t.get("fed_today") and not t.get("cared_today") and day < 28:
+        if (feeding_day and keep and not t.get("cared_today") and day < 28
+                and (t.get("fed_today") or EXEC["care_all"])):
             # Crash-pivot: caring boosts output we cannot profitably sell when
             # the product's market has collapsed — release those actions.
             product = ANIMALS.get(t.get("animal"), {}).get("product")
