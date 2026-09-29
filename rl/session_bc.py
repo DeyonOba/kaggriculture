@@ -174,6 +174,18 @@ def main() -> None:
     ap.add_argument("--procs", type=int, default=5)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--arm", default=os.environ.get("KAGG_BOARD_ARM", "T_crop_103"))
+    ap.add_argument("--heads-version", type=int,
+                    default=int(os.environ.get("KAGG_HEADS_V", 0)) or None,
+                    help="action space to QUANTISE THE LABELS ONTO. Without "
+                         "this the corpus is pinned to whatever HEADS_VERSION "
+                         "happens to be at import (1), no matter what the "
+                         "trainer is later switched to -- and the label is "
+                         "then wrong before training starts. Measured over "
+                         "1,200 leader dawns, decoded back to absolute tiles: "
+                         "v1 names the true count on 37.8%% of dawns and is "
+                         "off by 2.16 tiles on average (wheat 6.1%%/6.11 "
+                         "tiles, strawberry 9.1%%/6.78); v2 42.7%%/2.08; v3 "
+                         "35.0%%/3.51; v4 98.7%%/0.04.")
     ap.add_argument("--out", default=os.path.join(REPO, "rl", "datasets",
                                                   "session_bc.jsonl"))
     ap.add_argument("--include-held-out", action="store_true",
@@ -185,6 +197,18 @@ def main() -> None:
                          "least this (max of the two seats), instead of the "
                          "band-stratified draw; --n 0 takes all of them")
     args = ap.parse_args()
+
+    from kagent import features        # module-scope import is worker-local here
+
+    if args.heads_version:
+        # BEFORE any worker is spawned and before any label is built.
+        # `set_heads_version` exports KAGG_HEADS_V, which is what carries the
+        # choice into a spawn worker -- a version set only in the parent
+        # leaves every worker on v1 while the parent thinks it is on v4.
+        features.set_heads_version(args.heads_version)
+    print(f"heads v{features.HEADS_VERSION}: {len(features.HEADS)} heads, "
+          f"{sum(len(v) for _n, v in features.HEADS)} logits")
+
 
     # Outcomes come from the index, not from a second replay: `finals` is
     # already there, and margin is seat-relative.
@@ -211,6 +235,19 @@ def main() -> None:
         paths = [p for p in paths if not is_held_out(p)]
         print(f"  excluded {before - len(paths)} PPO held-out sessions "
               f"(id % 5 == 0); {len(paths)} remain")
+
+    # extract() answers None for an unreadable session and the consumer loop
+    # skips it, so a corpus that never mounted prints "nothing extracted" and
+    # exits 0 -- it cost two Kaggle runs before anyone read it as a missing
+    # mount rather than an empty replay. The corpus is external input, so
+    # check it here and say which path was expected.
+    missing = sum(1 for p in paths if not os.path.exists(p))
+    if missing == len(paths) and paths:
+        raise SystemExit(
+            f"no session file exists on disk (checked {len(paths)}); the corpus "
+            f"is not mounted. First expected path: {paths[0]}")
+    if missing:
+        print(f"  WARNING: {missing}/{len(paths)} session files missing from disk")
 
     def _outcome(p):
         rel = p[len(REPO) + 1:] if p.startswith(REPO) else p
