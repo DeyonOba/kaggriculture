@@ -323,3 +323,30 @@ def test_tilt_never_exceeds_the_legal_maximum():
     si = [i for i, (n, _) in enumerate(F.HEADS) if n == "straw_tiles"][0]
     legal = max(v for v, ok in zip(F.HEADS[si][1], m[si]) if ok)
     assert out["crops"]["STRAWBERRY"] <= legal
+
+
+def test_commit_applies_only_the_named_heads(v4):
+    """`apply=` is the ablation switch: the un-named heads leave the champion
+    plan untouched, and the delta still reports every head."""
+    from rlv3 import readout as RO
+    from kagent.planner import DayPlan
+    view = _leader_dawn(10)
+    pred = {"crops": {"WHEAT": 12, "STRAWBERRY": 9}, "herd": {"COW": 2},
+            "hires": 7, "land": 0, "fert": 5}
+    base = DayPlan()
+    base.plant_quota, base.animal_buys, base.hires_target = {"MELON": 4}, {"SHEEP": 1}, 3
+    full, d_full = RO.commit(DayPlan(), view, pred)
+    assert d_full["applied"] == sorted(RO.HEADS)
+    plan, d = RO.commit(base, view, pred, apply="hires")
+    assert d["applied"] == ["hires"]
+    assert plan.plant_quota == {"MELON": 4} and plan.animal_buys == {"SHEEP": 1}
+    assert plan.hires_target == full.hires_target and plan.fert_budget is None
+    assert d["crops"] == d_full["crops"] and d["herd"] == d_full["herd"]
+    base = DayPlan()
+    base.hires_target = 3
+    plan, d = RO.commit(base, view, pred, apply=["crops", "fert"])
+    assert d["applied"] == ["crops", "fert"]
+    assert plan.plant_quota == full.plant_quota and plan.fert_budget == 5
+    assert plan.hires_target == 3 and plan.animal_buys == {}
+    with pytest.raises(ValueError):
+        RO.parse_apply("herd+land")

@@ -184,12 +184,12 @@ class Rlv3Config:
 
     __slots__ = ("lam", "sell", "exec_flags", "rules_path", "rules", "params",
                  "band", "select", "lam_grid", "project", "label", "land_theta",
-                 "readout", "posture")
+                 "readout", "posture", "apply")
 
     def __init__(self, lam=0.0, sell="off", exec_flags=(), rules_path=None,
                  rules=None, params=None, band=None, select=False, lam_grid=None,
                  project=True, label="", land_theta=None, readout=None,
-                 posture="neutral"):
+                 posture="neutral", apply="all"):
         self.lam = float(lam)
         self.sell = sell
         self.exec_flags = tuple(exec_flags or ())
@@ -211,6 +211,11 @@ class Rlv3Config:
         # margin). Both default OFF so every existing preset is unchanged.
         self.readout = readout
         self.posture = posture
+        # Which readout heads overwrite the plan: "all", or a "+"-joined
+        # subset of readout.HEADS (`apply=herd` = the herd head alone on top
+        # of the champion). Validated at parse time.
+        from rlv3.readout import parse_apply
+        self.apply = parse_apply(apply)
 
     def load(self):
         """The knob rules: the inline dict, else read off disk once, in the
@@ -348,7 +353,7 @@ class Rlv3PlanProvider:
             else:
                 ranked = PF.rank(view, 1.0, False)
             order = [r["item"] for r in ranked["rows"]]
-            plan, delta = RO.commit(plan, view, pred, order=order)
+            plan, delta = RO.commit(plan, view, pred, order=order, apply=self.cfg.apply)
             delta["alpha"], delta["upper"] = ranked["alpha"], ranked["upper"]
             delta["tilt"] = factors
             self.last_delta = delta

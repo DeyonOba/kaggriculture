@@ -49,6 +49,26 @@ DAILY_ANIMAL_CAP = 4            # the champion plan's own per-day cap on a kind
 # readout override bypassed this and the S0 read showed it: livestock share
 # 0.35-0.41 on days 18-25 and 0.57 on day 29 against the leaders' 0.00.
 LAST_BUY_DAY = {"GOOSE": 18, "COW": 18, "SHEEP": 20}
+HEADS = ("crops", "herd", "hires", "fert")   # the plan fields commit() may overwrite
+
+
+def parse_apply(apply):
+    """Which readout heads overwrite the plan. None or "all" is every head;
+    a "+"/","-joined string or a list names a subset -- the ablation arms put
+    ONE head on top of the champion and leave the rest to the planner, so a
+    paired gate can say which of the leaders' choices carries through our
+    executor and which donates. Validated here so a bad arm string fails at
+    parse time, not inside a worker."""
+    if apply is None or apply == "all":
+        return frozenset(HEADS)
+    if isinstance(apply, str):
+        names = [s.strip() for s in apply.replace("+", ",").split(",") if s.strip()]
+    else:
+        names = [str(s).strip() for s in apply]
+    bad = sorted(set(names) - set(HEADS))
+    if bad:
+        raise ValueError(f"unknown readout head(s) {bad}; known: {list(HEADS)}")
+    return frozenset(names)
 
 
 def last_plant_day(crop):
@@ -180,7 +200,7 @@ def standing(view):
     return crops, herd, pocket, empty
 
 
-def commit(plan, view, pred, order=None, horizon=HORIZON):
+def commit(plan, view, pred, order=None, horizon=HORIZON, apply=None):
     """Overwrite the allocation fields with the 3-day commitment. Returns the
     plan, and the delta it asked for, so the S0 read can score it.
 
@@ -248,14 +268,21 @@ def commit(plan, view, pred, order=None, horizon=HORIZON):
     while hires > 2 and econ.hire_total_cost(hires) > budget:
         hires -= 1
 
-    plan.plant_quota = quota
-    plan.animal_buys = buys
-    plan.structure_builds = builds
-    plan.hires_target = hires
-    if pred.get("fert") is not None:
+    # Only the named heads overwrite the plan (default: all four). The delta
+    # still reports every head so the S0 read scores the readout, not the arm.
+    on = parse_apply(apply)
+    if "crops" in on:
+        plan.plant_quota = quota
+    if "herd" in on:
+        plan.animal_buys = buys
+        plan.structure_builds = builds
+    if "hires" in on:
+        plan.hires_target = hires
+    if "fert" in on and pred.get("fert") is not None:
         plan.fert_budget = int(pred["fert"])      # v5: FERTILIZE actions today
     delta = {"crops": dict(quota), "herd": dict(buys), "hires": hires,
              "fert": pred.get("fert"),
              "land_signal": pred["land"], "pred": pred,
-             "freeing": dict(freeing), "standing": dict(crops)}
+             "freeing": dict(freeing), "standing": dict(crops),
+             "applied": sorted(on)}
     return plan, delta

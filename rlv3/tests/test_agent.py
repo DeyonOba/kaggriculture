@@ -428,3 +428,16 @@ def test_arm_parse_carries_the_shipped_executor_rules():
     spec = ARM.parse("readout")
     assert spec.get("exec") == list(EXEC_RULES), spec.get("exec")
     assert "shedguard" in spec["exec"]
+
+
+def test_apply_names_the_readout_heads_and_refuses_an_unknown_one():
+    from rlv3 import readout as RO
+    cfg = AGENT.config_from_spec(ARM.parse("readout:apply=herd"))
+    assert cfg.apply == frozenset({"herd"})
+    cfg = AGENT.config_from_spec(ARM.parse("readout:apply=crops+fert"))
+    assert cfg.apply == frozenset({"crops", "fert"})
+    cfg = AGENT.config_from_spec(ARM.parse('readout:apply=["hires","herd"]'))
+    assert cfg.apply == frozenset({"hires", "herd"})
+    assert AGENT.config_from_spec(ARM.parse("readout")).apply == frozenset(RO.HEADS)
+    with pytest.raises(ValueError):
+        ARM.parse("readout:apply=land")
