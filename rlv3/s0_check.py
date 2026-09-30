@@ -37,6 +37,7 @@ from kagent import econ, features                                    # noqa: E40
 from kagent.constants import ANIMALS, CROPS                          # noqa: E402
 from kagent.gamestate import Memory, View                            # noqa: E402
 from rlv3 import agent as A, arm                                     # noqa: E402
+from rlv3 import readout as RO
 from rlv3.trajectory import leader_paths, winner_seat                # noqa: E402
 
 TURNS = 24
@@ -191,13 +192,23 @@ def run(out=None, preset="readout", leaders=None, weights=None):
                 (("base", base_cfg), ("off", off_cfg), ("ro", ro_cfg))}
         mems = {k: Memory() for k in prov}
         stats = (0.0, 0, 0)
+        dawn_hist, mid_hist = {}, {}
         for d in range(n_days):
             obs = dict(steps[d * TURNS][seat]["observation"])
             obs.setdefault("step", d * TURNS)
             if "farms" not in obs:
                 continue
+            dawn_hist[d] = obs
+            if d > 0 and (d - 1) * TURNS + 12 < len(steps):
+                mid_hist[d - 1] = steps[(d - 1) * TURNS + 12][seat]["observation"]
+            board = None
             plans = {}
             for k in prov:
+                ro = getattr(prov[k], "readout", None)
+                if ro is not None and getattr(ro, "wants_board", False):
+                    if board is None:
+                        board = RO.board_at_dawn(obs, seat, dawn_hist, mid_hist, d)
+                    ro.board = board
                 view = View(obs)
                 m = mems[k]
                 m.observe(view)

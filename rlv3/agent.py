@@ -490,9 +490,20 @@ def make_dev_agent(spec):
     mem = Memory()
     last_view = {"v": None}
     COUNTERS["episodes"] += 1
+    # A board readout needs the dawn and midday frames of the season so far
+    # (rl.rollout keeps the same two dicts for the RL path).
+    dawn_hist, mid_hist = {}, {}
 
     def agent_fn(obs):
         view = View(obs)
+        ro = provider.readout
+        if ro is not None and getattr(ro, "wants_board", False):
+            if view.hour == 0:
+                from rlv3 import readout as RO
+                dawn_hist[view.day] = obs
+                ro.board = RO.board_at_dawn(obs, view.player, dawn_hist, mid_hist, view.day)
+            elif view.hour == 12:
+                mid_hist[view.day] = obs
         mem.observe(view)
         last_view["v"] = view
         provider.observe(view, mem)

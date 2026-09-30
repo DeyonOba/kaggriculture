@@ -35,6 +35,8 @@ from __future__ import annotations
 import collections
 import os
 
+import numpy as np
+
 from kagent import econ, features
 from kagent.constants import ANIMALS
 
@@ -91,6 +93,19 @@ def last_plant_day(crop):
     return 29 - int(lead or 0)
 
 
+def board_at_dawn(obs, seat, dawn_hist, mid_hist, day, arm=None):
+    """The (C, 10, 10) float16 board for THIS dawn, built exactly as
+    rl.rollout._board builds it on the RL path (tools/s3_flow.encode_day's
+    convention: past dawns newest-first plus yesterday's midday frame), but
+    without the KAGG_BOARD environment gate. `dawn_hist[d]` / `mid_hist[d]`
+    are the raw observations at hour 0 / hour 12 of day d."""
+    from tools.board_tensor import board_pair_temporal_both, arm_channels
+    arm = arm or os.environ.get("KAGG_BOARD_ARM", "T_crop_103")
+    past = [dawn_hist[d] for d in range(day - 1, -1, -1) if d in dawn_hist]
+    t = board_pair_temporal_both(obs, seat, prev_mid=mid_hist.get(day - 1), hist=past)
+    return t[arm_channels(arm)].astype("float16")
+
+
 def choices_to_pred(heads, idx):
     """Per-head choice indices -> the readout's prediction dict. Shared by
     Readout.predict (argmax) and kagent.nnpolicy.NeuralPolicy(decode="commit")
@@ -119,20 +134,29 @@ class Readout:
 
         if features.HEADS_VERSION != version:
             features.set_heads_version(version)
+        from rl.common import BOARD_W
         sd = torch.load(weights, map_location="cpu")["policy"]
-        n_in = sd["h1.weight"].shape[1]
-        self.net = PlannerNet(n_in, board=False)
+        # A board readout carries the trunk (board.*): its h1 eats the scalars
+        # plus BOARD_W trunk features. The driver sets `self.board` for the
+        # dawn about to be planned (rlv3.agent.make_dev_agent, s0_check).
+        has_board = any(k.startswith("board.") for k in sd)
+        n_in = sd["h1.weight"].shape[1] - (BOARD_W if has_board else 0)
+        self.net = PlannerNet(n_in, board=has_board)
         self.net.load_state_dict(sd)
         self.net.eval()
         self.n_in = n_in
+        self.wants_board = has_board
+        self.board = None
         self.version = version
         self.horizon = horizon
         self.heads = list(features.HEADS)
         self.path = weights
 
-    def predict(self, view, memory):
+    def predict(self, view, memory, board=None):
         """-> {"crops": {crop: n}, "herd": {kind: n}, "hires": n, "land": 0|1}
-        -- the standing stock this readout expects three dawns on."""
+        -- the standing stock this readout expects three dawns on. A board
+        readout needs this dawn's (C, 10, 10) tensor: `board`, else
+        `self.board` (see board_at_dawn)."""
         import torch
         from rl.common import masked_dists
 
@@ -144,7 +168,14 @@ class Readout:
         m = features.masks(view, horizon=self.horizon)
         flat = sum(m, []) if m and isinstance(m[0], list) else list(m)
         with torch.no_grad():
-            logits = self.net.forward_z(torch.tensor([x], dtype=torch.float32), None)
+            z = None
+            if self.wants_board:
+                b = board if board is not None else self.board
+                if b is None:
+                    raise RuntimeError("this readout carries a board trunk but no board "
+                                       "tensor was set for this dawn (Readout.board / board_at_dawn)")
+                z = self.net.board(torch.tensor(np.asarray(b, dtype=np.float32)[None]))
+            logits = self.net.forward_z(torch.tensor([x], dtype=torch.float32), z)
             dists = masked_dists(logits, torch.tensor([flat], dtype=torch.float32))
             idx = [int(d.probs.argmax(-1)[0]) for d in dists]
         return choices_to_pred(self.heads, idx)

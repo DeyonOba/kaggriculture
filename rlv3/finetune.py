@@ -62,19 +62,32 @@ def main():
           f"x width {x.shape[1]}, heads {len(features.HEADS)}, logits {features.N_ACTION_LOGITS}")
 
     sd = torch.load(args.init, map_location="cpu")["policy"]
-    net = PlannerNet(sd["h1.weight"].shape[1], board=False)
+    from rl.common import BOARD_W
+    has_board = any(k.startswith("board.") for k in sd)
+    net = PlannerNet(sd["h1.weight"].shape[1] - (BOARD_W if has_board else 0), board=has_board)
     net.load_state_dict(sd)
+    z = None
+    if has_board:
+        # the trunk stays frozen, as in the BC fit: its features are cached once
+        B = np.load(args.corpus.replace(".jsonl", "_boards.npy"), mmap_mode="r")
+        assert len(B) == len(rows), f"boards {len(B)} vs samples {len(rows)}"
+        with torch.no_grad():
+            z = torch.cat([net.board(torch.tensor(np.asarray(B[s_:s_ + 512], dtype=np.float32)))
+                           for s_ in range(0, len(rows), 512)])
+        for p_ in net.board.parameters():
+            p_.requires_grad_(False)
+        print(f"   board trunk: features cached for {len(rows):,} dawns, trunk frozen")
     assert net.logits.out_features == features.N_ACTION_LOGITS, "head set mismatch with the init weights"
 
     def nll(idx):
-        logits = net.forward_z(x[idx], None)
+        logits = net.forward_z(x[idx], None if z is None else z[idx])
         dists = masked_dists(logits, m[idx])
         lp = sum(d.log_prob(c[idx][:, h]) for h, d in enumerate(dists))
         return -(lp * w[idx]).sum() / w[idx].sum()
 
     with torch.no_grad():
         print(f"   before: nll {float(nll(torch.arange(len(rows)))):.3f}")
-    opt = torch.optim.Adam(net.parameters(), lr=args.lr)
+    opt = torch.optim.Adam([p_ for p_ in net.parameters() if p_.requires_grad], lr=args.lr)
     rng = np.random.default_rng(args.seed)
     for ep in range(args.epochs):
         perm = torch.from_numpy(rng.permutation(len(rows)))

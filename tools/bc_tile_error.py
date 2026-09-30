@@ -142,11 +142,22 @@ def score(corpus, version, weights, anchor_cache):
     masks = torch.tensor([sum(r["masks"], []) if isinstance(r["masks"][0], list)
                           else r["masks"] for r in rows], dtype=torch.float32)
 
-    net = PlannerNet(x.shape[1], board=False)
-    net.load_state_dict(torch.load(weights, map_location="cpu")["policy"])
+    sd = torch.load(weights, map_location="cpu")["policy"]
+    has_board = any(k.startswith("board.") for k in sd)
+    net = PlannerNet(x.shape[1], board=has_board)
+    net.load_state_dict(sd)
     net.eval()
+    z = None
+    if has_board:
+        # the corpus writer puts the boards in a memmap next to the jsonl,
+        # one row per sample in file order (rl/session_bc.py)
+        B = np.load(corpus + "_boards.npy", mmap_mode="r")
+        bidx = sorted(va_set)
+        with torch.no_grad():
+            z = torch.cat([net.board(torch.tensor(np.asarray(B[bidx[s:s + 512]], dtype=np.float32)))
+                           for s in range(0, len(bidx), 512)])
     with torch.no_grad():
-        dists = masked_dists(net.forward_z(x, None), masks)
+        dists = masked_dists(net.forward_z(x, z), masks)
         pred = torch.stack([d.probs.argmax(-1) for d in dists], 1).numpy()
 
     # Replay each val session ONCE; every version and the priced column read

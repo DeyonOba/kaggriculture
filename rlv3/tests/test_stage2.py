@@ -172,3 +172,32 @@ def test_train_sparring_maps_heuristic_draws():
         assert T._sparring("heuristic") == "heuristic"
     finally:
         T.SPARRING = old
+
+
+def test_a_board_readout_predicts_from_the_dawn_board_and_refuses_without_one():
+    pytest.importorskip("torch")
+    import json
+    from kagent.gamestate import Memory, View
+    from rlv3 import readout as RO
+    from rlv3.trajectory import leader_paths
+    w = os.path.join(REPO, "rl", "runs", "headfix", "readout_v5_board", "bc.pt")
+    if not os.path.exists(w):
+        pytest.skip("board readout not on disk")
+    ro = RO.Readout(w)
+    assert ro.wants_board and ro.n_in == 196
+    steps = json.load(open(leader_paths()[0][1]))["steps"]
+    dh, mh = {}, {}
+    for d in range(0, 4):
+        obs = dict(steps[d * 24][0]["observation"]); obs.setdefault("step", d * 24); dh[d] = obs
+        if d > 0:
+            mh[d - 1] = steps[(d - 1) * 24 + 12][0]["observation"]
+    b = RO.board_at_dawn(dh[3], 0, dh, mh, 3)
+    assert b.shape == (103, 10, 10)
+    view = View(dh[3]); mem = Memory(); mem.observe(view)
+    with pytest.raises(RuntimeError):
+        ro.predict(view, mem)
+    pred = ro.predict(view, mem, board=b)
+    assert set(pred) == {"crops", "herd", "hires", "land", "fert"}
+    # the no-board readout is untouched by the new path
+    ro0 = RO.Readout()
+    assert not ro0.wants_board and set(ro0.predict(view, mem)) == set(pred)
