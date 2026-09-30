@@ -216,3 +216,24 @@ def test_care_price_keeps_caring_when_the_product_has_crashed():
     obs["market"]["prices"]["MILK"] = MARKET_PARAMS["MILK"]["base"]
     scheduler.reset_exec()
     assert ("CARE", scheduler.P_ANIMAL) in _at(View(obs), plan, 1, 1)         # a healthy price: cared either way
+
+
+def test_hold_crash_keeps_a_crashed_product_for_its_floor():
+    from kagent import market
+    from kagent.constants import MARKET_PARAMS
+    obs = _obs(day=15, hour=6)
+    obs["private"]["shed"] = {"MILK": 12}
+    obs["market"]["prices"]["MILK"] = 0.2 * MARKET_PARAMS["MILK"]["base"]
+    p = MARKET_PARAMS["MILK"]
+    obs["market"]["inventory"]["MILK"] = int(p["I0"] + p["T"])                  # past the target by the whole ramp: quotes at $1
+    view = View(obs)
+    plan = planner.make_champion_plan(view, Memory())
+    plan.liquidation = False
+    plan.sell_floors["MILK"] = 40
+    sells = [o for o in market._sell_orders(view, plan, Memory()) if o[1] == "MILK"]
+    assert sells and sells[0][2] == 12                                          # shipped: the crashed-market release dumps it
+    scheduler.set_exec("hold_crash")
+    assert not [o for o in market._sell_orders(view, plan, Memory()) if o[1] == "MILK"]
+    # the shed-pressure valve still dumps
+    obs["private"]["shed"] = {"MILK": 90}
+    assert [o for o in market._sell_orders(View(obs), plan, Memory()) if o[1] == "MILK"]

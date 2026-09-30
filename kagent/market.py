@@ -204,7 +204,7 @@ def _sell_orders(view, plan, memory):
         # below base, the town drain cannot lift it back inside our horizon —
         # holding has no option value, so take what the market gives.
         base = MARKET_PARAMS[item]["base"]
-        if view.market_prices.get(item, base) <= 0.3 * base:
+        if view.market_prices.get(item, base) <= 0.3 * base and not scheduler.EXEC.get("hold_crash"):
             floor = 1
         inv = view.market_inv.get(item)
         if inv is None:

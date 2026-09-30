@@ -202,12 +202,21 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              on days 13-20 and 40% on days 21-28 while the leaders hold
 #              82% and 65% with fed rates lower than ours. A cared animal
 #              produces 3-4x a bare one and prices recover as the shops drain.
+#              Gated alone: -0.014 (2 vs 4), our bank -889 -- cared units
+#              sold into the crash do not pay for the turn.
+#   hold_crash market: no crashed-market release. The shipped sell dumps a
+#              product at any price once it trades under 30% of base; held,
+#              it waits for its floor while the shops drain the market (the
+#              shed-pressure valve and the final push still bypass). Paired
+#              with care_price: an animal cannot be removed, so the question
+#              is the SELL timing of what it keeps producing, not the care.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
-              "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price")
+              "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price",
+              "hold_crash")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
