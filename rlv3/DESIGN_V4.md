@@ -128,3 +128,21 @@ KAGG_BOARD=1 PYTHONPATH=. uv run python rl/session_eval.py --reuse h11=... --reu
 **Beating h13, round 2 — the contest-stage bets (seed 7, vs the package):** sheep cap 10 −0.049 (5 vs 12; our bank −$3,133, the opponent's −$419); strawberry target 40 −0.062 (5 vs 14, p 0.06; −$4,385 / −$1,128). Betting on the risk products from the contest on loses the way every crop-mix and herd push has: the extra supply lowers the shared price faster than the extra units pay.
 
 **Beating h13, round 3 — the cash engine (seed 7, vs the package):** early wheat harvest + strawberries from day 2: **+0.000 (26 vs 26), our bank −$2,729, the opponent's −$1,418**; vs h11 +0.083 (31 vs 19). It moves 52 games and wins them back exactly: up in the four lower bands (+.083 +.083 −.083 +.125), down in the two top bands (−.042 −.167). A wash, and the strongest opponents punish the thinner opening. Six arms on top of the package today (tomato, geese, fertiliser, sheep, strawberries, the cash engine) plus sell_board and press_niche: none beats it. **h13 is the day's final agent; the last submission is not spent.**
+
+## 6. h13 from opening to liquidation, against h11 and the leaders (2026-09-30)
+
+Size ledger (tape worlds 0-3 for ours; the 40 winner seats for the leaders): income a day / herd / plant tiles.
+
+| days | leaders | h11 | h13 |
+|---|---|---|---|
+| 3-6 | $3,203 / 7.6 / 17 | $1,125 / 4.4 / 19 | $1,754 / 5.5 / 17 |
+| 7-10 | $8,707 / 16.0 / 43 | $3,960 / 10.1 / 31 | $2,408 / 10.2 / 35 |
+| 11-15 | $7,250 / 21.7 / 63 | $4,887 / 15.3 / 53 | $5,666 / 15.6 / 50 |
+| 16-22 | $7,057 / 22.4 / 62 | $5,635 / 16.0 / 56 | $6,801 / 15.9 / 55 |
+| 23-29 | $6,200 / 19.6 / 55 | $4,707 / 16.0 / 44 | $6,416 / 15.2 / 42 |
+
+h13 closes a quarter of the days 3-6 income gap, earns less than h11 on days 7-10 (ten melons instead of fifteen at the day-10 race), and out-earns it from day 11 to the end; final banks on the four worlds $105.7k vs $86.3k. The herd from day 11 is still six animals short of the leaders' and the farm ten tiles smaller. Yield ledger: h13 delivers the standing farm like h11 (watered 57-78%, fed 91-99%, cared 59-99%). Price ledger: strawberry realised 0.90 of the mean (h11 0.76), milk 0.99 (0.92), wool 1.00 (0.97); dawn share of sales 48% / 43% / 55% against 73% / 74% / 61%.
+
+**The fourth quadrant never fires in h13**: `CHAMP_LAND_BUYS = 2` ("champions never bought the $4,000 quadrant") and `land4` is 0, so every game ends on three quadrants; `press_niche` fired in 9 of 144 games. The gated version (days 14-20, crew >= 9, idle <= 12, $15k margin, +25 wheat engine when owned) and a $4k-margin version are gated now on top of the package.
+
+**Day 0-2 labour (h13, world 0):** day 0 116 unit-turns, 53 productive, 57 moves of which 18 step onto a square the unit already stood on that day; day 1 93 / 36 / 52 / 12; day 2 162 / 37 / 81 / 14. Day 2 is 23% productive: the crew is slack, and what stops more planting on days 1-2 is the $4-28 dawn (melon seed $80), not the hands. The 60% seed ration leaves the last day-0 seeds to hour 20; `approve` on top of the package is gated now.
