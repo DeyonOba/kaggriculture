@@ -155,9 +155,8 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              deferred and often never happens. Measured (days 23-27): the
 #              champion FEEDs 15-16 animals a day and CAREs 6-10; the fresh
 #              leaders FEED 15-19 and CARE 15-19. Metric: CARE per FEED.
-_TQ_SCHED = None     # KAGG_TQ_SCHEDULE, loaded once per process
 
-EXEC_FLAGS = ("tilequeue", "lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
+EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all")
@@ -517,107 +516,7 @@ def build_tasks(view, plan):
                 tasks.append(Task(P_TEND, x, y, ["PLACE", kind], need=kind))
                 break
 
-    if view.hour <= PLANT_LAST_HOUR and EXEC["tilequeue"] and plan.plant_quota:
-        # THE DAWN QUEUE. Decide the occupant of every tile free now OR
-        # freeing today, once, then give each tile its task the moment it is
-        # bare -- a tile freeing at hour 14 is otherwise a race the plan lost.
-        if plan.tile_queue is None:
-            from kagent import features as _f
-            sched_path = os.environ.get("KAGG_TQ_SCHEDULE")
-            fixed = os.environ.get("KAGG_TQ_SHARE")
-            if sched_path:
-                # A DAY-INDEXED schedule: {"<day>": {"stock": f, "crop": {...}}}.
-                # Used to command the LEADERS' own observed daily land split,
-                # extracted from 40 replays, so the allocation target can be
-                # gated without first building a model to predict it.
-                global _TQ_SCHED
-                if _TQ_SCHED is None:
-                    import json as _json
-                    with open(sched_path) as _fh:
-                        _TQ_SCHED = _json.load(_fh)
-                row = _TQ_SCHED.get(str(view.day))
-                if row is None and _TQ_SCHED:
-                    # past the end of the schedule: hold the last day given
-                    row = _TQ_SCHED[max(_TQ_SCHED, key=lambda k: int(k))]
-                # only the CROP mix is taken from the schedule; the structure
-                # count stays the planner's, for the stock/rate reason below
-                share = dict(row.get("crop") or {}) if row else {}
-            elif fixed:
-                # TEST HOOK: command a KNOWN share so the translation layer can
-                # be measured alone -- does a share going in come out as that
-                # board composition? The 144-game gate bundled this with the
-                # quality of a share reverse-engineered from the heuristic, and
-                # that source is known broken in both directions, so it could
-                # not answer the question it was run to answer.
-                share = {}
-                for part in fixed.split(","):
-                    k, _, v = part.partition(":")
-                    if k.strip():
-                        share[k.strip().upper()] = float(v or 0)
-            else:
-                # The share describes the intended BOARD, not the delta:
-                # plant_quota is a deficit and normalises to nonsense.
-                standing = {}
-                for _sx, _sy, _t in me.plants():
-                    c = _t.get("crop")
-                    if c:
-                        standing[c] = standing.get(c, 0) + 1
-                intent = {c: standing.get(c, 0) + plan.plant_quota.get(c, 0)
-                          for c in set(standing) | set(plan.plant_quota)}
-                tot = float(sum(intent.values())) or 1.0
-                share = {c: n / tot for c, n in intent.items() if n > 0}
-            # STRUCTURES ARE A STOCK, NOT A RATE. `plan.structure_builds` is
-            # the planner's own count of coops/pastures still needed for the
-            # animals it intends to buy, and it is left exactly as the planner
-            # set it. Deriving a structure SHARE from the leaders and applying
-            # it per-day was measured wrong: mmpq builds 7 pastures on day 6
-            # ONCE, encoded as 0.35 of daily ground it compounded into +8
-            # standing structures with no animals to fill them, and -13 crop
-            # tiles, on a board where an empty structure produces nothing.
-            #
-            # THE QUOTA IS THE DEMAND QUEUE. try_execute vetoes any PLANT whose
-            # crop is not in plan.plant_quota, so the quota is the interface to
-            # execution; and because policy.py decrements it as each plant is
-            # emitted, it already IS a list that shrinks as ground is used.
-            # Sizing it from the share and letting it drain needs no per-tile
-            # pre-assignment -- which is the better object anyway, since
-            # pre-assigning named tiles at dawn depends on correctly forecasting
-            # WHICH tiles free, and an item on a tile that never frees is simply
-            # never placed.
-            ground = len(_f.freeing_tiles(view, horizon=1))
-            ground = max(0, min(ground, _f.PLANTS_PER_DAY_CAP)
-                         - sum(plan.structure_builds.values()))
-            tot = sum(max(0.0, w) for w in share.values())
-            if ground > 0 and tot > 0:
-                exact = {c: ground * max(0.0, w) / tot for c, w in share.items()}
-                quota = {c: int(v) for c, v in exact.items()}
-                left = ground - sum(quota.values())
-                for c, _v in sorted(exact.items(), key=lambda kv: -(kv[1] - int(kv[1]))):
-                    if left <= 0:
-                        break
-                    quota[c] += 1
-                    left -= 1
-                plan.plant_quota = {c: n for c, n in quota.items() if n > 0}
-            plan.tile_queue = True            # demand queue built for this day
-        # Pair bare ground with the REMAINING demand, every step. Wheat takes
-        # tiles beside a structure first so a hand can harvest and feed without
-        # a shed trip; everything else fills in around it.
-        wanted = [c for c, n in plan.plant_quota.items() for _ in range(n)]
-        if wanted:
-            bare = [(x, y) for x, y in me.empty_tiles()]
-            near = set()
-            for sx, sy, _st in me.animals():
-                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    near.add((sx + dx, sy + dy))
-            n_wheat = plan.plant_quota.get("WHEAT", 0)
-            adj = [t for t in bare if t in near][:n_wheat]
-            for x, y in adj:
-                tasks.append(Task(P_GROW, x, y, ["PLANT", "WHEAT"]))
-            rest = [t for t in bare if t not in set(adj)]
-            others = [c for c in wanted if c != "WHEAT"] or wanted
-            for i, (x, y) in enumerate(rest):
-                tasks.append(Task(P_GROW, x, y, ["PLANT", others[i % len(others)]]))
-    elif view.hour <= PLANT_LAST_HOUR:
+    if view.hour <= PLANT_LAST_HOUR:
         # One PLANT task per empty tile, crops interleaved by remaining quota,
         # so every zone plants its own ground instead of all hands converging
         # on the few center-most empties. The daily quota is enforced at
