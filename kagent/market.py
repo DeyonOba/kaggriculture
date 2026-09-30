@@ -39,6 +39,20 @@ def build_orders(view, plan, memory):
                 memory.melons_sold += sell[2]
         return orders
 
+    approved = bool(getattr(plan, "approved", False))
+    early_sells = []
+    if approved and view.hour == 0:
+        # the engine resolves orders in list order with the cash updated in
+        # between, so the dawn sells pay for the hires and the seeds below
+        for sell in _sell_orders(view, plan, memory):
+            if len(early_sells) >= MAX_MARKET_ORDERS - 4:
+                break
+            early_sells.append(sell)
+            if sell[1] == "MELON":
+                memory.melons_sold += sell[2]
+            money += econ.sell_revenue(sell[1], view.market_inv.get(sell[1], 0), sell[2])
+        orders.extend(early_sells)
+
     # --- HIRE (first hours of the day only) ---------------------------------
     if view.hour <= 1:
         need = plan.hires_target - view.me.hires_today
@@ -46,7 +60,7 @@ def build_orders(view, plan, memory):
         hired = 0
         while need > 0 and hired < 8:
             cost_guard += econ.hire_marginal_cost(view.me.hires_today + hired)
-            if cost_guard > money * 0.3 or not add(["HIRE"]):
+            if cost_guard > (money if approved else money * 0.3) or not add(["HIRE"]):
                 break
             hired += 1
             need -= 1
@@ -65,9 +79,12 @@ def build_orders(view, plan, memory):
         deficit = target - wheat_stock
         price = view.market_prices.get("WHEAT", 25)
         affordable = int(money // max(1.0, price))
-        if deficit > 0 and affordable > 0 and price <= 120:
+        if deficit > 0 and affordable > 0 and (price <= 120 or getattr(plan, "feed_any", False)):
             add(["BUY_PRODUCT", "WHEAT", min(deficit, 15, affordable)])
             money -= min(deficit, 15, affordable) * price
+
+    if approved:
+        money = _seed_orders(view, plan, memory, money, add)
 
     # --- Land (bought the turn it becomes affordable) -------------------------
     remaining_land = []
@@ -93,7 +110,25 @@ def build_orders(view, plan, memory):
             plan.animal_buys[kind] = want - n
             money -= n * cost
 
-    # --- Seeds: cover the remaining quota (bought this turn, plantable next) --
+    if not approved:
+        money = _seed_orders(view, plan, memory, money, add)
+
+    # --- Sells fill the remaining slots ---------------------------------------
+    if not early_sells:
+        for sell in _sell_orders(view, plan, memory):
+            if not add(sell):
+                break
+            if sell[1] == "MELON":
+                memory.melons_sold += sell[2]
+
+    return orders
+
+
+def _seed_orders(view, plan, memory, money, add):
+    """Seeds: cover the remaining quota (bought this turn, plantable next).
+    Returns the cash left. Under an approved plan the whole deficit is bought
+    above the cash floor; otherwise 60% of the cash above it (shipped)."""
+    floor = float(getattr(plan, "cash_floor", 0.0) or 0.0)
     last_plant_day = {"MELON": 19, "WHEAT": 25, "CARROT": 26, "TOMATO": 18, "STRAWBERRY": 13}
     # rlv3/pipeline.py extends the wheat/carrot window through day 27;
     # anything else leaves this table exactly as shipped.
@@ -109,17 +144,9 @@ def build_orders(view, plan, memory):
             lot = int(getattr(plan, "seed_lot", 0) or 0)
             if lot > 0:
                 n = min(n, lot)            # opening_v2: seeds as the crew reaches the ground
-            if n > 0:
-                add(["BUY_SEED", crop, n])
-
-    # --- Sells fill the remaining slots ---------------------------------------
-    for sell in _sell_orders(view, plan, memory):
-        if not add(sell):
-            break
-        if sell[1] == "MELON":
-            memory.melons_sold += sell[2]
-
-    return orders
+            if n > 0 and add(["BUY_SEED", crop, n]):
+                money -= n * CROPS[crop]["seed"]
+    return money
 
 
 def _sell_orders(view, plan, memory):

@@ -12,7 +12,7 @@ import time
 import traceback
 
 from kagent.gamestate import Memory, View
-from kagent import boardstate, features, market, planner, scheduler, executor2
+from kagent import boardstate, features, market, planner, scheduler, executor2, sizing
 from kagent.banditpolicy import BanditPolicy, KnobBanditPolicy
 from kagent.mpcpolicy import MPCPlanProvider
 from kagent.nnpolicy import NeuralPolicy, decode_weights
@@ -120,7 +120,11 @@ class HeuristicPolicy:
             memory.day_plan_day = view.day
             if scheduler.EXEC.get("replant"):
                 memory.replant_added = scheduler.replant_quota(view, memory.day_plan)
+            if any(scheduler.EXEC.get(f) for f in ("sized", "size_budget", "size_feed", "size_hires", "size_ground")):
+                sizing.approve_plan(view, memory.day_plan, memory)
         plan = memory.day_plan
+        if scheduler.EXEC.get("sized") or scheduler.EXEC.get("size_ground"):
+            sizing.refill(view, plan, memory)
 
         tasks = scheduler.build_tasks(view, plan)
         plan.fert_reserve = sum(1 for t in tasks if t.op[0] == "FERTILIZE")
@@ -144,6 +148,8 @@ class HeuristicPolicy:
                 plan.structure_builds["PASTURE"] = max(0, plan.structure_builds["PASTURE"] - 1)
 
         orders = market.build_orders(view, plan, memory)
+        if getattr(plan, "approved", False):
+            sizing.record_spend(view, memory, orders)
 
         for op in actions.values():
             memory.turns_accum += 1

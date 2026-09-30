@@ -189,7 +189,7 @@ class DayPlan:
         "hires_target", "land_buys", "plant_quota", "animal_buys",
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
         "fert_reserve", "land_margin", "feed_days", "cull_kinds", "sell_pace",
-        "fert_gate", "fert_budget", "cash_floor", "seed_lot", "approved",
+        "fert_gate", "fert_budget", "cash_floor", "seed_lot", "approved", "feed_any",
     )
 
     def __init__(self):
@@ -227,6 +227,8 @@ class DayPlan:
         # executor2: the plan's purchases are approved -- seeds for the whole
         # quota are bought above the cash floor, not rationed to 60% of cash
         self.approved = False
+        # sizing: feed is bought at any wheat price (the leaders' first claim)
+        self.feed_any = False
 
 
 def _count_crops(farm):

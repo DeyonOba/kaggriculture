@@ -54,6 +54,12 @@ def build_agent(spec_text):
         def rec(view, memory):
             plan = inner(view, memory); asks[view.day] = snapshot(plan); return plan
         provider.make_plan = rec
+        from kagent import sizing as SZ
+        _approve = SZ.approve_plan
+
+        def rec_sized(view, plan, memory):
+            out = _approve(view, plan, memory); asks[view.day] = snapshot(plan); return out
+        SZ.approve_plan = rec_sized
 
         def agent_fn(obs):
             view = View(obs); mem.observe(view); return pol.act(view, mem)

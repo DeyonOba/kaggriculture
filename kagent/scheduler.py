@@ -189,12 +189,19 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              bare 17 vs STR 28, day 11 bare 26 vs STR 34), so the room is
 #              zero and nothing is added; world 1 plays the identical game.
 #              The quota is not the bottleneck -- cash and labour are.
+#   size_*     kagent/sizing.py: the dawn plan is APPROVED against a budget
+#              and a crew in a fixed claim order (feed, hands, seeds, animals,
+#              land) and only the approved part is asked. size_budget = dawn
+#              cash + today's expected sales, asks cut to it; size_feed = feed
+#              at any price, first claim; size_hires = hands by workload;
+#              size_ground = a bare tile whose planned crop is unaffordable is
+#              planted with the best affordable crop. `sized` = all four.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
-              "replant")
+              "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
