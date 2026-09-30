@@ -180,10 +180,15 @@ def main():
     if args.init:
         with open(args.init) as fh:
             d = json.load(fh)
-        start.update(d.get("knobs", d))
+        start.update({k: v for k, v in d.get("knobs", d).items() if k in T.KNOB_NAMES})
         for n in T.EXEC_NAMES:
             if n in (d.get("exec") or []):
                 start[n] = True
+        # what the cube does not know rides fixed in every candidate
+        T.FIXED["knobs"] = {k: v for k, v in d.get("knobs", d).items() if k not in T.KNOB_NAMES}
+        T.FIXED["exec"] = [n for n in (d.get("exec") or []) if n not in T.EXEC_NAMES]
+        if T.FIXED["knobs"] or T.FIXED["exec"]:
+            print(f"fixed outside the cube: {T.FIXED}")
 
     print(f"CEM over {T.DIM} coordinates, up to {args.block} perturbed a candidate; "
           f"{len(entries)} paired games a candidate, "

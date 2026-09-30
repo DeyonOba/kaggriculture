@@ -303,6 +303,13 @@ def _perturb(rng, i, m, s):
     return min(1.0, m + step) if m <= 0.5 else max(0.0, m - step)
 
 
+# Coordinates OUTSIDE the cube that every candidate carries unchanged -- set
+# by tools/cem_theta.py from the --init file's keys the cube does not know
+# (2026-09-30: the h13 package's lead_opening, sell_dp2, seed_cap), so a
+# search around the package stays a search around the package.
+FIXED = {"knobs": {}, "exec": []}
+
+
 def spec(theta):
     """theta dict -> the rollout arm spec, {"kind","knobs","exec"}.
 
@@ -311,7 +318,8 @@ def spec(theta):
     candidates in a row does not leak one arm's executor into the next.
     """
     knobs = {n: theta[n] for n in KNOB_NAMES}
-    flags = sorted(n for n in EXEC_NAMES if theta.get(n))
+    knobs.update(FIXED["knobs"])
+    flags = sorted(set(n for n in EXEC_NAMES if theta.get(n)) | set(FIXED["exec"]))
     return {"kind": "theta", "knobs": knobs, "exec": flags}
 
 
