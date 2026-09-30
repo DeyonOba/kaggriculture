@@ -78,7 +78,9 @@ def play(spec_text, world, seed=7, per_bin=24):
     side = 1 - ss
     env = make("kaggriculture", configuration={"seed": sess["seed"]}, debug=False)
     env.run([agent_fn, opp] if side == 0 else [opp, agent_fn])
-    return env.steps, side, asks, os.path.basename(p)
+    last = env.steps[-1]
+    money = (last[side]["observation"]["farms"][side]["money"], last[1 - side]["observation"]["farms"][1 - side]["money"])
+    return env.steps, side, asks, f"{os.path.basename(p)} | final ${money[0]:,.0f} vs ${money[1]:,.0f} ({'WIN' if money[0] > money[1] else 'loss'})"
 
 
 def ledger(steps, side, asks, days):
