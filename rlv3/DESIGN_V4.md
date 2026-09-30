@@ -59,6 +59,8 @@
 
 **Stage 7 — Intercepting the opponent.** The cheap version is a conditional table from replays: their visible day-0/1 opening → their season (what they plant, when they sell), and our sells timed around their harvests. Model-based opponent modelling (MBOM) that imagines improving opponents is for opponents that adapt within a game; ours are fixed policies within a game and change between weeks — the weekly re-harvest + fine-tune is the adaptation that matters.
 
+*Stage 7 status (2026-09-30):* the cheap version is already in two places — the shipped melon floor drops to $40 when three or more of the opponent's melons are within two days of ripening (`planner._sell_floors`), and Stage 2's solver reads their supply per product from the public inventory every turn and blends it with the corpus hour profile. Their visible day-0/1 opening is now a measured table (40/40 winner seats: 5 animals, 6 melon + 10 wheat, 4 hands), so the conditional "their opening → their season" has a single mode among the leaders; it is a discriminator only against weaker opponents, whose seasons the tape corpus already encodes. Nothing further built today.
+
 **Stage 8 — The learnable executor.** The one thing every winning sim-competition agent has that we don't: unit actions come from the same network that sees the board. Our split (learned plan, hand executor) caps what imitation can transfer — the leaders' mix works because their executor extracts ~1,000 one-time units to our 388. The per-op imitation refutation (−10.3) ran with net arms flagless; it needs one re-gate before it counts.
 
 ## 3. The three suggested methods, placed honestly
@@ -90,3 +92,17 @@ KAGG_BOARD=1 PYTHONPATH=. uv run python rl/session_eval.py --reuse h11=... --reu
 - ADMM for distributed resource allocation (survey): https://arxiv.org/pdf/2401.15607 ; multi-farmer crop planning under uncertainty: https://www.sciencedirect.com/science/article/abs/pii/S036083522030718X
 - Kalman filtering for demand/inventory estimation: https://www.sciencedirect.com/science/article/abs/pii/S0278612520301205 ; EKF parameter estimation in supply chains: https://doi.org/10.3390/math14162906
 - RL crop-management environments (gym-DSSAT, CropGym) — agronomy, not markets; cited for what the field has, not for a design choice: https://openreview.net/pdf?id=4vNeWNQc3U , https://arxiv.org/abs/2104.04326
+
+## 5. Pipeline status, 2026-09-30
+
+| stage | built | gate vs h11 | banks (ours / opp) | verdict |
+|---|---|---|---|---|
+| 1 board readout | yes | +0.025 vs scalar readout, −0.118 vs h11 | −$1.2k / −$3.5k | closed |
+| 2 sell timing (exact market) | `sell_dp`, `sell_dp2` | +0.000 / +0.000 | +$1.2k / +$3.1k; +$2.5k / +$1.9k | null: the level is shared |
+| 3 seed buying | `seed_cap` | +0.000 (14 vs 14) | +$2.0k / +$1.4k | null, a saving |
+| 4 hiring by load | fit + `lead_hires` | −0.097 (p 0.044) | −$2.8k / −$1.5k | closed: a day schedule, sized to the farm |
+| 5 minimal melon | fit + `melon_opening=10` | see `rl/runs/melon10_gate.json` | | the leaders' 6+4 |
+| 6 posture → quantities | `posture` | see `rl/runs/posture_gate.json` | | |
+| 7 opponent | shipped melon floor + Stage 2's supply read | — | | cheap version exists |
+| 8 learnable executor | not built | — | | needs the per-op re-gate first |
+| opening (the trace) | `lead_opening` | +0.025 ± 0.026 pooled, 432 games | −$0.9k / −$3.0k | the default opening |
