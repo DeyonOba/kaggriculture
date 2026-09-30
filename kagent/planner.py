@@ -1,6 +1,7 @@
 """Day-level strategic planner: quotas, hiring, land, sell floors."""
 
 from kagent.constants import (
+    TOWN_CENTER_SELL_INTERVAL,
     ANIMALS,
     CROPS,
     LAND_ORDER,
@@ -422,6 +423,15 @@ LAND4_WHEAT_BONUS = 25
 # 0.827 for CHAMP_HIRES alone, with a zero coefficient on the harvests: hiring
 # is a day schedule, not a load function. The schedule differs from ours by
 # about one hand on days 2-6 and half a hand from day 16 (a 12th hand).
+# press_niche (user's rule, 2026-09-30): when we are BEHIND and cannot match
+# the opponent's throughput, widen the variance -- buy the last quadrant and
+# plant the crops the opponent left out that the town still buys, whose
+# price sits at or above base because nobody supplies them.
+PRESS_DAY = 12
+PRESS_LEAD = 8_000        # dollars behind that trigger the press
+PRESS_RATIO = 1.15        # their standing work (tiles + 3 x animals) over ours
+NICHE_TILES = 8           # tiles of each niche crop to hold
+NICHE_MAX_OPP = 1         # a crop is "left out" when the opponent stands at most this many tiles of it
 POSTURE_DAY = 12          # the lead dominates the outcome from here (phase propagation: 0.552 -> 0.892)
 POSTURE_LEAD = 8_000      # dollars of lead (or deficit) that switch the posture
 POSTURE_TILES = 6         # tiles moved between the wheat engine and the strawberries
@@ -475,6 +485,11 @@ KNOB_DEFAULTS = {
     # moves POSTURE_TILES tiles from strawberries (a sq-curve trap) to the
     # wheat engine (an annuity); a deficit beyond it moves them the other way.
     "posture": 0,
+    # press_niche: behind by PRESS_LEAD with the opponent's standing work
+    # PRESS_RATIO x ours from PRESS_DAY -> buy the next quadrant on a $600
+    # margin and hold NICHE_TILES of each crop the opponent left out that the
+    # town buys and the market has not glutted (see PRESS_* / NICHE_*).
+    "press_niche": 0,
     # OPENING V2 (2026-09-30, tools/plan_ledger.py): the champion delivers 49% of
     # its own asks on days 0-8, days 1 and 4 are $1 dawns with no hand hired,
     # and the leaders (5 units on day 0, 12.3 wheat + 6.3 melon planted, wheat
@@ -638,6 +653,14 @@ def make_champion_plan(view, memory):
         # with ~$25k in the bank). See the LAND4_* constants.
         plan.land_buys.append(LAND_ORDER[next_idx])
         plan.land_margin = knobs.get("land4_margin", 15000)
+    pressing = False
+    if knobs.get("press_niche") and PRESS_DAY <= day <= 22:
+        opp_work = sum(1 for _ in view.opp.plants()) + 3 * sum(1 for _ in view.opp.animals())
+        our_work = sum(crops.values()) + 3 * my_animals
+        pressing = (me.money - view.opp.money < -PRESS_LEAD) and opp_work > PRESS_RATIO * max(1, our_work)
+        if pressing and next_idx < len(LAND_ORDER) and LAND_ORDER[next_idx] not in plan.land_buys:
+            plan.land_buys.append(LAND_ORDER[next_idx])
+            plan.land_margin = 600
 
     # --- Animals: speculative herd, gated by cash only (feed is bought) --------
     plan.animal_buys = {}
@@ -768,6 +791,19 @@ def make_champion_plan(view, memory):
         # dict order is the scheduler's planting order and the market's seed
         # order: the crops that pay first go in first (wheat 2 days, melon 10)
         quota = dict(sorted(quota.items(), key=lambda kv: CROPS.get(kv[0], {}).get("first_yield_day", 99)))
+    if pressing and not plan.liquidation:
+        # the crops the opponent left out, that the town still buys (a shop
+        # beyond the town centre drains them) and the market has not glutted
+        drain = econ.town_drain_per_day(view.unlocked_shops)
+        opp_crops = _count_crops(view.opp)
+        for crop, last in (("CARROT", CARROT_LAST_PLANT_DAY), ("TOMATO", TOMATO_LAST_PLANT_DAY)):
+            if day > last or opp_crops.get(crop, 0) > NICHE_MAX_OPP:
+                continue
+            if drain.get(crop, 0.0) <= TURNS_PER_DAY / TOWN_CENTER_SELL_INTERVAL + 1e-9:
+                continue                                  # the town centre alone: no niche
+            if view.market_inv.get(crop, 0) > MARKET_PARAMS[crop]["I0"]:
+                continue                                  # already glutted: no rise to catch
+            quota[crop] = max(quota.get(crop, 0), NICHE_TILES - crops.get(crop, 0))
     plan.plant_quota = {k: v for k, v in quota.items() if v > 0}
 
     # Never sell feed we are about to buy back. The sell path used to reserve

@@ -145,3 +145,39 @@ def test_posture_protects_when_ahead_and_presses_when_behind():
     level = planner.make_champion_plan(View(obs), mem).plant_quota
     assert ahead.get("STRAWBERRY", 0) < level.get("STRAWBERRY", 0) < behind.get("STRAWBERRY", 0), (ahead, level, behind)
     assert ahead.get("WHEAT", 0) >= level.get("WHEAT", 0)
+
+
+def test_press_niche_buys_land_and_plants_the_crop_the_opponent_left_out():
+    from kagent import planner
+    from kagent.constants import MARKET_PARAMS
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["day"], obs["hour"], obs["step"] = 14, 0, 14 * 24
+    obs["farms"][0]["money"], obs["farms"][1]["money"] = 5_000, 30_000          # we are $25k behind
+    obs["farms"][0]["unlocked_quadrants"] = ["NW", "NE", "SW"]
+    obs["town"]["unlocked_shops"] = ["PET_CAFE"]                                 # carrot demand beyond the town centre
+    obs["market"]["inventory"]["CARROT"] = MARKET_PARAMS["CARROT"]["I0"] - 50    # not glutted
+    # the opponent works a much bigger farm and has no carrots
+    for y in range(10):
+        for x in range(10):
+            if obs["farms"][1]["tiles"][y][x] is None:
+                obs["farms"][1]["tiles"][y][x] = {"kind": "PLANT", "crop": "STRAWBERRY", "planted_day": 8, "watered_today": False,
+                                                  "consecutive_unwatered": 0, "yield_units": 0, "max_lifespan_step": -1, "fertilized_until_day": -1}
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs["press_niche"] = 1; mem.knobs_decided = True
+    plan = planner.make_champion_plan(View(obs), mem)
+    assert "SE" in plan.land_buys and plan.land_margin == 600, (plan.land_buys, plan.land_margin)
+    assert plan.plant_quota.get("CARROT", 0) >= planner.NICHE_TILES, plan.plant_quota
+    # ahead: nothing of it
+    obs["farms"][0]["money"], obs["farms"][1]["money"] = 30_000, 5_000
+    plan = planner.make_champion_plan(View(obs), mem)
+    assert "SE" not in plan.land_buys and plan.plant_quota.get("CARROT", 0) < planner.NICHE_TILES
+    # the opponent grows carrots too: no niche
+    obs["farms"][0]["money"], obs["farms"][1]["money"] = 5_000, 30_000
+    for x in range(3):
+        obs["farms"][1]["tiles"][0][x]["crop"] = "CARROT"
+    plan = planner.make_champion_plan(View(obs), mem)
+    assert plan.plant_quota.get("CARROT", 0) < planner.NICHE_TILES
