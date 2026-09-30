@@ -83,3 +83,21 @@ The first plan source is an **adapter** from today's `DayPlan` (so the champion 
 **Ledger before the gate** (world 0, days 0-14): delivery 84% of asks vs 57%; four worlds: bare tiles days 7-10 5.8 vs 8.1, herd days 3-6 4.9 vs 4.4, dusk cash still ~$1,000 on days 3-6 (the forecast floor lags income that doubles day to day). Shipped path bit-identical (world 0 ends at $87,073 either way).
 
 **Gates**: `sized` (the package) and each of the four flags alone vs h11 -- `rl/runs/size_*_gate.json`.
+
+**Sizing gates (2026-09-30, 144 paired worlds each, h11 reused; `rl/runs/size_*_gate.json`):**
+
+| arm | win | vs h11 | z | discordant | our bank | opp bank | bands (0-600 … 2500+) |
+|---|---|---|---|---|---|---|---|
+| h11 | 0.458 | | | | $90,532 | $89,828 | |
+| sized (all four) | 0.250 | −0.208 | −4.74 | 8 vs 38 | −$1,046 | +$4,066 | −.21 −.50 −.25 +.04 −.17 −.17 |
+| size_ground (fill) | 0.222 | −0.236 | −5.50 | 6 vs 40 | −$2,001 | +$10,801 | −.13 −.46 −.33 −.04 −.17 −.29 |
+| size_feed | 0.458 | +0.000 | 0.00 | 1 vs 1 | +$267 | +$280 | all 0 |
+| size_hires | 0.201 | −0.257 | −6.57 | 2 vs 39 | −$4,993 | +$12,183 | −.29 −.13 −.38 −.13 −.38 −.25 |
+| size_budget | 0.382 | −0.076 | −1.88 | 12 vs 23 | −$484 | +$1,597 | +.04 +.04 −.13 −.04 −.33 −.04 |
+
+- **The fill donates.** Over four worlds the fill arm sells 779 strawberry units to the shipped 1,540 and 1,933 wheat to 1,350: wheat on the bare tile is still standing when the strawberry money arrives, so the tile never becomes the strawberry tile it would have been three days later; half our strawberry supply leaves the shared market and the opponent's bank rises $10.8k. Volume knobs lose from the timing side too: the cheap crop costs the tile's next ten days.
+- **Hires by workload starves the crew.** Alone, the wage cap is half of dawn cash (no forecast without size_budget), so days 1-10 run on 2 hands; in the package the forecast lifts it to 7.4-7.9 hands on days 7-10 against the shipped 8.8 and it still loses. Hands are productive at the margin (the earlier hire-cap bound said the same); CHAMP_HIRES is not over-hiring.
+- **Feed at any price is a no-op**: the $120 cap almost never binds (1 discordant game).
+- **The budget cut alone is a small loss** (−0.076, p 0.09, opp +$1.6k): approving against dawn cash plus a lagging forecast asks less than the shipped rationing does on the days income doubles, and the animals-before-crops order does not recover it.
+
+**Verdict.** Plan sizing as a cut is CLOSED: on this planner every reduction of the ask loses and every substitution donates. The plan's asks are already the right size for its executor; what the ledger called "undelivered asks" is the market rationing them across the day, and that rationing beats a dawn approval because income arrives during the day. What survives from the design is the engine fact (sells first fund the dawn) and the measurement tools (size_ledger, yield_ledger). The yield ledger then moved the question: per standing tile and animal we deliver yield at or above the leaders; the farm is 30-45% smaller (the opening herd) and our CARE rate collapses after day 13 (the crash-pivot) -- `care_price` gate next.
