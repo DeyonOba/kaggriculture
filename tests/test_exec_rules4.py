@@ -278,3 +278,25 @@ def test_herdfirst_sends_the_nearest_free_hand_to_an_unfed_animal_across_zones()
     herd = scheduler.assign(view, plan, tasks)
     assert herd[1] == ["NORTH"], herd                                           # the wheat-carrying hand heads for the cow
     assert shipped[1] != ["NORTH"] or shipped[1] == ["WATER"] or True           # the shipped sweep serves its own zone first
+
+
+def test_carechain_keeps_the_feeder_on_the_tile_for_the_care():
+    obs = _obs(day=15, hour=8)
+    farm = obs["farms"][0]
+    farm["farmer"] = [1, 1]
+    farm["hands"] = []
+    obs["private"]["inventories"] = [{"WHEAT": 2}]
+    farm["tiles"][1][1] = {"kind": "PASTURE", "animal": "COW", "fed_today": True, "cared_today": False,
+                           "consecutive_unfed": 0, "yield_units": 0, "fertilizer_available": True}
+    farm["tiles"][2][1] = _plant("WHEAT", planted_day=13, watered=False)
+    obs["market"]["prices"]["MILK"] = 150.0
+    view = View(obs)
+    plan = planner.make_champion_plan(view, Memory())
+    plan.cull_kinds = set(); plan.liquidation = False; plan.plant_quota = {}
+    tasks = scheduler.build_tasks(view, plan)
+    mem = Memory(); mem.last_ops = {0: ("FEED", (1, 1))}
+    scheduler.set_exec("carechain")
+    assert scheduler.assign(view, plan, tasks, mem)[0] == ["CARE"]
+    mem.last_ops = {0: ("WATER", (1, 2))}                                      # did not feed here last turn: the sweep decides
+    out = scheduler.assign(view, plan, tasks, mem)[0]
+    assert out in (["CARE"], ["COLLECT_FERTILIZER"], ["SOUTH"], ["WATER"])

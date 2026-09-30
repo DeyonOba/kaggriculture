@@ -119,6 +119,7 @@ class Memory:
         self.exec2_commit = None      # executor2: unit -> job
         self.exec2_day = -1
         self.replant_added = {}
+        self.last_ops = {}            # carechain: unit -> (op, tile) last turn
         self.hands_peak = 0
         self.util_day = -1
         self.yesterday_idle = 0.0

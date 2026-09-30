@@ -30,6 +30,8 @@ EARLY_DROP_THRESHOLD = 2  # days 0-9: every fertilizer unit is the day's cash
 MIN_ZONE_TILES = 5
 SWEEP_DEADLINE_HOUR = 16  # from here survival tasks (dies tonight) jump the sweep
 HELP_RADIUS = 5           # cross-zone help only within this many steps
+HERDFIRST_HOUR = 10       # herdfirst: from this hour an unserved animal pulls a nearby hand
+HERDFIRST_RADIUS = 4      # ... within this many steps
 
 # --- Switchable executor rules (research note §5 B0 and the per-quadrant
 # queue), all OFF by default so the shipped behaviour is byte-identical.
@@ -238,6 +240,15 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              quadrant: NW (the herd's quadrant) fell from 393 to 300 units
 #              harvested on days 12-29 (wool 86 -> 55, strawberries 21 -> 8),
 #              3 animals escaped; the crew's turns had gone to SE wheat.
+#              MEASURED: farm-wide all day, productive ops 111 -> 85 a day and
+#              cares unchanged; from hour 10 within 4 steps, cared 67% -> 48%:
+#              the pulled hand feeds and leaves, and the care never happens.
+#   carechain  the unit that FED an animal stays one turn and CARES for it
+#              (the care needs fed_today, set the next turn). Zero movement:
+#              the unit is already on the tile. The census: a third of feeds
+#              never get their care because the feeder walks off to collect
+#              fertiliser or sweep its zone (next action when not cared:
+#              COLLECT_FERTILIZER 232, a move 246 of 444).
 #   sell_board Stage 7 into Stage 2: the opponent's daily supply level in the
 #              sell-timing solver is the mean of their visible BOARD's one-day
 #              projection (features.supply_projection) and the observed EMA,
@@ -253,7 +264,7 @@ EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
               "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price",
               "hold_crash", "early_harvest", "sell_dp", "sell_dp2", "seed_cap", "sell_board",
-              "herdfirst")
+              "herdfirst", "carechain")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
@@ -781,12 +792,22 @@ def _count_moves(actions, before, label):
         MOVE_STATS[key] = MOVE_STATS.get(key, 0) + 1
 
 
-def assign(view, plan, tasks):
+def assign(view, plan, tasks, memory=None):
     """Zone-based assignment. Returns {unit_idx: op_list}."""
     me = view.me
     units = {idx: (x, y) for idx, x, y in me.units}
     free = set(units)
     actions = {}
+    if EXEC["carechain"] and memory is not None:
+        # carechain: a unit that fed last turn cares now, before anything
+        # else can move it (the CARE task appears once fed_today is set)
+        last = getattr(memory, "last_ops", None) or {}
+        cares = {(t.x, t.y): t for t in tasks if t.op[0] == "CARE"}
+        for idx, (x, y) in units.items():
+            prev = last.get(idx)
+            if prev and prev[0] == "FEED" and prev[1] == (x, y) and (x, y) in cares:
+                actions[idx] = ["CARE"]
+                free.discard(idx)
     seeds_left = dict(view.seeds)
     shed_room = max(0, 100 - view.shed_total)
     zone_of, n_zones = zone_map(view)
@@ -799,6 +820,9 @@ def assign(view, plan, tasks):
 
     plant_requests = {}
     claimed = set()  # (x, y, op0) already assigned this turn
+    for idx, op in actions.items():
+        if op == ["CARE"]:
+            claimed.add((units[idx][0], units[idx][1], "CARE"))
 
     def try_execute(idx, task):
         x, y = units[idx]
@@ -1100,13 +1124,16 @@ def assign(view, plan, tasks):
     _count_moves(actions, _seen, "morning")
     _seen = set(actions)
 
-    if EXEC["herdfirst"]:
-        # ---- 2b. herdfirst: the herd's chores go to the nearest free unit
-        # farm-wide before any zone round (FEED needs wheat in the pocket)
+    if EXEC["herdfirst"] and view.hour >= HERDFIRST_HOUR:
+        # ---- 2b. herdfirst: from HERDFIRST_HOUR, an animal still unfed or
+        # uncared goes to the nearest free unit within HERDFIRST_RADIUS, zones
+        # ignored (FEED needs wheat in the pocket). Farm-wide and all day it
+        # thrashed: productive ops 111 -> 85 a day, 1.84 moves an op.
         for task in sorted((t for t in tasks if t.op[0] in ("FEED", "CARE")), key=lambda t: (t.pri, t.y, t.x)):
             if (task.x, task.y, task.op[0]) in claimed:
                 continue
-            eligible = [i for i in free if not task.need or view.unit_inv(i).get(task.need, 0) >= 1]
+            eligible = [i for i in free if (not task.need or view.unit_inv(i).get(task.need, 0) >= 1)
+                        and _dist(units[i][0], units[i][1], task.x, task.y) <= HERDFIRST_RADIUS]
             if not eligible:
                 continue
             idx = min(eligible, key=lambda i: _dist(units[i][0], units[i][1], task.x, task.y))

@@ -132,7 +132,7 @@ class HeuristicPolicy:
         if scheduler.EXEC.get("executor2"):
             actions = executor2.assign2(view, plan, tasks, memory)
         else:
-            actions = scheduler.assign(view, plan, tasks)
+            actions = scheduler.assign(view, plan, tasks, memory)
 
         # Consume day quotas as ops are actually emitted.
         for idx, op in actions.items():
@@ -150,6 +150,8 @@ class HeuristicPolicy:
             elif op[0] == "BUILD_PASTURE":
                 plan.structure_builds["PASTURE"] = max(0, plan.structure_builds["PASTURE"] - 1)
 
+        # carechain: remember each unit's op and tile this turn
+        memory.last_ops = {idx: (op[0], (x, y)) for idx, x, y in view.me.units for op in [actions.get(idx) or ["PASS"]]}
         orders = market.build_orders(view, plan, memory)
         if getattr(plan, "approved", False):
             sizing.record_spend(view, memory, orders)
