@@ -525,6 +525,12 @@ KNOB_DEFAULTS = {
     # past the target by half the ramp) and never melon after day 12 (a
     # 10-12 day cycle into a market the day-10 race has already crashed).
     "quad4": 0,
+    # quad4_hires: hands added to the schedule while SE is owned (the crew
+    # never grew for the fourth quadrant: CHAMP_HIRES caps at 11, and on
+    # world 0 the herd's CARE fell from 8-16 to 3-8 a day and three animals
+    # escaped). quad4_tiles: cap on the quadrant plan's tiles (0 = all bare).
+    "quad4_hires": 0,
+    "quad4_tiles": 0,
     # straw_day: the first day strawberries take freed tiles (the champion's
     # constant is CHAMP_LAND_DAY = 5). The leaders plant them from day 2 as
     # the early wheat cash lands (1, 2, 3, 6 tiles on days 2-5); with
@@ -659,6 +665,8 @@ def make_champion_plan(view, memory):
     plan.hires_target = min(schedule, max(3, workload // 3))
     if knobs.get("lead_hires"):
         plan.hires_target = LEAD_HIRES[day] if day < len(LEAD_HIRES) else 8
+    if knobs.get("quad4_hires") and "SE" in me.unlocked_quadrants:
+        plan.hires_target += int(knobs["quad4_hires"])
     budget = max(150.0, me.money * 0.25)
     while plan.hires_target > 2 and econ.hire_total_cost(plan.hires_target) > budget:
         plan.hires_target -= 1
@@ -859,6 +867,9 @@ def make_champion_plan(view, memory):
     plan.quad_quota = {}
     if knobs.get("quad4") and "SE" in me.unlocked_quadrants and not plan.liquidation and day <= 22:
         se_bare = sum(1 for x, y in me.empty_tiles() if x >= 5 and y >= 5)
+        if knobs.get("quad4_tiles"):
+            se_standing = sum(1 for x, y, _ in me.plants() if x >= 5 and y >= 5)
+            se_bare = max(0, min(se_bare, int(knobs["quad4_tiles"]) - se_standing))
         if se_bare > 0:
             def healthy(crop):
                 p = MARKET_PARAMS[crop]

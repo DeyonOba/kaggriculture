@@ -306,3 +306,26 @@ def test_quad4_plans_the_fourth_quadrant_from_the_market_and_delivers_it_there()
     mem.knobs["quad4"] = 1
     obs["farms"][0]["unlocked_quadrants"] = ["NW", "NE", "SW"]
     assert not planner.make_champion_plan(View(obs), mem).quad_quota
+
+
+def test_quad4_hires_and_tiles_scale_the_crew_and_cap_the_quadrant_plan():
+    from kagent import planner
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["day"], obs["hour"], obs["step"] = 14, 0, 14 * 24
+    obs["farms"][0]["money"] = 20_000
+    farm = obs["farms"][0]
+    for y in range(10):
+        for x in range(10):
+            farm["tiles"][y][x] = None
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs.update({"quad4": 1, "quad4_hires": 2, "quad4_tiles": 12}); mem.knobs_decided = True
+    farm["unlocked_quadrants"] = ["NW", "NE", "SW"]
+    base = planner.make_champion_plan(View(obs), mem)
+    farm["unlocked_quadrants"] = ["NW", "NE", "SW", "SE"]
+    plan = planner.make_champion_plan(View(obs), mem)
+    assert plan.hires_target == base.hires_target + 2, (plan.hires_target, base.hires_target)
+    assert sum(plan.quad_quota["SE"].values()) == 12, plan.quad_quota
