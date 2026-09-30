@@ -103,7 +103,8 @@ def build_orders(view, plan, memory):
             continue  # planting window closing; don't strand seeds
         deficit = remaining - view.seeds.get(crop, 0)
         if deficit > 0 and money - floor >= CROPS[crop]["seed"]:
-            affordable = int(max(0.0, money - floor) * 0.6 // CROPS[crop]["seed"])
+            cap = 1.0 if getattr(plan, "approved", False) else 0.6
+            affordable = int(max(0.0, money - floor) * cap // CROPS[crop]["seed"])
             n = min(deficit, max(1, affordable))
             lot = int(getattr(plan, "seed_lot", 0) or 0)
             if lot > 0:

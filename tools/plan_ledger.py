@@ -29,17 +29,22 @@ def snapshot(plan):
             "fert": plan.fert_budget, "liq": bool(plan.liquidation)}
 
 
+EXTRA_FLAGS = []
+
+
 def build_agent(spec_text):
     from kagent import weights as W
     from kagent.gamestate import Memory, View
     from kagent.policy import HeuristicPolicy, ChampionPlanProvider
     from rl import rollout
     asks = {}
-    if spec_text == "champion" or spec_text.startswith("champion:"):
+    if spec_text == "champion" or spec_text.startswith("champion:") or spec_text.startswith("champion+"):
         from kagent.policy import ThetaPlanProvider
-        rollout._set_exec(list(W.EXEC_RULES))
+        head, _, knob_text = spec_text.partition(":")
+        flags = [f for f in head.split("+")[1:] if f]
+        rollout._set_exec(list(W.EXEC_RULES) + EXTRA_FLAGS + flags)
         knobs = {}
-        for kv in spec_text.partition(":")[2].split(","):
+        for kv in knob_text.split(","):
             if "=" in kv:
                 k, v = kv.split("="); knobs[k.strip()] = float(v) if "." in v else int(v)
         provider = ThetaPlanProvider(knobs) if knobs else ChampionPlanProvider()
@@ -153,11 +158,14 @@ def report(label, world_name, rows):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--agent", action="append", required=True, help="champion, or an rlv3 arm string; repeatable")
+    ap.add_argument("--agent", action="append", required=True,
+                    help="champion[+exec_flag...][:knob=v,...] (e.g. champion+executor2), or an rlv3 arm string; repeatable")
     ap.add_argument("--world", type=int, default=0)
     ap.add_argument("--days", default="0-8")
+    ap.add_argument("--flags", default="", help="extra executor flags on top of the shipped rules, comma-separated")
     args = ap.parse_args()
     lo, hi = (int(x) for x in args.days.split("-"))
+    EXTRA_FLAGS[:] = [f for f in args.flags.split(",") if f.strip()]
     for spec in args.agent:
         steps, side, asks, name = play(spec, args.world)
         report(spec, f"{name} seat {side}", ledger(steps, side, asks, range(lo, hi + 1)))

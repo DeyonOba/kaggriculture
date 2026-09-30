@@ -12,7 +12,7 @@ import time
 import traceback
 
 from kagent.gamestate import Memory, View
-from kagent import boardstate, features, market, planner, scheduler
+from kagent import boardstate, features, market, planner, scheduler, executor2
 from kagent.banditpolicy import BanditPolicy, KnobBanditPolicy
 from kagent.mpcpolicy import MPCPlanProvider
 from kagent.nnpolicy import NeuralPolicy, decode_weights
@@ -122,7 +122,11 @@ class HeuristicPolicy:
 
         tasks = scheduler.build_tasks(view, plan)
         plan.fert_reserve = sum(1 for t in tasks if t.op[0] == "FERTILIZE")
-        actions = scheduler.assign(view, plan, tasks)
+        plan.approved = bool(scheduler.EXEC.get("approve"))
+        if scheduler.EXEC.get("executor2"):
+            actions = executor2.assign2(view, plan, tasks, memory)
+        else:
+            actions = scheduler.assign(view, plan, tasks)
 
         # Consume day quotas as ops are actually emitted.
         for op in actions.values():

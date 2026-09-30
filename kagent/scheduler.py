@@ -166,11 +166,21 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              day-0 planting takes the near tiles first. FEED needs a wheat
 #              delivery from the shed every day; WATER carries nothing.
 #              Metric: livestock mean shed distance, feed trips.
+#   executor2  kagent/executor2.py replaces assign(): min-cost assignment of
+#              units to the same jobs with COMMITMENT (a unit keeps its job
+#              unless a strictly better one appears), the tile underfoot first,
+#              farm-wide morning provisioning, fetch-aware costs. Same jobs,
+#              same purchases. rlv3/EXECUTOR_V2.md. Metric: tools/plan_ledger.py
+#              delivery %, productive turn share, then the paired gate.
+#   approve    the plan's purchases are APPROVED: seeds for the whole quota are
+#              bought above the cash floor (no 60%-of-cash ration). Ledger on
+#              world 0: the herd then grows 3 instead of 4 on days 2-8 and 6
+#              instead of 12 on day 9 -- capital allocation, kept separate.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
-              "endwater", "tend_end", "late_plant", "care_all", "radial")
+              "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}

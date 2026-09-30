@@ -31,6 +31,7 @@ MODULES = [
     "mpcpolicy",
     "banditpolicy",
     "weights",
+    "executor2",
     "policy",
 ]
 
