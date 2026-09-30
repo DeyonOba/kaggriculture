@@ -449,6 +449,12 @@ KNOB_DEFAULTS = {
     # WANTS that the market buys as the day's takings arrive (structures still
     # follow what dawn cash affords, so no empty pastures).
     "opening_v2": 0,
+    # its four parts, individually switchable for the leave-one-out gate:
+    # opening_v2=1 turns all four on; each v2_* knob turns one on by itself
+    "v2_crew": 0,        # 4-hand crew on days 0-2
+    "v2_order": 0,       # crops that pay first are planted (and seeded) first
+    "v2_floor": 0,       # tomorrow's hire bill kept in the bank; seeds in lots
+    "v2_structs": 0,     # structures follow what dawn cash affords, not the want
     "land2_margin": 100,                  # cash above price required for quadrant #2
     "wheat_floor": 1,                     # wheat sell floor (1 = sell all)
     "liquidation_day": LIQUIDATION_DAY,
@@ -555,9 +561,13 @@ def make_champion_plan(view, memory):
     while plan.hires_target > 2 and econ.hire_total_cost(plan.hires_target) > budget:
         plan.hires_target -= 1
     v2 = bool(knobs.get("opening_v2"))
-    if v2:
-        if day <= 2:
-            plan.hires_target = max(plan.hires_target, 4)     # the leaders' day-0 crew
+    v2_crew = v2 or bool(knobs.get("v2_crew"))
+    v2_order = v2 or bool(knobs.get("v2_order"))
+    v2_floor = v2 or bool(knobs.get("v2_floor"))
+    v2_structs = v2 or bool(knobs.get("v2_structs"))
+    if v2_crew and day <= 2:
+        plan.hires_target = max(plan.hires_target, 4)         # the leaders' day-0 crew
+    if v2_floor:
         nxt = CHAMP_HIRES[day + 1] if day + 1 < len(CHAMP_HIRES) else 8
         plan.cash_floor = float(econ.hire_total_cost(min(nxt, 6)) + 20)
         plan.seed_lot = 2 * (1 + plan.hires_target)
@@ -622,7 +632,7 @@ def make_champion_plan(view, memory):
                 affordable_now[kind] = now
                 cash_now -= now * ANIMALS[kind]["cost"]
     for kind, structure in (("GOOSE", "COOP"), ("COW", "PASTURE"), ("SHEEP", "PASTURE")):
-        buys_for_structures = (affordable_now.get(kind, 0) if v2 else plan.animal_buys.get(kind, 0))
+        buys_for_structures = (affordable_now.get(kind, 0) if v2_structs else plan.animal_buys.get(kind, 0))
         pipeline = (buys_for_structures + view.shed.get(kind, 0)
                     + _pocket.get(kind, 0))
         need = pipeline - empty_by_kind.get(structure, 0)
@@ -695,7 +705,7 @@ def make_champion_plan(view, memory):
             extra = min(room, int(idle_turns * fill))
             if extra > 0:
                 quota["WHEAT"] = quota.get("WHEAT", 0) + extra
-    if v2 and quota:
+    if v2_order and quota:
         # dict order is the scheduler's planting order and the market's seed
         # order: the crops that pay first go in first (wheat 2 days, melon 10)
         quota = dict(sorted(quota.items(), key=lambda kv: CROPS.get(kv[0], {}).get("first_yield_day", 99)))
