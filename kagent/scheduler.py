@@ -176,11 +176,25 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              bought above the cash floor (no 60%-of-cash ration). Ledger on
 #              world 0: the herd then grows 3 instead of 4 on days 2-8 and 6
 #              instead of 12 on day 9 -- capital allocation, kept separate.
+#   replant    the plan by TURN for one-time tiles: a wheat/carrot/melon tile
+#              that comes off today is replanted with the same crop the turn
+#              it is bare, seeds bought at dawn for the expected harvests. The
+#              champion quota is target minus STANDING and the ripe tiles
+#              still count as standing at dawn, so before day 10 a harvested
+#              tile waits for the next dawn (one day lost per 4-day wheat
+#              cycle). Capped by the ground the plan's own asks leave bare;
+#              inside each crop's planting window; never in liquidation.
+#              MEASURED INERT on the champion plan (worlds 0-1, days 0-16):
+#              the quota already exceeds the bare ground at every dawn (day 7
+#              bare 17 vs STR 28, day 11 bare 26 vs STR 34), so the room is
+#              zero and nothing is added; world 1 plays the identical game.
+#              The quota is not the bottleneck -- cash and labour are.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
-              "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve")
+              "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
+              "replant")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
@@ -341,6 +355,44 @@ def quadrant_queues(view, tasks, plan=None):
         uz[idx] = zi
         left -= 1
     return zone_of, n, uz
+
+
+REPLANT_LAST_DAY = {"WHEAT": 25, "CARROT": 26, "MELON": 19}   # the market's planting windows
+
+
+def replant_quota(view, plan):
+    """replant: add today's one-time harvests back to the plan's quota, same
+    crop, capped by the ground left after the plan's own asks. Called once at
+    dawn, before the market buys the day's seeds."""
+    if not EXEC["replant"] or plan.liquidation:
+        return {}
+    day = view.day
+    me = view.me
+    ripe = {}
+    for _, _, t in me.plants():
+        cd = CROPS.get(t["crop"])
+        if cd is None or cd["ongoing"]:
+            continue
+        age = day - t.get("planted_day", day)
+        if age >= cd["max_yield_day"] or 0 <= t.get("max_lifespan_step", -1) <= (day + 1) * TURNS_PER_DAY:
+            ripe[t["crop"]] = ripe.get(t["crop"], 0) + 1
+    if not ripe:
+        return {}
+    free0 = (sum(1 for _ in me.empty_tiles()) + sum(ripe.values())
+             - sum(plan.structure_builds.values()))
+    room = max(0, free0 - sum(plan.plant_quota.values()))
+    added = {}
+    for crop in ("WHEAT", "CARROT", "MELON"):
+        n = ripe.get(crop, 0)
+        if n <= 0 or day > REPLANT_LAST_DAY[crop] or day + CROPS[crop]["first_yield_day"] > 29:
+            continue
+        n = min(n, room)
+        if n <= 0:
+            break
+        plan.plant_quota[crop] = plan.plant_quota.get(crop, 0) + n
+        added[crop] = n
+        room -= n
+    return added
 
 
 def build_tasks(view, plan):

@@ -201,3 +201,33 @@ def test_policy_routes_through_executor2_only_under_the_flag(monkeypatch):
     scheduler.set_exec("executor2")
     pol.act(View(_obs(day=5, hour=9)), mem)
     assert calls == ["v1", "v2"], calls
+
+
+def test_replant_adds_only_the_ground_the_plan_leaves_bare():
+    # four ripe wheat tiles, quota already asks for two tiles on a farm with
+    # two bare tiles: free ground = 2 + 4 - 2 asked = 4 -> four replants
+    obs = _obs(day=6, hour=0, farmer=(4, 4), seeds={"WHEAT": 0})
+    farm = obs["farms"][0]
+    for y in range(len(farm["tiles"])):
+        for x in range(len(farm["tiles"][y])):
+            if farm["tiles"][y][x] is None:
+                farm["tiles"][y][x] = _plant("STRAWBERRY", planted_day=2)      # everything standing
+    farm["tiles"][0][0] = farm["tiles"][0][1] = None                          # two bare
+    for (x, y) in ((1, 1), (2, 1), (1, 2), (2, 2)):
+        farm["tiles"][y][x] = _plant("WHEAT", planted_day=2, yield_units=4)  # ripe today (age 4)
+    view = View(obs)
+    plan = planner.make_champion_plan(view, Memory())
+    plan.liquidation = False
+    plan.plant_quota = {"CARROT": 2}
+    plan.structure_builds = {"COOP": 0, "PASTURE": 0}
+    assert scheduler.replant_quota(view, plan) == {}                          # flag off: nothing
+    scheduler.set_exec("replant")
+    assert scheduler.replant_quota(view, plan) == {"WHEAT": 4}
+    assert plan.plant_quota == {"CARROT": 2, "WHEAT": 4}
+    # the plan already asks for more than the ground: inert (the measured case)
+    plan.plant_quota = {"STRAWBERRY": 30}
+    assert scheduler.replant_quota(view, plan) == {}
+    # liquidation: never
+    plan.plant_quota = {}
+    plan.liquidation = True
+    assert scheduler.replant_quota(view, plan) == {}

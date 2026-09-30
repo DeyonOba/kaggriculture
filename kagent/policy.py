@@ -118,6 +118,8 @@ class HeuristicPolicy:
             memory.util_day = view.day
             memory.day_plan = self.make_plan(view, memory)
             memory.day_plan_day = view.day
+            if scheduler.EXEC.get("replant"):
+                memory.replant_added = scheduler.replant_quota(view, memory.day_plan)
         plan = memory.day_plan
 
         tasks = scheduler.build_tasks(view, plan)
