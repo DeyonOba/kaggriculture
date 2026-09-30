@@ -422,6 +422,9 @@ LAND4_WHEAT_BONUS = 25
 # 0.827 for CHAMP_HIRES alone, with a zero coefficient on the harvests: hiring
 # is a day schedule, not a load function. The schedule differs from ours by
 # about one hand on days 2-6 and half a hand from day 16 (a 12th hand).
+POSTURE_DAY = 12          # the lead dominates the outcome from here (phase propagation: 0.552 -> 0.892)
+POSTURE_LEAD = 8_000      # dollars of lead (or deficit) that switch the posture
+POSTURE_TILES = 6         # tiles moved between the wheat engine and the strawberries
 LEAD_HIRES = [5, 2, 5, 5, 6, 6, 9, 7, 10, 10, 12, 11, 11, 11, 11, 12, 12, 11, 12, 12,
               11, 12, 12, 11, 12, 12, 12, 11, 10, 8]
 CHAMP_HIRES = [5, 4, 4, 5, 4, 5, 7, 9, 9, 10,
@@ -467,6 +470,11 @@ KNOB_DEFAULTS = {
     # lead_hires: hire the leaders' day schedule (LEAD_HIRES) instead of
     # CHAMP_HIRES, without the workload cap; the cash guard below still trims
     "lead_hires": 0,
+    # Stage 6 posture -> quantities (2026-09-30). The leaders PROTECT when
+    # ahead (wheat share 66 -> 77%): from POSTURE_DAY, a lead over POSTURE_LEAD
+    # moves POSTURE_TILES tiles from strawberries (a sq-curve trap) to the
+    # wheat engine (an annuity); a deficit beyond it moves them the other way.
+    "posture": 0,
     # OPENING V2 (2026-09-30, tools/plan_ledger.py): the champion delivers 49% of
     # its own asks on days 0-8, days 1 and 4 are $1 dawns with no hand hired,
     # and the leaders (5 units on day 0, 12.3 wheat + 6.3 melon planted, wheat
@@ -707,6 +715,12 @@ def make_champion_plan(view, memory):
             # so the herd is funded before the day-10 melon money: 18 by day
             # 9, then the full 33 — the recorded champion pace.
             straw_target = knobs["straw_target"] if day >= 10 else min(knobs["straw_early"], knobs["straw_target"])
+            if knobs.get("posture") and day >= POSTURE_DAY:
+                lead = me.money - view.opp.money
+                if lead > POSTURE_LEAD:
+                    straw_target = max(0, straw_target - POSTURE_TILES)
+                elif lead < -POSTURE_LEAD:
+                    straw_target += POSTURE_TILES
             quota["STRAWBERRY"] = max(0, straw_target - crops.get("STRAWBERRY", 0))
         if knobs["carrot_standing"] and 6 <= day <= CARROT_LAST_PLANT_DAY:
             quota["CARROT"] = max(0, knobs["carrot_standing"] - crops.get("CARROT", 0))
@@ -719,6 +733,12 @@ def make_champion_plan(view, memory):
                 wheat_target = 8
             else:
                 engine = knobs["wheat_engine"] + (LAND4_WHEAT_BONUS if "SE" in owned else 0)
+                if knobs.get("posture") and day >= POSTURE_DAY:
+                    lead = me.money - view.opp.money
+                    if lead > POSTURE_LEAD:
+                        engine += POSTURE_TILES
+                    elif lead < -POSTURE_LEAD:
+                        engine = max(0, engine - POSTURE_TILES)
                 wheat_target = min(engine, crops.get("WHEAT", 0) + free)
             _best = _rent_pick(view, day, free)
             if _RENTA > 0 and _best and _best[0] != "WHEAT":

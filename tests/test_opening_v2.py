@@ -124,3 +124,24 @@ def test_lead_hires_is_the_leaders_day_schedule():
     mem.knobs["lead_hires"] = 0
     obs["day"], obs["hour"], obs["step"] = 0, 0, 0
     assert planner.make_champion_plan(View(obs), mem).hires_target == 3           # shipped: the workload cap on day 0
+
+
+def test_posture_protects_when_ahead_and_presses_when_behind():
+    from kagent import planner
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["day"], obs["hour"], obs["step"] = 12, 0, 12 * 24
+    obs["farms"][0]["money"] = 30_000
+    obs["farms"][1]["money"] = 10_000
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs["posture"] = 1; mem.knobs_decided = True
+    ahead = planner.make_champion_plan(View(obs), mem).plant_quota
+    obs["farms"][0]["money"], obs["farms"][1]["money"] = 10_000, 30_000
+    behind = planner.make_champion_plan(View(obs), mem).plant_quota
+    mem.knobs["posture"] = 0
+    level = planner.make_champion_plan(View(obs), mem).plant_quota
+    assert ahead.get("STRAWBERRY", 0) < level.get("STRAWBERRY", 0) < behind.get("STRAWBERRY", 0), (ahead, level, behind)
+    assert ahead.get("WHEAT", 0) >= level.get("WHEAT", 0)
