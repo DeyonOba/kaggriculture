@@ -116,6 +116,8 @@ def main() -> None:
                     help="executor rule flags, comma-separated (kagent/scheduler.EXEC_FLAGS)")
     ap.add_argument("--execnet", default=None,
                     help="learned executor: <weights.pt>[:<rules.json|planner-weights.json>[:<conf>[:<mode>]]]")
+    ap.add_argument("--theta", default=None,
+                    help="a dev:theta arm file ({knobs, exec}), e.g. rl/runs/arms/package.json (h13)")
     ap.add_argument("--rlv3", default=None,
                     help="an rlv3 arm string (rlv3/arm.py grammar, e.g. 'readout' or "
                          "'base:late_pipe=true'); its exec flags are applied like the eval arm's")
@@ -150,6 +152,12 @@ def main() -> None:
         if spec.get("rules", {}).get("exec") and not args.exec:
             scheduler.set_exec(spec["rules"]["exec"])
         learner, _ = rollout._make_dev_policy_agent(spec)
+    elif args.theta:
+        with open(args.theta) as fh:
+            tspec = json.load(fh)
+        if tspec.get("exec") and not args.exec:
+            scheduler.set_exec(tspec["exec"])
+        learner, _ = rollout._make_dev_policy_agent({"kind": "theta", "knobs": tspec.get("knobs") or {}, "exec": tspec.get("exec") or []})
     elif args.rlv3:
         from rlv3.arm import parse as _rlv3_parse
         spec = _rlv3_parse(args.rlv3)
