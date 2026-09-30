@@ -230,13 +230,21 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              over-asks the ground does not buy seeds it will never plant.
 #              Endgame scorecard: we strand 11.8 seeds a game (8.8 carrot,
 #              2.0 strawberry) to the leaders' 0.8.
+#   sell_board Stage 7 into Stage 2: the opponent's daily supply level in the
+#              sell-timing solver is the mean of their visible BOARD's one-day
+#              projection (features.supply_projection) and the observed EMA,
+#              instead of the corpus prior and the EMA. Measured on the 40
+#              fresh replays (tools/board_supply_error.py): MAE milk 7.1 ->
+#              6.5, wool 8.0 -> 7.4, strawberry 6.5 -> 6.4 units a day; the
+#              board alone is worse than the history (they do not sell on the
+#              harvest day). Needs sell_dp or sell_dp2 to do anything.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
               "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price",
-              "hold_crash", "early_harvest", "sell_dp", "sell_dp2", "seed_cap")
+              "hold_crash", "early_harvest", "sell_dp", "sell_dp2", "seed_cap", "sell_board")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}

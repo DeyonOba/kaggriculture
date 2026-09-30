@@ -105,3 +105,20 @@ def test_flag_off_leaves_the_shipped_sells_untouched():
     after = market._sell_orders(view, plan, Memory())
     assert before == after
     assert {o[1] for o in on} <= {o[1] for o in before} | set(S.PRODUCTS_DP)
+
+
+def test_sell_board_reads_the_level_from_the_opponents_board():
+    obs = _obs(day=12, hour=3, inv={"MILK": 10020})
+    # the opponent's farm: three fed cows each holding two milk -> board says ~6 + 1.5
+    for (x, y) in ((1, 1), (2, 1), (1, 2)):
+        obs["farms"][1]["tiles"][y][x] = {"kind": "PASTURE", "animal": "COW", "fed_today": True, "cared_today": True,
+                                          "consecutive_unfed": 0, "yield_units": 2, "fertilizer_available": False}
+    view = View(obs)
+    mem = Memory()
+    day0 = 12 * 24                                                              # the 24 hours of day 12: shares sum to 1
+    prior_level = sum(S.their_supply("MILK", view, mem, day0 + k) for k in range(24))
+    scheduler.set_exec("sell_board")
+    board_level = sum(S.their_supply("MILK", view, mem, day0 + k) for k in range(24))
+    assert prior_level == pytest.approx(S.opp_profile.UNITS_PER_DAY["MILK"]["6-12"], rel=1e-3)
+    assert board_level == pytest.approx(0.5 * (S.board_daily("MILK", view) + S.opp_profile.UNITS_PER_DAY["MILK"]["6-12"]), rel=1e-3)
+    assert S.board_daily("MILK", view) > 6

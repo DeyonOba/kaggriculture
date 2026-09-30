@@ -139,13 +139,26 @@ def note_requests(memory, orders):
             st["ours"][o[1]] = st["ours"].get(o[1], 0) + int(o[2])
 
 
+def board_daily(item, view):
+    """The opponent's visible board projected one day: held yield plus what
+    ripens today (features.supply_projection on the PUBLIC farm)."""
+    from kagent import features
+    return float(features.supply_projection(view.opp, view.day, horizon=1).get(item, 0.0))
+
+
 def their_supply(item, view, memory, step):
     """Forecast units the opponent sells at `step` (an hour of a day)."""
     st = getattr(memory, "st_state", None) or {}
     day = step // TURNS_PER_DAY
     prior_daily = opp_profile.UNITS_PER_DAY[item][_band(day)]
     daily = st.get("daily", {}).get(item)
-    daily = prior_daily if daily is None else 0.5 * (daily + prior_daily)
+    if scheduler.EXEC.get("sell_board"):
+        # sell_board: the level from their board and the observed EMA (the
+        # prior only until a day has been observed)
+        board = board_daily(item, view)
+        daily = 0.5 * (board + prior_daily) if daily is None else 0.5 * (board + daily)
+    else:
+        daily = prior_daily if daily is None else 0.5 * (daily + prior_daily)
     hour = step % TURNS_PER_DAY
     n_obs = st.get("hour_n", {}).get(item, 0.0)
     prior_share = opp_profile.HOUR_SHARE[item][hour]
