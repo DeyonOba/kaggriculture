@@ -181,3 +181,19 @@ def test_press_niche_buys_land_and_plants_the_crop_the_opponent_left_out():
         obs["farms"][1]["tiles"][0][x]["crop"] = "CARROT"
     plan = planner.make_champion_plan(View(obs), mem)
     assert plan.plant_quota.get("CARROT", 0) < planner.NICHE_TILES
+
+
+def test_straw_day_lets_strawberries_take_freed_tiles_early():
+    from kagent import planner
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["day"], obs["hour"], obs["step"] = 3, 0, 72
+    obs["farms"][0]["money"] = 2_000
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs_decided = True
+    assert planner.make_champion_plan(View(obs), mem).plant_quota.get("STRAWBERRY", 0) == 0    # shipped: from day 5
+    mem.knobs["straw_day"] = 2
+    assert planner.make_champion_plan(View(obs), mem).plant_quota.get("STRAWBERRY", 0) > 0

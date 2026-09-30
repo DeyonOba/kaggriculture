@@ -490,6 +490,11 @@ KNOB_DEFAULTS = {
     # margin and hold NICHE_TILES of each crop the opponent left out that the
     # town buys and the market has not glutted (see PRESS_* / NICHE_*).
     "press_niche": 0,
+    # straw_day: the first day strawberries take freed tiles (the champion's
+    # constant is CHAMP_LAND_DAY = 5). The leaders plant them from day 2 as
+    # the early wheat cash lands (1, 2, 3, 6 tiles on days 2-5); with
+    # early_harvest the wheat tiles free on days 2-4 and, at 5, wait bare.
+    "straw_day": CHAMP_LAND_DAY,
     # OPENING V2 (2026-09-30, tools/plan_ledger.py): the champion delivers 49% of
     # its own asks on days 0-8, days 1 and 4 are $1 dawns with no hand hired,
     # and the leaders (5 units on day 0, 12.3 wheat + 6.3 melon planted, wheat
@@ -733,7 +738,7 @@ def make_champion_plan(view, memory):
                 if knobs.get("lead_opening"):
                     n = {"MELON": (6, 10)[day], "WHEAT": 10}[crop]         # the leaders' 6 + 4 melons, 10 wheat
                 quota[crop] = max(0, n - crops.get(crop, 0))
-        if CHAMP_LAND_DAY <= day <= 13:
+        if knobs.get("straw_day", CHAMP_LAND_DAY) <= day <= 13:
             # Strawberries take freed tiles first (4 productions by 29), staged
             # so the herd is funded before the day-10 melon money: 18 by day
             # 9, then the full 33 — the recorded champion pace.
