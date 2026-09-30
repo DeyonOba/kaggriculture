@@ -199,3 +199,20 @@ def test_radial_plants_from_the_outside_in_and_leaves_the_shed_ring_for_structur
     plan.structure_builds = {"COOP": 0, "PASTURE": 2}
     builds = [(t.x, t.y) for t in scheduler.build_tasks(view, plan) if t.op[0] == "BUILD_PASTURE"]
     assert len(builds) == 2 and all(scheduler._shed_ring(x, y) <= scheduler.RADIAL_RING for x, y in builds), builds
+
+
+def test_care_price_keeps_caring_when_the_product_has_crashed():
+    from kagent.constants import MARKET_PARAMS
+    obs = _obs(day=15, hour=6)
+    obs["farms"][0]["tiles"][1][1] = {"kind": "PASTURE", "animal": "COW", "fed_today": True, "cared_today": False,
+                                       "consecutive_unfed": 0, "yield_units": 0, "fertilizer_available": False}
+    obs["market"]["prices"]["MILK"] = 0.2 * MARKET_PARAMS["MILK"]["base"]
+    view = View(obs)
+    plan = planner.make_champion_plan(view, Memory())
+    plan.cull_kinds = set()
+    assert not any(op == "CARE" for op, _ in _at(view, plan, 1, 1))          # shipped: the crash-pivot
+    scheduler.set_exec("care_price")
+    assert ("CARE", scheduler.P_ANIMAL) in _at(view, plan, 1, 1)
+    obs["market"]["prices"]["MILK"] = MARKET_PARAMS["MILK"]["base"]
+    scheduler.reset_exec()
+    assert ("CARE", scheduler.P_ANIMAL) in _at(View(obs), plan, 1, 1)         # a healthy price: cared either way

@@ -196,12 +196,18 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              at any price, first claim; size_hires = hands by workload;
 #              size_ground = a bare tile whose planned crop is unaffordable is
 #              planted with the best affordable crop. `sized` = all four.
+#   care_price CARE regardless of the product's price. The shipped crash-pivot
+#              drops the CARE when the product trades under 35% of base; the
+#              yield ledger (2026-09-30) shows our care rate falling to 63%
+#              on days 13-20 and 40% on days 21-28 while the leaders hold
+#              82% and 65% with fed rates lower than ours. A cared animal
+#              produces 3-4x a bare one and prices recover as the shops drain.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
-              "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized")
+              "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
@@ -569,7 +575,8 @@ def build_tasks(view, plan):
             # the product's market has collapsed — release those actions.
             product = ANIMALS.get(t.get("animal"), {}).get("product")
             price_ok = (
-                not product
+                EXEC["care_price"]
+                or not product
                 or view.market_prices.get(product, 999) >= 0.35 * MARKET_PARAMS[product]["base"]
             )
             if price_ok:
