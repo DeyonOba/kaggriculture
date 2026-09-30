@@ -97,7 +97,7 @@ def _band(day):
     return "21-26"
 
 
-def observe(view, memory):
+def observe_market(view, memory):
     """Their fills last turn = inventory delta net of our requests and the
     drain; folded into a per-product daily volume (EMA over days) and an
     hour profile (counts, blended with the prior by weight)."""

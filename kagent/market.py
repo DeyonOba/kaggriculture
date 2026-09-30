@@ -26,7 +26,7 @@ def build_orders(view, plan, memory):
     money = view.me.money
     final_push = view.step >= FINAL_STEP - 8
     if selltiming.active_products():
-        selltiming.observe(view, memory)
+        selltiming.observe_market(view, memory)
 
     def add(order):
         if len(orders) < MAX_MARKET_ORDERS:

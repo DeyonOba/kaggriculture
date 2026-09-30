@@ -140,6 +140,7 @@ def test_market_seed_cutoff_honours_the_pipeline_window():
     import inspect
     from kagent import market
     src = inspect.getsource(market.build_orders)
+    src = src + inspect.getsource(market._seed_orders)          # the seed block lives in _seed_orders since the sizing work
     assert 'getattr(memory, "last_plant", None)' in src
 
 

@@ -84,11 +84,11 @@ def test_a_depressed_market_with_a_strong_drain_is_held():
 def test_their_supply_is_read_from_the_public_inventory():
     mem = Memory()
     v1 = View(_obs(day=12, hour=3, inv={"MILK": 10020}))
-    S.observe(v1, mem)
+    S.observe_market(v1, mem)
     S.note_requests(mem, [["SELL", "MILK", 3]])
     # next step: inventory rose by 3 (ours) + 5 (theirs) - 0 drain (step 291 is not a tick)
     v2 = View(_obs(day=12, hour=4, inv={"MILK": 10028}))
-    S.observe(v2, mem)
+    S.observe_market(v2, mem)
     assert mem.st_state["day_units"]["MILK"] == 5
     assert mem.st_state["hour_units"]["MILK"][3] == 5
 
