@@ -108,3 +108,5 @@ KAGG_BOARD=1 PYTHONPATH=. uv run python rl/session_eval.py --reuse h11=... --reu
 | 7 opponent | shipped melon floor + Stage 2's supply read | — | | cheap version exists |
 | 8 learnable executor | not built | — | | needs the per-op re-gate first |
 | opening (the trace) | `lead_opening` | +0.025 ± 0.026 pooled, 432 games | −$0.9k / −$3.0k | the default opening |
+
+**Fine-tune: the package (2026-09-30).** `lead_opening` + `sell_dp2` + `seed_cap` — the opening basket with the two nulls that raised our bank — vs h11, seed 7: **+0.083 (0.542 vs 0.458; 26 arm-only vs 14 base-only, z 1.91, p 0.081), our bank +$4,464, the opponent's −$1,309, no band negative (+.125 +.083 +.000 +.167 +.000 +.125).** The strongest single-block row of the day and the anti-donation sign on both banks; seeds 8 and 9 follow for the 432-game read (`rl/runs/package_gate_s8.json`, `_s9.json`).
