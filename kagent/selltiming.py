@@ -34,6 +34,16 @@ from kagent.constants import (
 )
 
 PRODUCTS_DP = ("STRAWBERRY", "MILK", "WOOL")   # the steep curves the note measured; melon is a harvest race
+PRODUCTS_DP2 = ("STRAWBERRY", "MILK")          # sell_dp2: wool left to the shipped floors
+
+
+def active_products():
+    from kagent import scheduler
+    if scheduler.EXEC.get("sell_dp"):
+        return PRODUCTS_DP
+    if scheduler.EXEC.get("sell_dp2"):
+        return PRODUCTS_DP2
+    return ()
 HORIZON = 48            # turns: two drain cycles; prices only fall over the season where supply beats the drain
 FINAL_STEP = 718
 EMA = 0.25              # weight of one observed day on the opponent's daily volume

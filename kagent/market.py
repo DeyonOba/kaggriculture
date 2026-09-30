@@ -25,7 +25,7 @@ def build_orders(view, plan, memory):
     orders = []
     money = view.me.money
     final_push = view.step >= FINAL_STEP - 8
-    if scheduler.EXEC.get("sell_dp"):
+    if selltiming.active_products():
         selltiming.observe(view, memory)
 
     def add(order):
@@ -122,7 +122,7 @@ def build_orders(view, plan, memory):
                 break
             if sell[1] == "MELON":
                 memory.melons_sold += sell[2]
-    if scheduler.EXEC.get("sell_dp"):
+    if selltiming.active_products():
         selltiming.note_requests(memory, orders)
 
     return orders
@@ -213,8 +213,7 @@ def _sell_orders(view, plan, memory):
         inv = view.market_inv.get(item)
         if inv is None:
             continue
-        if (scheduler.EXEC.get("sell_dp") and item in selltiming.PRODUCTS_DP
-                and not pressure and not final_push):
+        if item in selltiming.active_products() and not pressure and not final_push:
             n = selltiming.sell_now(item, stock, view, memory)
         else:
             n = econ.units_sellable_above(item, inv, floor, cap=stock)
