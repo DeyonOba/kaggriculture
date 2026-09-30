@@ -100,9 +100,12 @@ def build(out=None, exec_rules=None, knobs=None, no_bandit=False):
         with open(os.path.join(REPO, "kagent", f"{mod}.py")) as f:
             text = _strip_intra_imports(f.read())
         if mod == "planner" and knobs:
+            # KNOB_DEFAULTS is a dict literal; a key may share its line with
+            # others ("cows": 8, "sheep": 8, "geese": 0,), so match the key
+            # anywhere and replace only its value
             for k, v in knobs.items():
-                text, n = re.subn(r'^(\s*)"%s":\s*[^,]+,' % re.escape(k), lambda m: '%s"%s": %r,' % (m.group(1), k, v),
-                                  text, count=1, flags=re.M)
+                text, n = re.subn(r'("%s"\s*:\s*)[^,}\n]+' % re.escape(k), lambda m: '%s%r' % (m.group(1), v),
+                                  text, count=1)
                 if n != 1:
                     raise SystemExit(f"knob {k!r} not found in kagent/planner.py KNOB_DEFAULTS")
         if mod == "weights" and no_bandit:
