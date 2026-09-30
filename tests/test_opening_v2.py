@@ -239,3 +239,26 @@ def test_land4_niche_loads_the_fourth_quadrant_with_the_demanded_crop():
     assert plan.plant_quota.get("CARROT", 0) >= planner.NICHE_TILES, plan.plant_quota
     mem.knobs["land4_niche"] = 0
     assert planner.make_champion_plan(View(obs), mem).plant_quota.get("CARROT", 0) < planner.NICHE_TILES
+
+
+def test_land4_early_asks_for_the_fourth_quadrant_from_its_day_on_a_small_margin():
+    from kagent import planner
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["farms"][0]["money"] = 5_000
+    obs["farms"][0]["unlocked_quadrants"] = ["NW", "NE", "SW"]
+    obs["farms"][0]["hands"] = [[4, 4]] * 3                                    # a small crew: the gated version would refuse
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs.update({"land4_early": 1, "land4_day": 12, "land4_margin": 600}); mem.knobs_decided = True
+    for day, want in ((11, False), (12, True), (20, True)):
+        obs["day"], obs["hour"], obs["step"] = day, 0, day * 24
+        plan = planner.make_champion_plan(View(obs), mem)
+        assert ("SE" in plan.land_buys) == want, (day, plan.land_buys)
+        if want:
+            assert plan.land_margin == 600
+    mem.knobs["land4_early"] = 0
+    obs["day"], obs["hour"], obs["step"] = 12, 0, 12 * 24
+    assert "SE" not in planner.make_champion_plan(View(obs), mem).land_buys

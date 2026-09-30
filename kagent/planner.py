@@ -503,6 +503,13 @@ KNOB_DEFAULTS = {
     # the town centre, <= 1 opponent tile, market not glutted) on top of the
     # wheat engine bonus.
     "land4_niche": 0,
+    # land4_early (user, 2026-09-30): the fourth quadrant bought the way the
+    # second and third are -- from land4_day, the turn the cash covers the
+    # price plus land4_margin, with no crew or idle gate. The leaders who buy
+    # it do so on day 10 (7 of 8 in the fresh replays); the gated version
+    # waited for day 14 and a $15k cushion and bought on day 16.
+    "land4_early": 0,
+    "land4_day": 12,
     # straw_day: the first day strawberries take freed tiles (the champion's
     # constant is CHAMP_LAND_DAY = 5). The leaders plant them from day 2 as
     # the early wheat cash lands (1, 2, 3, 6 tiles on days 2-5); with
@@ -676,6 +683,9 @@ def make_champion_plan(view, memory):
         # a day inside the window where a wheat cycle still pays, and
         # land4_margin of working capital above the price (M & M & P & Q buys
         # with ~$25k in the bank). See the LAND4_* constants.
+        plan.land_buys.append(LAND_ORDER[next_idx])
+        plan.land_margin = knobs.get("land4_margin", 15000)
+    elif knobs.get("land4_early") and next_idx == 2 and knobs.get("land4_day", 12) <= day <= 22:
         plan.land_buys.append(LAND_ORDER[next_idx])
         plan.land_margin = knobs.get("land4_margin", 15000)
     pressing = False

@@ -1,0 +1,1 @@
+{"knobs": {"lead_opening": 1, "land4_early": 1, "land4_day": 12, "land4_margin": 600}, "exec": ["lastwater", "h23", "harvest_visit", "shedguard", "sell_dp2", "seed_cap"]}
