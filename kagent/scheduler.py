@@ -224,13 +224,19 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #   sell_dp2   the same for strawberry and milk only: wool's curve is the
 #              steepest (sq, 3.2x base over 105 units) and the ledger read it
 #              at 0.60 of the mean under sell_dp against 0.97 shipped.
+#   seed_cap   Stage 3: a crop's seed order is capped at the ground the farm
+#              can plant today (bare tiles + one-time tiles ripe today, less
+#              the seeds already in stock for every crop), so a quota that
+#              over-asks the ground does not buy seeds it will never plant.
+#              Endgame scorecard: we strand 11.8 seeds a game (8.8 carrot,
+#              2.0 strawberry) to the leaders' 0.8.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
               "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price",
-              "hold_crash", "early_harvest", "sell_dp", "sell_dp2")
+              "hold_crash", "early_harvest", "sell_dp", "sell_dp2", "seed_cap")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}

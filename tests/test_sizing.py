@@ -216,3 +216,20 @@ def test_flags_off_leaves_the_shipped_plan_and_market_untouched():
     kinds = [o[0] for o in orders]
     assert kinds.index("BUY_ANIMAL") < kinds.index("BUY_SEED")                 # shipped order: animals before seeds
     assert kinds[0] != "SELL"
+
+
+def test_seed_cap_buys_no_more_than_the_ground_can_take_today():
+    # 25 bare tiles, 4 carrot seeds held, quota 30 carrots: shipped buys the
+    # whole deficit the cash allows; capped, 21 (25 bare less the 4 held)
+    obs = _obs(day=8, money=5_000, seeds={"CARROT": 4})
+    view = View(obs)
+    plan = _plan(view, {"CARROT": 30}, hires=0)
+    orders = market.build_orders(view, plan, Memory())
+    assert [o for o in orders if o[0] == "BUY_SEED"] == [["BUY_SEED", "CARROT", 26]]
+    scheduler.set_exec("seed_cap")
+    orders = market.build_orders(view, plan, Memory())
+    assert [o for o in orders if o[0] == "BUY_SEED"] == [["BUY_SEED", "CARROT", 21]], orders
+    # two crops share the ground: the second gets what the first left
+    plan = _plan(view, {"WHEAT": 20, "CARROT": 30}, hires=0)
+    orders = [o for o in market.build_orders(view, plan, Memory()) if o[0] == "BUY_SEED"]
+    assert orders == [["BUY_SEED", "WHEAT", 20], ["BUY_SEED", "CARROT", 1]], orders

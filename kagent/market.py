@@ -137,10 +137,22 @@ def _seed_orders(view, plan, memory, money, add):
     # rlv3/pipeline.py extends the wheat/carrot window through day 27;
     # anything else leaves this table exactly as shipped.
     last_plant_day.update(getattr(memory, "last_plant", None) or {})
+    ground = None
+    if scheduler.EXEC.get("seed_cap"):
+        # seed_cap: the ground plantable today, less every seed already held
+        ground = sum(1 for _ in view.me.empty_tiles()) - sum(view.seeds.values())
+        for _, _, t in view.me.plants():
+            cd = CROPS.get(t.get("crop"))
+            if cd and not cd["ongoing"]:
+                age = view.day - t.get("planted_day", view.day)
+                if age >= cd["max_yield_day"]:
+                    ground += 1
     for crop, remaining in plan.plant_quota.items():
         if view.day > last_plant_day.get(crop, 29) or view.hour > 20:
             continue  # planting window closing; don't strand seeds
         deficit = remaining - view.seeds.get(crop, 0)
+        if ground is not None:
+            deficit = min(deficit, max(0, ground))
         if deficit > 0 and money - floor >= CROPS[crop]["seed"]:
             cap = 1.0 if getattr(plan, "approved", False) else 0.6
             affordable = int(max(0.0, money - floor) * cap // CROPS[crop]["seed"])
@@ -150,6 +162,8 @@ def _seed_orders(view, plan, memory, money, add):
                 n = min(n, lot)            # opening_v2: seeds as the crew reaches the ground
             if n > 0 and add(["BUY_SEED", crop, n]):
                 money -= n * CROPS[crop]["seed"]
+                if ground is not None:
+                    ground -= n
     return money
 
 
