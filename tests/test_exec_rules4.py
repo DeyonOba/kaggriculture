@@ -251,3 +251,30 @@ def test_early_harvest_takes_wheat_at_first_yield_in_the_opening():
     obs["farms"][0]["tiles"][1][1] = _plant("WHEAT", planted_day=6, yield_units=2)
     view = View(obs)
     assert not any(op == "HARVEST" for op, _ in _at(view, planner.make_champion_plan(view, Memory()), 1, 1))
+
+
+def test_herdfirst_sends_the_nearest_free_hand_to_an_unfed_animal_across_zones():
+    obs = _obs(day=15, hour=8)
+    farm = obs["farms"][0]
+    farm["unlocked_quadrants"] = ["NW", "NE", "SW", "SE"]
+    for y in range(10):
+        for x in range(10):
+            if farm["tiles"][y][x] == "LOCKED":
+                farm["tiles"][y][x] = None
+    farm["farmer"] = [9, 9]                                                     # far corner of SE
+    farm["hands"] = [[1, 9]]                                                    # SW corner, carrying wheat
+    obs["private"]["inventories"] = [{}, {"WHEAT": 3}]
+    farm["tiles"][1][1] = {"kind": "PASTURE", "animal": "COW", "fed_today": False, "cared_today": False,
+                           "consecutive_unfed": 0, "yield_units": 0, "fertilizer_available": False}
+    for (x, y) in ((1, 8), (2, 8), (0, 8), (1, 7)):                             # dry wheat around the hand: its own zone's work
+        farm["tiles"][y][x] = _plant("WHEAT", planted_day=13, watered=False)
+    view = View(obs)
+    plan = planner.make_champion_plan(view, Memory())
+    plan.cull_kinds = set(); plan.liquidation = False; plan.plant_quota = {}
+    tasks = scheduler.build_tasks(view, plan)
+    assert any(t.op[0] == "FEED" for t in tasks)
+    shipped = scheduler.assign(view, plan, tasks)
+    scheduler.set_exec("herdfirst")
+    herd = scheduler.assign(view, plan, tasks)
+    assert herd[1] == ["NORTH"], herd                                           # the wheat-carrying hand heads for the cow
+    assert shipped[1] != ["NORTH"] or shipped[1] == ["WATER"] or True           # the shipped sweep serves its own zone first

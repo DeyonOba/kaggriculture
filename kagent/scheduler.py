@@ -230,6 +230,14 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              over-asks the ground does not buy seeds it will never plant.
 #              Endgame scorecard: we strand 11.8 seeds a game (8.8 carrot,
 #              2.0 strawberry) to the leaders' 0.8.
+#   herdfirst  the HERD before any far tile: before the zone rounds, every
+#              unserved FEED (a unit carrying wheat) and CARE task is given
+#              to the nearest free unit farm-wide, zones ignored, so the
+#              second visit that cares for a fed animal is never the chore
+#              the sweep drops for a water. Measured on world 0 with a fourth
+#              quadrant: NW (the herd's quadrant) fell from 393 to 300 units
+#              harvested on days 12-29 (wool 86 -> 55, strawberries 21 -> 8),
+#              3 animals escaped; the crew's turns had gone to SE wheat.
 #   sell_board Stage 7 into Stage 2: the opponent's daily supply level in the
 #              sell-timing solver is the mean of their visible BOARD's one-day
 #              projection (features.supply_projection) and the observed EMA,
@@ -244,7 +252,8 @@ EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
               "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price",
-              "hold_crash", "early_harvest", "sell_dp", "sell_dp2", "seed_cap", "sell_board")
+              "hold_crash", "early_harvest", "sell_dp", "sell_dp2", "seed_cap", "sell_board",
+              "herdfirst")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
@@ -1090,6 +1099,21 @@ def assign(view, plan, tasks):
 
     _count_moves(actions, _seen, "morning")
     _seen = set(actions)
+
+    if EXEC["herdfirst"]:
+        # ---- 2b. herdfirst: the herd's chores go to the nearest free unit
+        # farm-wide before any zone round (FEED needs wheat in the pocket)
+        for task in sorted((t for t in tasks if t.op[0] in ("FEED", "CARE")), key=lambda t: (t.pri, t.y, t.x)):
+            if (task.x, task.y, task.op[0]) in claimed:
+                continue
+            eligible = [i for i in free if not task.need or view.unit_inv(i).get(task.need, 0) >= 1]
+            if not eligible:
+                continue
+            idx = min(eligible, key=lambda i: _dist(units[i][0], units[i][1], task.x, task.y))
+            if try_execute(idx, task):
+                free.discard(idx)
+        _count_moves(actions, _seen, "herdfirst")
+        _seen = set(actions)
 
     # ---- 3. Zone rounds: each unit serves its own zone -----------------------
     zone_tasks = {}
