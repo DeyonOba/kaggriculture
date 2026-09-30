@@ -216,13 +216,18 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              114976921): 10 wheat on day 0 go 10 -> 8 -> 5 -> 2 -> 0 over
 #              days 1-5, watered only 59% of tile-days, and the $544-1,457 a
 #              day it makes on days 2-5 buys a cow a day. Ours waits to day 4.
+#   sell_dp    Stage 2 (kagent/selltiming.py): strawberry, milk and wool are
+#              sold on the EXACT market path -- the reservation price that
+#              clears the shed over a 48-turn horizon given the drain schedule
+#              and the opponent's forecast supply -- instead of the constant
+#              floors at dawn. The pressure valve and the final push bypass.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
               "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price",
-              "hold_crash", "early_harvest")
+              "hold_crash", "early_harvest", "sell_dp")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}

@@ -13,7 +13,7 @@ from kagent.planner import FINAL_STEP
 # scheduler` inside a function does not survive that (there is no kagent
 # package in a bundle) -- it raised, SafeAgent swallowed it, and the agent
 # scored exactly its starting money.
-from kagent import scheduler
+from kagent import scheduler, selltiming
 
 
 # Products whose price falls on a steep curve above I0 (linear / sq above
@@ -25,6 +25,8 @@ def build_orders(view, plan, memory):
     orders = []
     money = view.me.money
     final_push = view.step >= FINAL_STEP - 8
+    if scheduler.EXEC.get("sell_dp"):
+        selltiming.observe(view, memory)
 
     def add(order):
         if len(orders) < MAX_MARKET_ORDERS:
@@ -120,6 +122,8 @@ def build_orders(view, plan, memory):
                 break
             if sell[1] == "MELON":
                 memory.melons_sold += sell[2]
+    if scheduler.EXEC.get("sell_dp"):
+        selltiming.note_requests(memory, orders)
 
     return orders
 
@@ -209,7 +213,11 @@ def _sell_orders(view, plan, memory):
         inv = view.market_inv.get(item)
         if inv is None:
             continue
-        n = econ.units_sellable_above(item, inv, floor, cap=stock)
+        if (scheduler.EXEC.get("sell_dp") and item in selltiming.PRODUCTS_DP
+                and not pressure and not final_push):
+            n = selltiming.sell_now(item, stock, view, memory)
+        else:
+            n = econ.units_sellable_above(item, inv, floor, cap=stock)
         if n <= 0:
             continue
         if (pace >= 0 and item in PACED and floor > 1 and not pressure and not final_push

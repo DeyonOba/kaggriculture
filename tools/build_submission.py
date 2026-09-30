@@ -32,6 +32,8 @@ MODULES = [
     "banditpolicy",
     "weights",
     "executor2",
+    "opp_profile",
+    "selltiming",
     "policy",
 ]
 
