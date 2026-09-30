@@ -105,3 +105,22 @@ def test_lead_opening_is_the_leaders_day0_basket():
     obs["farms"][0]["money"] = 3000
     plan0 = planner.make_champion_plan(View(obs), mem)
     assert plan0.hires_target == 3 and plan0.plant_quota == {"MELON": 12, "WHEAT": 7} and plan0.animal_buys == {"SHEEP": 2, "COW": 2}
+
+
+def test_lead_hires_is_the_leaders_day_schedule():
+    from kagent import planner
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["farms"][0]["money"] = 5_000
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs["lead_hires"] = 1; mem.knobs_decided = True
+    for day, want in ((0, 5), (2, 5), (10, 12), (16, 12)):
+        obs["day"], obs["hour"], obs["step"] = day, 0, day * 24
+        plan = planner.make_champion_plan(View(obs), mem)
+        assert plan.hires_target == want, (day, plan.hires_target)
+    mem.knobs["lead_hires"] = 0
+    obs["day"], obs["hour"], obs["step"] = 0, 0, 0
+    assert planner.make_champion_plan(View(obs), mem).hires_target == 3           # shipped: the workload cap on day 0

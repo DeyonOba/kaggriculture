@@ -416,6 +416,14 @@ LAND4_DAY_MAX = 20
 LAND4_MIN_HIRES = 9
 LAND4_MAX_IDLE = 12
 LAND4_WHEAT_BONUS = 25
+# Stage 4 (tools/hire_load_fit.py, 2026-09-30): the leaders' mean hands by day
+# on their 40 winner seats. A regression on the observable load (harvests due
+# in 3 days, plantings, animals, cash) reaches held-out R^2 0.846 against
+# 0.827 for CHAMP_HIRES alone, with a zero coefficient on the harvests: hiring
+# is a day schedule, not a load function. The schedule differs from ours by
+# about one hand on days 2-6 and half a hand from day 16 (a 12th hand).
+LEAD_HIRES = [5, 2, 5, 5, 6, 6, 9, 7, 10, 10, 12, 11, 11, 11, 11, 12, 12, 11, 12, 12,
+              11, 12, 12, 11, 12, 12, 12, 11, 10, 8]
 CHAMP_HIRES = [5, 4, 4, 5, 4, 5, 7, 9, 9, 10,
                11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
                11, 11, 11, 11, 11, 11, 10, 10, 10, 8]
@@ -456,6 +464,9 @@ KNOB_DEFAULTS = {
     # day 0. Per unit-turn the two crews are equally productive; ours planted
     # 2 of its 7 wheat seeds on day 0 because it was one hand short.
     "lead_opening": 0,
+    # lead_hires: hire the leaders' day schedule (LEAD_HIRES) instead of
+    # CHAMP_HIRES, without the workload cap; the cash guard below still trims
+    "lead_hires": 0,
     # OPENING V2 (2026-09-30, tools/plan_ledger.py): the champion delivers 49% of
     # its own asks on days 0-8, days 1 and 4 are $1 dawns with no hand hired,
     # and the leaders (5 units on day 0, 12.3 wheat + 6.3 melon planted, wheat
@@ -576,6 +587,8 @@ def make_champion_plan(view, memory):
     schedule = (CHAMP_HIRES[day] if day < len(CHAMP_HIRES) else 8) + (knobs["hires_delta"] if day >= 6 else 0)
     workload = sum(crops.values()) + 2 * my_animals + 10
     plan.hires_target = min(schedule, max(3, workload // 3))
+    if knobs.get("lead_hires"):
+        plan.hires_target = LEAD_HIRES[day] if day < len(LEAD_HIRES) else 8
     budget = max(150.0, me.money * 0.25)
     while plan.hires_target > 2 and econ.hire_total_cost(plan.hires_target) > budget:
         plan.hires_target -= 1
