@@ -191,7 +191,7 @@ class DayPlan:
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
         "fert_reserve", "land_margin", "feed_days", "cull_kinds", "sell_pace",
         "fert_gate", "fert_budget", "cash_floor", "seed_lot", "approved", "feed_any",
-        "hire_all_cash",
+        "hire_all_cash", "quad_quota",
     )
 
     def __init__(self):
@@ -233,6 +233,10 @@ class DayPlan:
         self.feed_any = False
         # lead_opening: hires may take all of the dawn cash (3 hands for $4)
         self.hire_all_cash = False
+        # quad4: a plan for ONE quadrant's tiles, {"SE": {crop: n}}, delivered
+        # only onto those tiles (scheduler.build_tasks) and accounted apart
+        # from plant_quota; empty = no quadrant plan
+        self.quad_quota = {}
 
 
 def _count_crops(farm):
@@ -429,6 +433,8 @@ LAND4_WHEAT_BONUS = 25
 # price sits at or above base because nobody supplies them.
 # egg_niche / land4_niche (user's demand rules, 2026-09-30): a rule that
 # fires on the SHOP DRAWS and the opponent's board, not on the calendar.
+QUAD4_REWARD = 0.67       # share of the fourth quadrant's tiles that take wheat
+QUAD4_MIN_PRICE = 0.5     # a crop under this fraction of base is tanked: not planted there
 EGG_NICHE_DRAIN = 7.0     # egg units a day the town takes: one egg shop (6) + the centre (1)
 EGG_NICHE_GEESE = 3       # geese to hold when eggs are demanded and the opponent has no coop
 PRESS_DAY = 12
@@ -510,6 +516,15 @@ KNOB_DEFAULTS = {
     # waited for day 14 and a $15k cushion and bought on day 16.
     "land4_early": 0,
     "land4_day": 12,
+    # quad4 (user, 2026-09-30): a PLAN FOR THE FOURTH QUADRANT. Once SE is
+    # owned its bare tiles get their own quota, chosen from the market as it
+    # stands: QUAD4_REWARD of the tiles wheat (the reward crop), the rest the
+    # best healthy other crop -- carrot if a shop beyond the town centre
+    # drains it, else strawberry while its window is open -- never a crop
+    # whose market has tanked (price under QUAD4_MIN_PRICE x base or inventory
+    # past the target by half the ramp) and never melon after day 12 (a
+    # 10-12 day cycle into a market the day-10 race has already crashed).
+    "quad4": 0,
     # straw_day: the first day strawberries take freed tiles (the champion's
     # constant is CHAMP_LAND_DAY = 5). The leaders plant them from day 2 as
     # the early wheat cash lands (1, 2, 3, 6 tiles on days 2-5); with
@@ -841,6 +856,32 @@ def make_champion_plan(view, memory):
                 continue                                  # already glutted: no rise to catch
             quota[crop] = max(quota.get(crop, 0), NICHE_TILES - crops.get(crop, 0))
     plan.plant_quota = {k: v for k, v in quota.items() if v > 0}
+    plan.quad_quota = {}
+    if knobs.get("quad4") and "SE" in me.unlocked_quadrants and not plan.liquidation and day <= 22:
+        se_bare = sum(1 for x, y in me.empty_tiles() if x >= 5 and y >= 5)
+        if se_bare > 0:
+            def healthy(crop):
+                p = MARKET_PARAMS[crop]
+                price = view.market_prices.get(crop, p["base"])
+                inv = view.market_inv.get(crop, p["I0"])
+                return price >= QUAD4_MIN_PRICE * p["base"] and inv <= p["I0"] + p["T"] / 2
+            drain = econ.town_drain_per_day(view.unlocked_shops)
+            centre_only = TURNS_PER_DAY / TOWN_CENTER_SELL_INTERVAL
+            other = None
+            if day <= CARROT_LAST_PLANT_DAY and drain.get("CARROT", 0.0) > centre_only + 1e-9 and healthy("CARROT"):
+                other = "CARROT"
+            elif day <= 13 and healthy("STRAWBERRY"):
+                other = "STRAWBERRY"
+            n_wheat = se_bare if (other is None or day > WHEAT_LAST_PLANT_DAY and False) else int(round(QUAD4_REWARD * se_bare))
+            if day > WHEAT_LAST_PLANT_DAY:
+                n_wheat = 0
+            se = {}
+            if n_wheat > 0 and healthy("WHEAT"):
+                se["WHEAT"] = n_wheat
+            if other is not None and se_bare - se.get("WHEAT", 0) > 0:
+                se[other] = se_bare - se.get("WHEAT", 0)
+            if se:
+                plan.quad_quota = {"SE": se}
 
     # Never sell feed we are about to buy back. The sell path used to reserve
     # `animals + 2` while the buy path topped the buffer up to

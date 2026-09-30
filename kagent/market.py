@@ -147,7 +147,10 @@ def _seed_orders(view, plan, memory, money, add):
                 age = view.day - t.get("planted_day", view.day)
                 if age >= cd["max_yield_day"]:
                     ground += 1
-    for crop, remaining in plan.plant_quota.items():
+    wants = dict(plan.plant_quota)
+    for crop, n in ((getattr(plan, "quad_quota", None) or {}).get("SE") or {}).items():
+        wants[crop] = wants.get(crop, 0) + n            # quad4: the fourth quadrant's seeds too
+    for crop, remaining in wants.items():
         if view.day > last_plant_day.get(crop, 29) or view.hour > 20:
             continue  # planting window closing; don't strand seeds
         deficit = remaining - view.seeds.get(crop, 0)

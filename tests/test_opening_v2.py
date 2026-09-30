@@ -262,3 +262,47 @@ def test_land4_early_asks_for_the_fourth_quadrant_from_its_day_on_a_small_margin
     mem.knobs["land4_early"] = 0
     obs["day"], obs["hour"], obs["step"] = 12, 0, 12 * 24
     assert "SE" not in planner.make_champion_plan(View(obs), mem).land_buys
+
+
+def test_quad4_plans_the_fourth_quadrant_from_the_market_and_delivers_it_there():
+    from kagent import planner, scheduler
+    from kagent.constants import MARKET_PARAMS
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["day"], obs["hour"], obs["step"] = 13, 3, 13 * 24 + 3
+    obs["farms"][0]["money"] = 6_000
+    obs["farms"][0]["unlocked_quadrants"] = ["NW", "NE", "SW", "SE"]
+    obs["farms"][0]["farmer"] = [4, 4]
+    obs["private"]["seeds"] = {"WHEAT": 30, "CARROT": 30, "MELON": 5}
+    farm = obs["farms"][0]
+    for y in range(10):
+        for x in range(10):
+            farm["tiles"][y][x] = None                                        # everything bare, all four quadrants
+    obs["town"]["unlocked_shops"] = ["PET_CAFE"]                             # carrots demanded beyond the centre
+    obs["market"]["inventory"]["CARROT"] = MARKET_PARAMS["CARROT"]["I0"] - 20
+    obs["market"]["prices"]["CARROT"] = 40.0
+    obs["market"]["prices"]["MELON"] = 10.0                                   # tanked
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs["quad4"] = 1; mem.knobs_decided = True
+    view = View(obs)
+    plan = planner.make_champion_plan(view, mem)
+    se = plan.quad_quota.get("SE")
+    assert se and sum(se.values()) == 25 and se.get("WHEAT", 0) == round(0.67 * 25) and se.get("CARROT", 0) == 25 - round(0.67 * 25), plan.quad_quota
+    assert "MELON" not in se
+    plan.structure_builds = {"COOP": 0, "PASTURE": 0}                        # no pasture taking an SE tile
+    tasks = scheduler.build_tasks(view, plan)
+    se_plants = [t for t in tasks if t.op[0] == "PLANT" and t.x >= 5 and t.y >= 5]
+    assert len(se_plants) == 25 and {t.op[1] for t in se_plants} == {"WHEAT", "CARROT"}, len(se_plants)
+    # the farm-wide quota never reaches the fourth quadrant's tiles
+    plan.plant_quota = {"MELON": 5}
+    tasks = scheduler.build_tasks(view, plan)
+    assert not [t for t in tasks if t.op == ["PLANT", "MELON"] and t.x >= 5 and t.y >= 5]
+    # no quadrant plan without the knob, or when SE is not owned
+    mem.knobs["quad4"] = 0
+    assert not planner.make_champion_plan(view, mem).quad_quota
+    mem.knobs["quad4"] = 1
+    obs["farms"][0]["unlocked_quadrants"] = ["NW", "NE", "SW"]
+    assert not planner.make_champion_plan(View(obs), mem).quad_quota

@@ -446,6 +446,15 @@ def replant_quota(view, plan):
     return added
 
 
+def _quota_for(plan, x, y):
+    """The quota dict a PLANT on (x, y) draws from: the fourth quadrant's own
+    plan when there is one (quad4), else the farm-wide quota."""
+    se = (getattr(plan, "quad_quota", None) or {}).get("SE")
+    if se and x >= 5 and y >= 5:
+        return se
+    return plan.plant_quota
+
+
 def build_tasks(view, plan):
     """Generate this turn's pending tile tasks."""
     tasks = []
@@ -662,6 +671,18 @@ def build_tasks(view, plan):
         # on the few center-most empties. The daily quota is enforced at
         # execution time (assign.try_execute).
         wanted = [crop for crop, n in plan.plant_quota.items() for _ in range(n)]
+        se_quota = (getattr(plan, "quad_quota", None) or {}).get("SE") or {}
+        if se_quota:
+            # quad4: the fourth quadrant's tiles take ITS plan, the rest of
+            # the farm the farm-wide quota
+            se_wanted = [crop for crop, n in se_quota.items() for _ in range(n)]
+            se_tiles = [e for e in empties[cursor:] if e[0] >= 5 and e[1] >= 5]
+            for i, (x, y) in enumerate(se_tiles):
+                if i < len(se_wanted):
+                    tasks.append(Task(P_GROW, x, y, ["PLANT", se_wanted[i]]))
+            n_se_before = sum(1 for e in empties[:cursor] if e[0] >= 5 and e[1] >= 5)
+            empties = [e for e in empties if not (e[0] >= 5 and e[1] >= 5)]
+            cursor = max(0, cursor - n_se_before)
         if wanted and EXEC["layout"] and plan.plant_quota.get("WHEAT", 0) > 0:
             # Wheat rows beside the animals: bare tiles orthogonally adjacent
             # to a pasture or coop take the wheat quota first, the rest of
@@ -779,15 +800,17 @@ def assign(view, plan, tasks):
             return False
         if task.op[0] == "PLANT":
             crop = task.op[1]
-            allowed = min(seeds_left.get(crop, 0), plan.plant_quota.get(crop, 0))
-            if plant_requests.get(crop, 0) + 1 > allowed:
+            qd = _quota_for(plan, task.x, task.y)
+            allowed = min(seeds_left.get(crop, 0), qd.get(crop, 0))
+            if plant_requests.get((crop, id(qd)), 0) + 1 > allowed:
                 return False
         if (x, y) == (task.x, task.y):
             if not _unlocked(view, task.x, task.y):
                 return False
             actions[idx] = task.op
             if task.op[0] == "PLANT":
-                plant_requests[task.op[1]] = plant_requests.get(task.op[1], 0) + 1
+                k = (task.op[1], id(_quota_for(plan, task.x, task.y)))
+                plant_requests[k] = plant_requests.get(k, 0) + 1
         else:
             step = _step_toward(x, y, task.x, task.y)
             if not step:

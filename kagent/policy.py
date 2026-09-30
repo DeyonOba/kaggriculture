@@ -135,11 +135,14 @@ class HeuristicPolicy:
             actions = scheduler.assign(view, plan, tasks)
 
         # Consume day quotas as ops are actually emitted.
-        for op in actions.values():
+        for idx, op in actions.items():
             if not op:
                 continue
-            if op[0] == "PLANT" and plan.plant_quota.get(op[1], 0) > 0:
-                plan.plant_quota[op[1]] -= 1
+            if op[0] == "PLANT":
+                ux, uy = next(((x, y) for i, x, y in view.me.units if i == idx), (0, 0))
+                qd = scheduler._quota_for(plan, ux, uy)
+                if qd.get(op[1], 0) > 0:
+                    qd[op[1]] -= 1
             elif op[0] == "FERTILIZE" and getattr(plan, "fert_budget", None) is not None:
                 plan.fert_budget = max(0, plan.fert_budget - 1)
             elif op[0] == "BUILD_COOP":
