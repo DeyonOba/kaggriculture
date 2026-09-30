@@ -43,6 +43,9 @@ def main():
     ap.add_argument("--opening-weight", type=float, default=3.0,
                     help="sample weight for dawns on days 0-8")
     ap.add_argument("--seed", type=int, default=1234)
+    ap.add_argument("--train-trunk", action="store_true",
+                    help="board readouts: train the conv trunk end-to-end on the targets "
+                         "instead of caching its (frozen) features")
     args = ap.parse_args()
 
     from kagent import features
@@ -67,20 +70,30 @@ def main():
     net = PlannerNet(sd["h1.weight"].shape[1] - (BOARD_W if has_board else 0), board=has_board)
     net.load_state_dict(sd)
     z = None
+    B = None
     if has_board:
-        # the trunk stays frozen, as in the BC fit: its features are cached once
         B = np.load(args.corpus.replace(".jsonl", "_boards.npy"), mmap_mode="r")
         assert len(B) == len(rows), f"boards {len(B)} vs samples {len(rows)}"
-        with torch.no_grad():
-            z = torch.cat([net.board(torch.tensor(np.asarray(B[s_:s_ + 512], dtype=np.float32)))
-                           for s_ in range(0, len(rows), 512)])
-        for p_ in net.board.parameters():
-            p_.requires_grad_(False)
-        print(f"   board trunk: features cached for {len(rows):,} dawns, trunk frozen")
+        if args.train_trunk:
+            # END-TO-END: the conv trunk learns the leaders' targets with the
+            # heads (the S2-passing setting), a conv pass per minibatch
+            print(f"   board trunk: TRAINABLE, conv pass per minibatch over {len(rows):,} dawns")
+        else:
+            # the trunk stays frozen, as in the BC fit: its features are cached once
+            with torch.no_grad():
+                z = torch.cat([net.board(torch.tensor(np.asarray(B[s_:s_ + 512], dtype=np.float32)))
+                               for s_ in range(0, len(rows), 512)])
+            for p_ in net.board.parameters():
+                p_.requires_grad_(False)
+            print(f"   board trunk: features cached for {len(rows):,} dawns, trunk frozen")
     assert net.logits.out_features == features.N_ACTION_LOGITS, "head set mismatch with the init weights"
 
     def nll(idx):
-        logits = net.forward_z(x[idx], None if z is None else z[idx])
+        if B is not None and z is None:
+            bb = torch.tensor(np.stack([B[i] for i in idx.tolist()]).astype(np.float32))
+            logits = net(x[idx], bb)
+        else:
+            logits = net.forward_z(x[idx], None if z is None else z[idx])
         dists = masked_dists(logits, m[idx])
         lp = sum(d.log_prob(c[idx][:, h]) for h, d in enumerate(dists))
         return -(lp * w[idx]).sum() / w[idx].sum()
