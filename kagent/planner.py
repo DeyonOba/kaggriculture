@@ -190,6 +190,7 @@ class DayPlan:
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
         "fert_reserve", "land_margin", "feed_days", "cull_kinds", "sell_pace",
         "fert_gate", "fert_budget", "cash_floor", "seed_lot", "approved", "feed_any",
+        "hire_all_cash",
     )
 
     def __init__(self):
@@ -229,6 +230,8 @@ class DayPlan:
         self.approved = False
         # sizing: feed is bought at any wheat price (the leaders' first claim)
         self.feed_any = False
+        # lead_opening: hires may take all of the dawn cash (3 hands for $4)
+        self.hire_all_cash = False
 
 
 def _count_crops(farm):
@@ -444,6 +447,15 @@ KNOB_DEFAULTS = {
     "carrot_day": 25,                     # endgame: freed tiles -> carrots
     # Widened set (round 2, twin = champ-h4); defaults reproduce champ-h4.
     "melon_opening": CHAMP_OPENING["MELON"],  # day-0 melon tiles
+    # lead_opening (2026-09-30, traced on M&M&P&Q episode 114976921 vs h11):
+    # the leaders' day-0 basket -- 2 cows + 3 sheep, 6 melon + 10 wheat, 4
+    # hands; 4 more melons on day 1 with 3 hands hired for $4 on a $4 dawn;
+    # the 10 wheat pay $544-1,457 a day on days 2-5 and buy a cow a day, and
+    # the third sheep's wool on day 6 buys five cows at once (herd 14 vs our
+    # 8 on day 6). All 40 winner seats hold exactly 5 animals at the end of
+    # day 0. Per unit-turn the two crews are equally productive; ours planted
+    # 2 of its 7 wheat seeds on day 0 because it was one hand short.
+    "lead_opening": 0,
     # OPENING V2 (2026-09-30, tools/plan_ledger.py): the champion delivers 49% of
     # its own asks on days 0-8, days 1 and 4 are $1 dawns with no hand hired,
     # and the leaders (5 units on day 0, 12.3 wheat + 6.3 melon planted, wheat
@@ -512,6 +524,8 @@ def _champ_herd_targets(day, knobs=None):
     cow = 2 if day < 3 else min(knobs["cows"], 2 + (day - 2))
     # Recorded pace: 4 sheep by day 8, 6 by day 10, 8 by day 12-14.
     sheep = 2 if day < 7 else min(knobs["sheep"], 2 + (day - 6))
+    if knobs.get("lead_opening"):
+        sheep = 3 if day < 7 else min(knobs["sheep"], 3 + (day - 6))   # the leaders' third sheep on day 0
     geese = knobs["geese"] if knobs.get("geese_day", 6) <= day <= 18 else 0
     return {
         "GOOSE": geese,
@@ -565,6 +579,11 @@ def make_champion_plan(view, memory):
     budget = max(150.0, me.money * 0.25)
     while plan.hires_target > 2 and econ.hire_total_cost(plan.hires_target) > budget:
         plan.hires_target -= 1
+    if knobs.get("lead_opening") and day <= 2:
+        # the leaders' crew: 4, 3, 6 on days 0-2, hired with whatever cash the
+        # dawn holds (3 hands for $4 on a $4 dawn), not the workload cap
+        plan.hires_target = (4, 3, 6)[day]
+        plan.hire_all_cash = True
     v2 = bool(knobs.get("opening_v2"))
     v2_crew = v2 or bool(knobs.get("v2_crew"))
     v2_order = v2 or bool(knobs.get("v2_order"))
@@ -667,6 +686,8 @@ def make_champion_plan(view, memory):
             for crop, n in CHAMP_OPENING.items():
                 if crop == "MELON":
                     n = knobs["melon_opening"]
+                if knobs.get("lead_opening"):
+                    n = {"MELON": (6, 10)[day], "WHEAT": 10}[crop]         # the leaders' 6 + 4 melons, 10 wheat
                 quota[crop] = max(0, n - crops.get(crop, 0))
         if CHAMP_LAND_DAY <= day <= 13:
             # Strawberries take freed tiles first (4 productions by 29), staged

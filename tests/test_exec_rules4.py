@@ -237,3 +237,17 @@ def test_hold_crash_keeps_a_crashed_product_for_its_floor():
     # the shed-pressure valve still dumps
     obs["private"]["shed"] = {"MILK": 90}
     assert [o for o in market._sell_orders(View(obs), plan, Memory()) if o[1] == "MILK"]
+
+
+def test_early_harvest_takes_wheat_at_first_yield_in_the_opening():
+    obs = _obs(day=2, hour=6)
+    obs["farms"][0]["tiles"][1][1] = _plant("WHEAT", planted_day=0, yield_units=2)
+    view = View(obs)
+    plan = planner.make_champion_plan(view, Memory())
+    assert not any(op == "HARVEST" for op, _ in _at(view, plan, 1, 1))        # shipped: waits for max yield (age 4)
+    scheduler.set_exec("early_harvest")
+    assert ("HARVEST", scheduler.P_HARVEST) in _at(view, plan, 1, 1)
+    obs = _obs(day=8, hour=6)                                                  # after the opening: the shipped rule
+    obs["farms"][0]["tiles"][1][1] = _plant("WHEAT", planted_day=6, yield_units=2)
+    view = View(obs)
+    assert not any(op == "HARVEST" for op, _ in _at(view, planner.make_champion_plan(view, Memory()), 1, 1))

@@ -210,13 +210,19 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              shed-pressure valve and the final push still bypass). Paired
 #              with care_price: an animal cannot be removed, so the question
 #              is the SELL timing of what it keeps producing, not the care.
+#   early_harvest  opening cash engine: through EARLY_HARVEST_DAY a wheat tile
+#              is harvested at its FIRST yield (age 2, 2-3 units) instead of
+#              waiting for max yield at age 4. Traced on the leaders (episode
+#              114976921): 10 wheat on day 0 go 10 -> 8 -> 5 -> 2 -> 0 over
+#              days 1-5, watered only 59% of tile-days, and the $544-1,457 a
+#              day it makes on days 2-5 buys a cow a day. Ours waits to day 4.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
               "endwater", "tend_end", "late_plant", "care_all", "radial", "executor2", "approve",
               "replant", "size_budget", "size_feed", "size_hires", "size_ground", "sized", "care_price",
-              "hold_crash")
+              "hold_crash", "early_harvest")
 RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
@@ -380,6 +386,7 @@ def quadrant_queues(view, tasks, plan=None):
 
 
 REPLANT_LAST_DAY = {"WHEAT": 25, "CARROT": 26, "MELON": 19}   # the market's planting windows
+EARLY_HARVEST_DAY = 5          # early_harvest: wheat taken at first yield through this day
 
 
 def replant_quota(view, plan):
@@ -488,6 +495,7 @@ def build_tasks(view, plan):
                 continue
             ripe = age >= crop["first_yield_day"] and (
                 yields >= crop["max_yield"] or age >= crop["max_yield_day"]
+                or (EXEC["early_harvest"] and t["crop"] == "WHEAT" and day <= EARLY_HARVEST_DAY and yields > 0)
             )
             # late_plant: on the final day anything a one-time crop holds is
             # taken; `ripe` waits for max yield, which a late planting never

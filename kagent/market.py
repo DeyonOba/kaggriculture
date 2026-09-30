@@ -60,7 +60,7 @@ def build_orders(view, plan, memory):
         hired = 0
         while need > 0 and hired < 8:
             cost_guard += econ.hire_marginal_cost(view.me.hires_today + hired)
-            if cost_guard > (money if approved else money * 0.3) or not add(["HIRE"]):
+            if cost_guard > (money if (approved or getattr(plan, "hire_all_cash", False)) else money * 0.3) or not add(["HIRE"]):
                 break
             hired += 1
             need -= 1

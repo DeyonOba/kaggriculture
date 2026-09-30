@@ -75,3 +75,33 @@ def test_market_leaves_the_floor_and_buys_seeds_in_lots():
     assert animals == []                          # a cow costs 400 > 100
     assert all(o[2] <= plan.seed_lot for o in seeds)
     assert seeds and seeds[0][1] == "WHEAT"       # wheat seeds first
+
+
+def test_lead_opening_is_the_leaders_day0_basket():
+    from kagent import planner, market
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    view = View(obs)
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs["lead_opening"] = 1; mem.knobs_decided = True
+    plan = planner.make_champion_plan(view, mem)
+    assert plan.plant_quota == {"MELON": 6, "WHEAT": 10}, plan.plant_quota
+    assert plan.animal_buys == {"SHEEP": 3, "COW": 2}, plan.animal_buys
+    assert plan.hires_target == 4 and plan.hire_all_cash
+    # day 1 on a $4 dawn: 3 hands for $4, and the four remaining melons
+    obs["day"], obs["hour"], obs["step"] = 1, 0, 24
+    obs["farms"][0]["money"] = 4
+    view = View(obs)
+    plan = planner.make_champion_plan(view, mem)
+    assert plan.hires_target == 3 and plan.plant_quota["MELON"] == 10
+    orders = market.build_orders(view, plan, mem)
+    assert [o[0] for o in orders].count("HIRE") == 3, orders
+    # shipped: the workload cap holds day 0 at 3 hands and the $4 dawn hires none
+    mem.knobs["lead_opening"] = 0
+    obs["day"], obs["hour"], obs["step"] = 0, 0, 0
+    obs["farms"][0]["money"] = 3000
+    plan0 = planner.make_champion_plan(View(obs), mem)
+    assert plan0.hires_target == 3 and plan0.plant_quota == {"MELON": 12, "WHEAT": 7} and plan0.animal_buys == {"SHEEP": 2, "COW": 2}
