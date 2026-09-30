@@ -55,3 +55,31 @@ The first plan source is an **adapter** from today's `DayPlan` (so the champion 
 **Slice 2 (2026-09-30), replant-by-turn: INERT.** `scheduler.replant_quota` (EXEC flag `replant`) adds today's one-time harvests back to the quota, same crop, capped by the ground the plan's own asks leave bare. On worlds 0-1 it never adds: the champion quota exceeds the bare ground at every dawn (day 7: bare 17, STRAWBERRY quota 28; day 11: bare 26, quota 34), so the room is zero and world 1 plays the identical game. The plan already over-asks the ground; what it lacks on days 5-9 is cash ($29-$269 dawns against $2,000-3,000 asks) and on day 11 labour and order flow (26 wheat asked on $4,943, 16 planted). A plan indexed by turn cannot conjure either; the plan must be SIZED to them (the approval = a capital check that prunes the ask), which is what the `approve` gate measures next.
 
 **Slice 3 (2026-09-30), approved purchases: NULL, money up.** `approve` alone on the shipped dispatch (seeds for the whole quota bought above the cash floor, no 60%-of-cash ration; `rl/runs/approve_gate.json`, 144 worlds, h11 reused): **+0.007 (0.465 vs 0.458), 9 arm-only vs 8 base-only, p 1.000; our bank +$2,123, the opponent's +$869; bands +0.250 / +0.042 / -0.042 / -0.042 / -0.083 / -0.083.** The first executor-side flag of the week whose bank signature is ours up more than theirs, and it still buys no wins: the seeds are bought, the plants go in, and the games are decided elsewhere. Kept off (a null does not ship); it is the natural default for a plan that is sized to cash, which is the next question -- the champion plan asks $2,000-3,000 on $29-$269 dawns, so "approved" today means "as much of the ask as the cash covers", not a plan the executor can complete.
+
+## 6. The plan sizing rule (designed with the user, 2026-09-30)
+
+**What the leaders' games say about sizing** (`size_ledger`: the 40 winner seats of `replays/now`, h11 on tape worlds 0-3 beside them):
+
+| days | dawn $ (them / us) | spent $ | of which feed | animals kept | plant tiles | bare tiles | income $ / day |
+|---|---|---|---|---|---|---|---|
+| 0 | 3,000 / 3,000 | 3,590 / 3,098 | 623 / 264 | 4.6 hands vs 3.0 | 0 / 0 | 25 / 25 | 596 / 106 |
+| 1-2 | 66 / 16 | 1,301 / 349 | 642 / 274 | 5.0 / 4.0 | 19.1 / 13.4 | 0.9 / 7.4 | 1,317 / 359 |
+| 3-6 | 114 / 124 | 3,189 / 1,117 | 926 / 161 | 7.6 / 4.4 | 17.2 / 18.6 | 0.2 / 1.0 | 3,203 / 1,128 |
+| 7-10 | 320 / 236 | 7,168 / 2,523 | 2,109 / 635 | 16.0 / 10.1 | 42.9 / 31.2 | 2.4 / 8.1 | 8,707 / 3,960 |
+| 11-15 | 15,754 / 11,486 | 2,124 / 1,349 | 1,354 / 666 | 21.7 / 15.3 | 62.5 / 52.6 | 2.4 / 6.8 | 7,250 / 4,887 |
+
+- Nobody sizes to dawn cash: both sides wake broke through day 10 and spend 20-28x the dawn cash, funded by the day's sales, and end the day near $0 (evening cash $6-127). The budget is dawn cash plus what will sell today.
+- The leaders' first claim is the herd's feed (30% of spend, 4-6x ours); they carry 7.6 animals on days 3-6 to our 4.4 and their day-0 income is collected fertiliser (~$99 a unit).
+- They never leave ground bare (0.2-2.4 tiles); we hold 7-8 bare tiles from day 7 to 15 because the plan asks for $100 strawberry seed on $29 dawns and the tile waits.
+
+**The four choices (user's):** budget = dawn cash + expected sales; a bare tile whose planned crop is unaffordable is planted with the best affordable crop now; hires by workload (work / capacity); feed at any price as the first claim.
+
+**The rule** (`kagent/sizing.py`, `approve_plan` at dawn, `refill` every hour):
+1. budget = dawn cash + forecast, where forecast = max(model, 0.8 x the best of the last three days' realised income); the model prices the dawn shed and today's one-time harvests at the exact market identity.
+2. claims in order: feed for the whole herd at the market price (`plan.feed_any` lifts the $120 cap); hands = ceil((standing tiles + today's plantings + 3 per animal) / CAP 8) - 1, held to half the budget by the wage curve; the cheapest open crop (wheat, then carrot) on every bare tile; animals, and only the structures the approved animals will fill; the plan's own crops with what is left, in the plan's order; land last.
+3. the approved plan buys in full (`plan.approved`): the dawn sells go first in the order list (engine fact, verified in the env: orders resolve in list order with the cash updated between them, so a $4 dawn hires on its own wheat), hires spend what cash allows, seeds come before animals and land.
+4. ground freed during the day is asked for again with the fill crop each hour (`refill`), so a harvest the dawn could not see is replanted the same day.
+
+**Ledger before the gate** (world 0, days 0-14): delivery 84% of asks vs 57%; four worlds: bare tiles days 7-10 5.8 vs 8.1, herd days 3-6 4.9 vs 4.4, dusk cash still ~$1,000 on days 3-6 (the forecast floor lags income that doubles day to day). Shipped path bit-identical (world 0 ends at $87,073 either way).
+
+**Gates**: `sized` (the package) and each of the four flags alone vs h11 -- `rl/runs/size_*_gate.json`.
