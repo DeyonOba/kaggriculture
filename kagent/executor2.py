@@ -35,7 +35,7 @@ URGENT = 12.0         # a survival job late in the day jumps the queue
 RADIUS = 99           # jobs farther than this are not offered (survival always is)
 PROVISION_UNTIL = 1   # hours 0-1: the crew is at the shed, take the day's wheat and fertiliser out
 ANIMAL_BONUS = 10.0   # a bought animal is placed before anything nearer: it strands in the shed otherwise (measured: 47 structures, 0 placed)
-ANIMALS = ("GOOSE", "COW", "SHEEP")
+ANIMAL_KINDS = ("GOOSE", "COW", "SHEEP")
 FETCH_BATCH = {"WHEAT": 5, "FERTILIZER": 3, "GOOSE": 2, "COW": 2, "SHEEP": 2}   # the shipped trip sizes
 
 
@@ -78,7 +78,7 @@ def assign2(view, plan, tasks, memory):
     for idx, (x, y) in list(units.items()):
         inv = view.unit_inv(idx)
         total = sum(n for item, n in inv.items()
-                    if not (item in ANIMALS or (not aggressive and item == "WHEAT" and n <= 5)
+                    if not (item in ANIMAL_KINDS or (not aggressive and item == "WHEAT" and n <= 5)
                             or (not aggressive and item == "FERTILIZER" and n <= 3)))
         threshold = 1 if (aggressive and hour >= 4) or view.step >= FINAL_STEP - 6 else DROP_THRESHOLD
         if day < 10:
@@ -92,7 +92,7 @@ def assign2(view, plan, tasks, memory):
             if shed_room >= total or final_push:
                 actions[idx] = ["DROP"]; shed_room = max(0, shed_room - total)
             else:
-                cargo = {k: v for k, v in inv.items() if k not in ANIMALS}
+                cargo = {k: v for k, v in inv.items() if k not in ANIMAL_KINDS}
                 if cargo:
                     item = max(cargo, key=cargo.get); n = min(cargo[item], shed_room)
                     if n > 0:
@@ -189,7 +189,7 @@ def assign2(view, plan, tasks, memory):
             c = PRI_STEP * t.pri + d
             if late and t.pri == P_SURVIVAL:
                 c -= URGENT
-            if t.need in ANIMALS:
+            if t.need in ANIMAL_KINDS:
                 c -= ANIMAL_BONUS
             cur = commit.get(idx)
             if cur == key:

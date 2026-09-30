@@ -32,7 +32,7 @@ MAX_HANDS = 11        # the wage knee: 11 hands cost $232 a day
 HIRE_SHARE = 0.5      # the hire bill may take at most this share of the budget
 SALES_DISCOUNT = 0.8  # the opponent sells into the same market: expected sales are haircut
 FILL_ORDER = ("WHEAT", "CARROT")            # the affordable crops, cheapest first
-LAST_PLANT = {"WHEAT": 25, "CARROT": 26}    # the market's planting windows
+FILL_LAST_PLANT = {"WHEAT": 25, "CARROT": 26}    # the market's planting windows
 
 
 def on(flag):
@@ -101,7 +101,7 @@ def income_yesterday(view, memory):
 def fill_crop_today(view):
     """The cheapest crop whose planting window is open today, or None."""
     for crop in FILL_ORDER:
-        if view.day <= LAST_PLANT[crop] and view.day + CROPS[crop]["first_yield_day"] <= 29:
+        if view.day <= FILL_LAST_PLANT[crop] and view.day + CROPS[crop]["first_yield_day"] <= 29:
             return crop
     return None
 

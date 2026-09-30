@@ -108,6 +108,17 @@ class Memory:
         # Labor-utilization ledger: PASS-turns vs unit-turns, rolled daily.
         self.idle_accum = 0
         self.turns_accum = 0
+        # Per-episode state of the 2026-09-30 modules. A worker's Memory is
+        # reused across games, so anything not cleared here leaks into the
+        # next world (the sell-timing opponent EMA did: a dev arm and its own
+        # bundle diverged on 5 of 6 worlds).
+        self.st_state = None          # selltiming: opponent supply read
+        self.size_spend = {}          # sizing: spend by day
+        self.size_dawn = {}           # sizing: dawn cash by day
+        self.sizing_log = {}
+        self.exec2_commit = None      # executor2: unit -> job
+        self.exec2_day = -1
+        self.replant_added = {}
         self.hands_peak = 0
         self.util_day = -1
         self.yesterday_idle = 0.0

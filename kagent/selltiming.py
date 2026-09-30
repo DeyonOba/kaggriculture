@@ -26,8 +26,8 @@ final push bypass it, as they bypass the floors.
 """
 from __future__ import annotations
 
-from kagent import econ
-from kagent import opp_profile as OP
+from kagent import econ, scheduler
+from kagent import opp_profile
 from kagent.constants import (
     MARKET_PARAMS, SHOPS, TOWN_CENTER_PRODUCTS, TOWN_CENTER_SELL_INTERVAL,
     TOWN_SHOP_SELL_INTERVAL, TURNS_PER_DAY,
@@ -38,14 +38,13 @@ PRODUCTS_DP2 = ("STRAWBERRY", "MILK")          # sell_dp2: wool left to the ship
 
 
 def active_products():
-    from kagent import scheduler
     if scheduler.EXEC.get("sell_dp"):
         return PRODUCTS_DP
     if scheduler.EXEC.get("sell_dp2"):
         return PRODUCTS_DP2
     return ()
 HORIZON = 48            # turns: two drain cycles; prices only fall over the season where supply beats the drain
-FINAL_STEP = 718
+SELL_FINAL_STEP = 718
 EMA = 0.25              # weight of one observed day on the opponent's daily volume
 MIN_HOLD_PRICE = 2      # below this a unit is not worth a turn of anyone's
 
@@ -90,7 +89,7 @@ def inv_at_price(item, lam):
 
 
 def _band(day):
-    for k in OP.UNITS_PER_DAY["STRAWBERRY"]:
+    for k in opp_profile.UNITS_PER_DAY["STRAWBERRY"]:
         lo, hi = (int(x) for x in k.split("-"))
         if lo <= day <= hi:
             return k
@@ -144,12 +143,12 @@ def their_supply(item, view, memory, step):
     """Forecast units the opponent sells at `step` (an hour of a day)."""
     st = getattr(memory, "st_state", None) or {}
     day = step // TURNS_PER_DAY
-    prior_daily = OP.UNITS_PER_DAY[item][_band(day)]
+    prior_daily = opp_profile.UNITS_PER_DAY[item][_band(day)]
     daily = st.get("daily", {}).get(item)
     daily = prior_daily if daily is None else 0.5 * (daily + prior_daily)
     hour = step % TURNS_PER_DAY
     n_obs = st.get("hour_n", {}).get(item, 0.0)
-    prior_share = OP.HOUR_SHARE[item][hour]
+    prior_share = opp_profile.HOUR_SHARE[item][hour]
     if n_obs > 0:
         obs_share = st["hour_units"][item][hour] / n_obs
         w = min(0.7, n_obs / (n_obs + 40.0))
@@ -167,7 +166,7 @@ def sell_now(item, stock, view, memory):
     inv0 = view.market_inv.get(item)
     if inv0 is None:
         return stock
-    H = min(HORIZON, FINAL_STEP - 8 - step)
+    H = min(HORIZON, SELL_FINAL_STEP - 8 - step)
     if H <= 1:
         return stock
     theirs = [their_supply(item, view, memory, step + k) for k in range(H)]
