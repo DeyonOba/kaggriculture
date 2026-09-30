@@ -110,7 +110,8 @@ def ledger(steps, side, asks, days):
         cost = (sum(CROPS[c]["seed"] * n for c, n in ask["plant"].items() if c in CROPS)
                 + sum(ANIMALS[k]["cost"] * n for k, n in ask["buys"].items() if k in ANIMALS)
                 + econ.hire_total_cost(ask["hires"]))
-        bare = sum(1 for row in dawn["tiles"] for c in row if c == 1 or (isinstance(c, dict) and c.get("kind") == "EMPTY")) if dawn.get("tiles") else None
+        # the engine encodes a bare tile as None (locked tiles are not in the farm's rows as None either: they carry a kind)
+        bare = sum(1 for row in dawn["tiles"] for c in row if c is None) if dawn.get("tiles") else None
         rows.append({"day": d, "money": dawn.get("money", 0), "ask": ask, "done": done,
                      "hands0": hands0, "hands1": hands1, "cost": cost, "bare": bare})
     return rows
