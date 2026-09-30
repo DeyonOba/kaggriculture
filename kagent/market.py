@@ -81,10 +81,14 @@ def build_orders(view, plan, memory):
     plan.land_buys = remaining_land
 
     # --- Animals (before seeds: a dropped seed order self-heals next turn) ----
+    # opening_v2: purchases leave plan.cash_floor in the bank (tomorrow's hire
+    # bill); 0 for the shipped plan. Feed above is exempt: an unfed animal
+    # escapes after two dry days.
+    floor = float(getattr(plan, "cash_floor", 0.0) or 0.0)
     for kind in list(plan.animal_buys):
         want = plan.animal_buys[kind]
         cost = ANIMALS[kind]["cost"]
-        n = min(want, int(money // cost))
+        n = min(want, int(max(0.0, money - floor) // cost))
         if n > 0 and add(["BUY_ANIMAL", kind, n]):
             plan.animal_buys[kind] = want - n
             money -= n * cost
@@ -98,9 +102,12 @@ def build_orders(view, plan, memory):
         if view.day > last_plant_day.get(crop, 29) or view.hour > 20:
             continue  # planting window closing; don't strand seeds
         deficit = remaining - view.seeds.get(crop, 0)
-        if deficit > 0 and money >= CROPS[crop]["seed"]:
-            affordable = int(money * 0.6 // CROPS[crop]["seed"])
+        if deficit > 0 and money - floor >= CROPS[crop]["seed"]:
+            affordable = int(max(0.0, money - floor) * 0.6 // CROPS[crop]["seed"])
             n = min(deficit, max(1, affordable))
+            lot = int(getattr(plan, "seed_lot", 0) or 0)
+            if lot > 0:
+                n = min(n, lot)            # opening_v2: seeds as the crew reaches the ground
             if n > 0:
                 add(["BUY_SEED", crop, n])
 

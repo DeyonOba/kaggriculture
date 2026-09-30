@@ -189,7 +189,7 @@ class DayPlan:
         "hires_target", "land_buys", "plant_quota", "animal_buys",
         "structure_builds", "sell_floors", "liquidation", "wheat_reserve",
         "fert_reserve", "land_margin", "feed_days", "cull_kinds", "sell_pace",
-        "fert_gate", "fert_budget",
+        "fert_gate", "fert_budget", "cash_floor", "seed_lot",
     )
 
     def __init__(self):
@@ -219,6 +219,11 @@ class DayPlan:
         self.fert_reserve = 0
         self.land_margin = 100   # cash above the land price the market controller requires
         self.feed_days = 2       # days of feed the buffer keeps in stock
+        # opening_v2: cash the market controller must leave in the bank
+        # (tomorrow's hire bill + a margin) and the per-turn seed lot (0 = the
+        # shipped 60%-of-cash purchase). Both 0 = the shipped behaviour.
+        self.cash_floor = 0.0
+        self.seed_lot = 0
 
 
 def _count_crops(farm):
@@ -434,6 +439,16 @@ KNOB_DEFAULTS = {
     "carrot_day": 25,                     # endgame: freed tiles -> carrots
     # Widened set (round 2, twin = champ-h4); defaults reproduce champ-h4.
     "melon_opening": CHAMP_OPENING["MELON"],  # day-0 melon tiles
+    # OPENING V2 (2026-09-30, tools/plan_ledger.py): the champion delivers 49% of
+    # its own asks on days 0-8, days 1 and 4 are $1 dawns with no hand hired,
+    # and the leaders (5 units on day 0, 12.3 wheat + 6.3 melon planted, wheat
+    # income from day 2, 3-4 animals placed a day on $26-125 dawns) win the
+    # opening race. With the knob: a 4-hand crew on days 0-2, plant the crops
+    # that pay first (wheat before melon), keep tomorrow's hire bill in the
+    # bank, seeds bought in lots as the crew reaches the ground, and animal
+    # WANTS that the market buys as the day's takings arrive (structures still
+    # follow what dawn cash affords, so no empty pastures).
+    "opening_v2": 0,
     "land2_margin": 100,                  # cash above price required for quadrant #2
     "wheat_floor": 1,                     # wheat sell floor (1 = sell all)
     "liquidation_day": LIQUIDATION_DAY,
@@ -539,6 +554,13 @@ def make_champion_plan(view, memory):
     budget = max(150.0, me.money * 0.25)
     while plan.hires_target > 2 and econ.hire_total_cost(plan.hires_target) > budget:
         plan.hires_target -= 1
+    v2 = bool(knobs.get("opening_v2"))
+    if v2:
+        if day <= 2:
+            plan.hires_target = max(plan.hires_target, 4)     # the leaders' day-0 crew
+        nxt = CHAMP_HIRES[day + 1] if day + 1 < len(CHAMP_HIRES) else 8
+        plan.cash_floor = float(econ.hire_total_cost(min(nxt, 6)) + 20)
+        plan.seed_lot = 2 * (1 + plan.hires_target)
 
     # --- Land: a standing wish from day 5; the market controller buys the
     # turn the cash is there (the day-6 wool lands mid-day, after planning).
@@ -577,11 +599,13 @@ def make_champion_plan(view, memory):
     for _i, _px, _py in me.units:
         for _it, _n in view.unit_inv(_i).items():
             _pocket[_it] = _pocket.get(_it, 0) + _n
+    affordable_now = {}
     if not plan.liquidation:
         # Full deficits, not gated on hour-0 cash: the market controller buys
         # animals before seeds the turn money lands (wool/milk arrive mid-day),
         # so the herd wins the intra-day cash race the way champions' does.
         targets = _champ_herd_targets(day, knobs)
+        cash_now = max(0.0, me.money - plan.cash_floor)
         for kind in ("SHEEP", "COW", "GOOSE"):  # wool lands first (day 6) and pays for land
             if kind in plan.cull_kinds:
                 continue                        # never buy what we are letting go
@@ -590,8 +614,16 @@ def make_champion_plan(view, memory):
             n = max(0, min(want, 4))
             if n > 0:
                 plan.animal_buys[kind] = n
+                # opening_v2: how many of them dawn cash covers now -- the
+                # structures below follow THAT, not the want (tools/plan_ledger
+                # and the seed-7 replay: pastures built for cows the bank could
+                # not buy for five days, opening ground spent on nothing)
+                now = min(n, int(cash_now // ANIMALS[kind]["cost"]))
+                affordable_now[kind] = now
+                cash_now -= now * ANIMALS[kind]["cost"]
     for kind, structure in (("GOOSE", "COOP"), ("COW", "PASTURE"), ("SHEEP", "PASTURE")):
-        pipeline = (plan.animal_buys.get(kind, 0) + view.shed.get(kind, 0)
+        buys_for_structures = (affordable_now.get(kind, 0) if v2 else plan.animal_buys.get(kind, 0))
+        pipeline = (buys_for_structures + view.shed.get(kind, 0)
                     + _pocket.get(kind, 0))
         need = pipeline - empty_by_kind.get(structure, 0)
         if need > 0:
@@ -663,6 +695,10 @@ def make_champion_plan(view, memory):
             extra = min(room, int(idle_turns * fill))
             if extra > 0:
                 quota["WHEAT"] = quota.get("WHEAT", 0) + extra
+    if v2 and quota:
+        # dict order is the scheduler's planting order and the market's seed
+        # order: the crops that pay first go in first (wheat 2 days, melon 10)
+        quota = dict(sorted(quota.items(), key=lambda kv: CROPS.get(kv[0], {}).get("first_yield_day", 99)))
     plan.plant_quota = {k: v for k, v in quota.items() if v > 0}
 
     # Never sell feed we are about to buy back. The sell path used to reserve

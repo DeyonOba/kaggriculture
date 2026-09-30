@@ -35,9 +35,14 @@ def build_agent(spec_text):
     from kagent.policy import HeuristicPolicy, ChampionPlanProvider
     from rl import rollout
     asks = {}
-    if spec_text == "champion":
+    if spec_text == "champion" or spec_text.startswith("champion:"):
+        from kagent.policy import ThetaPlanProvider
         rollout._set_exec(list(W.EXEC_RULES))
-        provider = ChampionPlanProvider()
+        knobs = {}
+        for kv in spec_text.partition(":")[2].split(","):
+            if "=" in kv:
+                k, v = kv.split("="); knobs[k.strip()] = float(v) if "." in v else int(v)
+        provider = ThetaPlanProvider(knobs) if knobs else ChampionPlanProvider()
         pol, mem = HeuristicPolicy(provider), Memory()
         inner = provider.make_plan
 
