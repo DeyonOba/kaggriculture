@@ -155,11 +155,23 @@ HELP_RADIUS = 5           # cross-zone help only within this many steps
 #              deferred and often never happens. Measured (days 23-27): the
 #              champion FEEDs 15-16 animals a day and CAREs 6-10; the fresh
 #              leaders FEED 15-19 and CARE 15-19. Metric: CARE per FEED.
+#   radial     crops plant from the OUTSIDE in: bare tiles within RADIAL_RING
+#              Manhattan steps of the four shed-access tiles are planted only
+#              when nothing farther is bare, so the ring stays free for the
+#              coops and pastures (which already take the nearest empties).
+#              tools/placement_heatmap.py, champ-h11 self-play vs the top-10%
+#              corpus, days 10-25: livestock mean shed distance ours 2.76 vs
+#              theirs 1.83, crops 4.20 vs 4.58; their crop map has a hole at
+#              distance <= 2 and ours puts pastures in the far corner because
+#              day-0 planting takes the near tiles first. FEED needs a wheat
+#              delivery from the shed every day; WATER carries nothing.
+#              Metric: livestock mean shed distance, feed trips.
 
 EXEC_FLAGS = ("lastwater", "chain", "weeds", "h23", "quadq", "evesell", "animal_visit", "shedguard",
               "harvest_visit", "spent", "layout",
               "handfeed", "oneshed", "hv_underfoot", "nodrift", "dailywater",
-              "endwater", "tend_end", "late_plant", "care_all")
+              "endwater", "tend_end", "late_plant", "care_all", "radial")
+RADIAL_RING = 2              # radial: crops keep off tiles this close to the shed access
 ENDWATER_DAY = 20
 EXEC = {k: False for k in EXEC_FLAGS}
 LASTWATER_HARVEST_HOUR = 20  # from here harvest the crop even if unwatered
@@ -205,6 +217,19 @@ class Task:
 
 def _dist(x1, y1, x2, y2):
     return abs(x1 - x2) + abs(y1 - y2)
+
+
+def _shed_ring(x, y):
+    """Manhattan distance to the nearest of the four shed-access tiles."""
+    return min(_dist(x, y, sx, sy) for sx, sy in ((4, 4), (5, 4), (4, 5), (5, 5)))
+
+
+def _plant_order(rest):
+    """radial: the ring around the shed is planted last."""
+    if not EXEC["radial"]:
+        return rest
+    return ([e for e in rest if _shed_ring(*e) > RADIAL_RING]
+            + [e for e in rest if _shed_ring(*e) <= RADIAL_RING])
 
 
 def _step_toward(fx, fy, tx, ty):
@@ -531,7 +556,7 @@ def build_tasks(view, plan):
                 if isinstance(st_, dict) and st_.get("kind") in ("COOP", "PASTURE"):
                     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                         near.add((sx + dx, sy + dy))
-            rest = empties[cursor:]
+            rest = _plant_order(empties[cursor:])
             adj = [e for e in rest if e in near]
             far = [e for e in rest if e not in near]
             n_wheat = plan.plant_quota["WHEAT"]
@@ -543,7 +568,7 @@ def build_tasks(view, plan):
             for i, (x, y) in enumerate(remaining):
                 tasks.append(Task(P_GROW, x, y, ["PLANT", others[i % len(others)]]))
         elif wanted:
-            for i, (x, y) in enumerate(empties[cursor:]):
+            for i, (x, y) in enumerate(_plant_order(empties[cursor:])):
                 tasks.append(Task(P_GROW, x, y, ["PLANT", wanted[i % len(wanted)]]))
 
     weed_pri = P_GROW if len(empties) - cursor < 6 else P_FILLER

@@ -177,3 +177,25 @@ def test_care_all_emits_care_without_waiting_for_the_feed():
                                       "fertilizer_available": False, "yield_units": 0, "consecutive_unfed": 0}
     view = View(obs); plan = planner.make_champion_plan(view, Memory()); plan.plant_quota = {}; plan.structure_builds = {"COOP": 0, "PASTURE": 0}
     assert not any(op == "CARE" for op, _ in _at(view, plan, 1, 1))
+
+
+def test_radial_plants_from_the_outside_in_and_leaves_the_shed_ring_for_structures():
+    obs = _obs(day=5, hour=6)
+    view = View(obs)
+    plan = planner.make_champion_plan(view, Memory())
+    plan.plant_quota = {"WHEAT": 3}
+    plan.structure_builds = {"COOP": 0, "PASTURE": 0}
+    plan.liquidation = False
+    plants = lambda: [(t.x, t.y) for t in scheduler.build_tasks(view, plan) if t.op[0] == "PLANT"]
+    first3 = plants()[:3]
+    assert first3 and all(scheduler._shed_ring(x, y) <= scheduler.RADIAL_RING for x, y in first3), first3   # shipped: nearest first
+    scheduler.set_exec("radial")
+    first3 = plants()[:3]
+    assert all(scheduler._shed_ring(x, y) > scheduler.RADIAL_RING for x, y in first3), first3          # radial: ring last
+    # the ring is still planted when nothing else is bare
+    ring = [(x, y) for x, y in plants() if scheduler._shed_ring(x, y) <= scheduler.RADIAL_RING]
+    assert ring and plants()[-len(ring):] == ring
+    # structures still take the nearest empties
+    plan.structure_builds = {"COOP": 0, "PASTURE": 2}
+    builds = [(t.x, t.y) for t in scheduler.build_tasks(view, plan) if t.op[0] == "BUILD_PASTURE"]
+    assert len(builds) == 2 and all(scheduler._shed_ring(x, y) <= scheduler.RADIAL_RING for x, y in builds), builds
