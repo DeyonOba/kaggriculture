@@ -197,3 +197,45 @@ def test_straw_day_lets_strawberries_take_freed_tiles_early():
     assert planner.make_champion_plan(View(obs), mem).plant_quota.get("STRAWBERRY", 0) == 0    # shipped: from day 5
     mem.knobs["straw_day"] = 2
     assert planner.make_champion_plan(View(obs), mem).plant_quota.get("STRAWBERRY", 0) > 0
+
+
+def test_egg_niche_fires_on_the_shop_draw_and_an_empty_opponent_coop_line():
+    from kagent import planner
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["day"], obs["hour"], obs["step"] = 8, 0, 8 * 24
+    obs["farms"][0]["money"] = 3_000
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs["egg_niche"] = 1; mem.knobs_decided = True
+    obs["town"]["unlocked_shops"] = ["BAKERY"]                                   # eggs demanded
+    plan = planner.make_champion_plan(View(obs), mem)
+    assert plan.animal_buys.get("GOOSE", 0) >= 1 and plan.structure_builds["COOP"] >= 1, (plan.animal_buys, plan.structure_builds)
+    obs["farms"][1]["tiles"][0][0] = {"kind": "COOP"}                            # the opponent has a coop: no niche
+    assert planner.make_champion_plan(View(obs), mem).animal_buys.get("GOOSE", 0) == 0
+    obs["farms"][1]["tiles"][0][0] = None
+    obs["town"]["unlocked_shops"] = ["YARN_STORE"]                               # no egg demand: no niche
+    assert planner.make_champion_plan(View(obs), mem).animal_buys.get("GOOSE", 0) == 0
+
+
+def test_land4_niche_loads_the_fourth_quadrant_with_the_demanded_crop():
+    from kagent import planner
+    from kagent.constants import MARKET_PARAMS
+    from kagent.gamestate import Memory, View
+    import copy
+    from kaggle_environments import make
+    env = make("kaggriculture", configuration={"seed": 5}, debug=False)
+    env.reset(2)
+    obs = copy.deepcopy(env.state[0].observation)
+    obs["day"], obs["hour"], obs["step"] = 16, 0, 16 * 24
+    obs["farms"][0]["money"] = 20_000
+    obs["farms"][0]["unlocked_quadrants"] = ["NW", "NE", "SW", "SE"]
+    obs["town"]["unlocked_shops"] = ["PET_CAFE"]
+    obs["market"]["inventory"]["CARROT"] = MARKET_PARAMS["CARROT"]["I0"] - 50
+    mem = Memory(); mem.knobs = dict(planner.KNOB_DEFAULTS); mem.knobs.update({"land4": 1, "land4_niche": 1}); mem.knobs_decided = True
+    plan = planner.make_champion_plan(View(obs), mem)
+    assert plan.plant_quota.get("CARROT", 0) >= planner.NICHE_TILES, plan.plant_quota
+    mem.knobs["land4_niche"] = 0
+    assert planner.make_champion_plan(View(obs), mem).plant_quota.get("CARROT", 0) < planner.NICHE_TILES

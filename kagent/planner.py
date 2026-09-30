@@ -427,6 +427,10 @@ LAND4_WHEAT_BONUS = 25
 # the opponent's throughput, widen the variance -- buy the last quadrant and
 # plant the crops the opponent left out that the town still buys, whose
 # price sits at or above base because nobody supplies them.
+# egg_niche / land4_niche (user's demand rules, 2026-09-30): a rule that
+# fires on the SHOP DRAWS and the opponent's board, not on the calendar.
+EGG_NICHE_DRAIN = 7.0     # egg units a day the town takes: one egg shop (6) + the centre (1)
+EGG_NICHE_GEESE = 3       # geese to hold when eggs are demanded and the opponent has no coop
 PRESS_DAY = 12
 PRESS_LEAD = 8_000        # dollars behind that trigger the press
 PRESS_RATIO = 1.15        # their standing work (tiles + 3 x animals) over ours
@@ -490,6 +494,15 @@ KNOB_DEFAULTS = {
     # margin and hold NICHE_TILES of each crop the opponent left out that the
     # town buys and the market has not glutted (see PRESS_* / NICHE_*).
     "press_niche": 0,
+    # egg_niche: from day 6, when the draws include an egg shop and the
+    # opponent has no coop, hold EGG_NICHE_GEESE geese (the egg curve cannot
+    # crash: above_target 0.2; scarce it rises to 1.4x base).
+    "egg_niche": 0,
+    # land4_niche: with land4, the fourth quadrant is loaded with the demanded
+    # crops the opponent does not supply (carrot/tomato with a shop beyond
+    # the town centre, <= 1 opponent tile, market not glutted) on top of the
+    # wheat engine bonus.
+    "land4_niche": 0,
     # straw_day: the first day strawberries take freed tiles (the champion's
     # constant is CHAMP_LAND_DAY = 5). The leaders plant them from day 2 as
     # the early wheat cash lands (1, 2, 3, 6 tiles on days 2-5); with
@@ -583,6 +596,13 @@ def make_champion_plan(view, memory):
 
     crops = _count_crops(me)
     my_animals = sum(1 for _ in me.animals())
+    if knobs.get("egg_niche") and day >= 6:
+        egg_drain = econ.town_drain_per_day(view.unlocked_shops).get("EGG", 0.0)
+        opp_coops = sum(1 for _, _, t in view.opp.iter_tiles() if isinstance(t, dict) and t.get("kind") == "COOP")
+        if egg_drain >= EGG_NICHE_DRAIN and opp_coops == 0:
+            knobs = dict(knobs)
+            knobs["geese"] = max(knobs.get("geese", 0), EGG_NICHE_GEESE)
+            knobs["geese_day"] = min(knobs.get("geese_day", 6), day)
     herd = {}
     for _, _, t in me.animals():
         herd[t["animal"]] = herd.get(t["animal"], 0) + 1
@@ -796,7 +816,8 @@ def make_champion_plan(view, memory):
         # dict order is the scheduler's planting order and the market's seed
         # order: the crops that pay first go in first (wheat 2 days, melon 10)
         quota = dict(sorted(quota.items(), key=lambda kv: CROPS.get(kv[0], {}).get("first_yield_day", 99)))
-    if pressing and not plan.liquidation:
+    niche_land = bool(knobs.get("land4_niche")) and "SE" in me.unlocked_quadrants
+    if (pressing or niche_land) and not plan.liquidation:
         # the crops the opponent left out, that the town still buys (a shop
         # beyond the town centre drains them) and the market has not glutted
         drain = econ.town_drain_per_day(view.unlocked_shops)
